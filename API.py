@@ -27,6 +27,24 @@ class DarkerMarketAPI:
             "Authorization": "960f723902200d13d5c7"
         }
 
+    def _load_existing_records(self):
+        """加载数据库中已存在的记录到seen_records"""
+        if not self.db.connector:
+            print("❌ 数据库未连接，无法加载现有记录")
+            return
+        
+        try:
+            cursor = self.db.connector.cursor()
+            cursor.execute(f"SELECT item_id, created_at FROM {self.db.items}")
+            existing_count = 0
+            for row in cursor.fetchall():
+                record_key = f"{row[0]}_{row[1]}"
+                self.seen_records.add(record_key)
+                existing_count += 1
+            cursor.close()
+            print(f"📚 已加载 {existing_count} 条现有记录到去重集合")
+        except Exception as e:
+            print(f"❌ 加载现有记录失败: {str(e)}")
 
     def run(self):
         if need_run:
@@ -36,6 +54,9 @@ class DarkerMarketAPI:
             if not self.db.connect():
                 print("❌ 数据库连接失败")
                 return
+            
+            # 加载数据库中已存在的记录到去重集合
+            self._load_existing_records()
             
             while need_run > self.page and self.no_new_data_count < self.max_no_new_data:
                 new_data_count = self.get_market_data()
@@ -97,7 +118,7 @@ class DarkerMarketAPI:
             response = requests.get(url, params=params, headers=self.headers)
             response.raise_for_status()
             data = response.json()
-            print(data)
+            # print(data)
             table = {
                 "id": [],
                 "item": [],
