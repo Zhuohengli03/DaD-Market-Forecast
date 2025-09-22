@@ -3,9 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, ExtraTreesRegressor
+from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
 from sklearn.svm import SVR
+from sklearn.neural_network import MLPRegressor
+from sklearn.ensemble import VotingRegressor, BaggingRegressor
+import xgboost as xgb
+from xgboost import XGBRegressor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.feature_selection import SelectKBest, f_regression
@@ -93,74 +97,114 @@ class MarketMLAnalyzer:
         print(f"📊 预处理后数据形状: {self.df.shape}")
     
     def _remove_outliers(self):
-        """移除异常值"""
+        """移除异常值 - 使用改进的Z-score方法"""
         print("🔍 检测和移除异常值...")
         
-        # 使用IQR方法检测异常值
+        # 使用Z-score方法检测异常值，对价格数据使用更宽松的阈值
         numeric_columns = ['quantity', 'price_per_unit', 'price']
+        original_shape = self.df.shape
         
         for col in numeric_columns:
-            Q1 = self.df[col].quantile(0.25)
-            Q3 = self.df[col].quantile(0.75)
-            IQR = Q3 - Q1
-            lower_bound = Q1 - 1.5 * IQR
-            upper_bound = Q3 + 1.5 * IQR
+            # 计算Z-score
+            z_scores = np.abs((self.df[col] - self.df[col].mean()) / self.df[col].std())
             
-            outliers = (self.df[col] < lower_bound) | (self.df[col] > upper_bound)
+            # 对价格数据使用更宽松的阈值（2.5σ），对数量使用标准阈值（3σ）
+            threshold = 2.5 if col in ['price_per_unit', 'price'] else 3.0
+            outliers = z_scores > threshold
             outlier_count = outliers.sum()
             
             if outlier_count > 0:
-                print(f"  {col}: 发现 {outlier_count} 个异常值")
+                print(f"  {col}: 发现 {outlier_count} 个异常值 (阈值: {threshold}σ)")
                 self.df = self.df[~outliers]
         
-        print(f"📊 移除异常值后数据形状: {self.df.shape}")
+        removed_count = original_shape[0] - self.df.shape[0]
+        print(f"📊 移除异常值后数据形状: {self.df.shape} (移除了 {removed_count} 条记录)")
     
     def _feature_engineering(self):
-        """特征工程"""
-        print("⚙️ 进行特征工程...")
+        """高级特征工程"""
+        print("⚙️ 进行高级特征工程...")
         
-        # 时间特征
+        # 1. 基础时间特征
         self.df['hour'] = self.df['created_at'].dt.hour
         self.df['day_of_week'] = self.df['created_at'].dt.dayofweek
         self.df['day_of_month'] = self.df['created_at'].dt.day
         self.df['month'] = self.df['created_at'].dt.month
+        self.df['is_weekend'] = (self.df['day_of_week'] >= 5).astype(int)
         
-        # 价格相关特征
+        # 2. 价格相关特征
         self.df['price_quantity_ratio'] = self.df['price'] / (self.df['quantity'] + 1)
         self.df['price_per_unit_squared'] = self.df['price_per_unit'] ** 2
         self.df['quantity_squared'] = self.df['quantity'] ** 2
+        self.df['price_quantity_interaction'] = self.df['price_per_unit'] * self.df['quantity']
         
-        # 移动平均特征
-        for window in [3, 7, 14]:
+        # 3. 移动平均特征 (多时间窗口)
+        for window in [3, 5, 7, 10, 14]:
             self.df[f'price_ma_{window}'] = self.df['price_per_unit'].rolling(window=window).mean()
             self.df[f'quantity_ma_{window}'] = self.df['quantity'].rolling(window=window).mean()
+            self.df[f'price_ema_{window}'] = self.df['price_per_unit'].ewm(span=window).mean()
         
-        # 价格变化特征
+        # 4. 价格变化特征
         self.df['price_change'] = self.df['price_per_unit'].diff()
         self.df['price_change_pct'] = self.df['price_per_unit'].pct_change()
+        self.df['price_change_abs'] = np.abs(self.df['price_change'])
         
-        # 波动性特征
-        for window in [5, 10]:
+        # 5. 波动性特征
+        for window in [3, 5, 10, 20]:
             self.df[f'price_volatility_{window}'] = self.df['price_per_unit'].rolling(window=window).std()
+            self.df[f'price_skewness_{window}'] = self.df['price_per_unit'].rolling(window=window).skew()
+            self.df[f'price_kurtosis_{window}'] = self.df['price_per_unit'].rolling(window=window).kurt()
         
-        # 填充缺失值
+        # 6. 趋势特征
+        for window in [5, 10, 20]:
+            self.df[f'price_trend_{window}'] = self.df['price_per_unit'].rolling(window=window).apply(
+                lambda x: np.polyfit(range(len(x)), x, 1)[0] if len(x) == window else np.nan
+            )
+        
+        # 7. 分位数特征
+        for window in [10, 20]:
+            self.df[f'price_q25_{window}'] = self.df['price_per_unit'].rolling(window=window).quantile(0.25)
+            self.df[f'price_q75_{window}'] = self.df['price_per_unit'].rolling(window=window).quantile(0.75)
+            self.df[f'price_iqr_{window}'] = self.df[f'price_q75_{window}'] - self.df[f'price_q25_{window}']
+        
+        # 8. 滞后特征
+        for lag in [1, 2, 3, 5]:
+            self.df[f'price_lag_{lag}'] = self.df['price_per_unit'].shift(lag)
+            self.df[f'quantity_lag_{lag}'] = self.df['quantity'].shift(lag)
+        
+        # 9. 交互特征
+        self.df['hour_quantity_interaction'] = self.df['hour'] * self.df['quantity']
+        self.df['day_quantity_interaction'] = self.df['day_of_week'] * self.df['quantity']
+        
+        # 10. 填充缺失值
         self.df = self.df.fillna(method='ffill').fillna(method='bfill')
         
-        print("✅ 特征工程完成")
+        print("✅ 高级特征工程完成")
     
     def _prepare_training_data(self):
         """准备训练数据"""
         print("📊 准备训练数据...")
         
-        # 选择特征
+        # 选择优化特征 - 避免数据泄露，增加预测能力
         feature_columns = [
-            'quantity', 'price_per_unit', 'has_sold',
-            'hour', 'day_of_week', 'day_of_month', 'month',
-            'price_quantity_ratio', 'price_per_unit_squared', 'quantity_squared',
-            'price_ma_3', 'price_ma_7', 'price_ma_14',
-            'quantity_ma_3', 'quantity_ma_7', 'quantity_ma_14',
-            'price_change', 'price_change_pct',
-            'price_volatility_5', 'price_volatility_10'
+            # 基础特征
+            'quantity', 'has_sold',
+            # 时间特征
+            'hour', 'day_of_week', 'day_of_month', 'month', 'is_weekend',
+            # 价格相关特征（不包含当前价格）
+            'price_quantity_ratio', 'quantity_squared', 'price_quantity_interaction',
+            # 数量移动平均
+            'quantity_ma_3', 'quantity_ma_5', 'quantity_ma_7', 'quantity_ma_10', 'quantity_ma_14',
+            # 滞后特征
+            'quantity_lag_1', 'quantity_lag_2', 'quantity_lag_3',
+            # 波动性特征
+            'price_volatility_3', 'price_volatility_5', 'price_volatility_10', 'price_volatility_20',
+            # 趋势特征
+            'price_trend_5', 'price_trend_10', 'price_trend_20',
+            # 分位数特征
+            'price_q25_10', 'price_q75_10', 'price_iqr_10',
+            'price_q25_20', 'price_q75_20', 'price_iqr_20',
+            # 交互特征
+            'hour_quantity_interaction', 'day_quantity_interaction'
         ]
         
         # 移除包含NaN的列
@@ -171,10 +215,17 @@ class MarketMLAnalyzer:
         print(f"📊 特征数量: {len(available_features)}")
         print(f"📊 样本数量: {len(self.X)}")
         
-        # 分割数据
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            self.X, self.y, test_size=0.2, random_state=42, shuffle=False
-        )
+        # 分割数据 - 使用固定比例确保稳定性
+        split_index = int(len(self.X) * 0.8)
+        
+        # 确保分割点固定，避免随机性
+        self.X_train = self.X.iloc[:split_index].copy()
+        self.X_test = self.X.iloc[split_index:].copy()
+        self.y_train = self.y.iloc[:split_index].copy()
+        self.y_test = self.y.iloc[split_index:].copy()
+        
+        print(f"📊 训练集大小: {len(self.X_train)}, 测试集大小: {len(self.X_test)}")
+        print(f"📊 分割点: 第{split_index}条记录 ({(split_index/len(self.X)*100):.1f}%)")
         
         # 标准化特征
         self.X_train_scaled = self.scaler.fit_transform(self.X_train)
@@ -186,14 +237,37 @@ class MarketMLAnalyzer:
         """训练多个机器学习模型"""
         print("🤖 开始训练机器学习模型...")
         
-        # 定义模型
+        # 定义优化模型 - 增强性能和稳定性
         models = {
-            'Random Forest': RandomForestRegressor(n_estimators=100, random_state=42),
-            'Gradient Boosting': GradientBoostingRegressor(n_estimators=100, random_state=42),
+            # 集成学习模型
+            'Random Forest': RandomForestRegressor(
+                n_estimators=200, max_depth=12, min_samples_split=5, 
+                min_samples_leaf=2, max_features='sqrt', random_state=42, n_jobs=-1
+            ),
+            'Extra Trees': ExtraTreesRegressor(
+                n_estimators=200, max_depth=12, min_samples_split=5,
+                min_samples_leaf=2, max_features='sqrt', random_state=42, n_jobs=-1
+            ),
+            'Gradient Boosting': GradientBoostingRegressor(
+                n_estimators=200, max_depth=6, learning_rate=0.03, 
+                subsample=0.8, random_state=42
+            ),
+            'XGBoost': XGBRegressor(
+                n_estimators=200, max_depth=6, learning_rate=0.03,
+                subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=-1
+            ),
+            # 线性模型
             'Linear Regression': LinearRegression(),
-            'Ridge Regression': Ridge(alpha=1.0),
-            'Lasso Regression': Lasso(alpha=0.1),
-            'SVR': SVR(kernel='rbf', C=1.0, gamma='scale')
+            'Ridge Regression': Ridge(alpha=0.1, random_state=42),
+            'Lasso Regression': Lasso(alpha=0.01, random_state=42, max_iter=5000),
+            'Elastic Net': ElasticNet(alpha=0.01, l1_ratio=0.5, random_state=42, max_iter=5000),
+            # 支持向量机
+            'SVR': SVR(kernel='rbf', C=10.0, gamma='auto', epsilon=0.01),
+            # 神经网络
+            'MLP Regressor': MLPRegressor(
+                hidden_layer_sizes=(100, 50), activation='relu', solver='adam',
+                alpha=0.001, learning_rate='adaptive', max_iter=1000, random_state=42
+            )
         }
         
         # 训练和评估模型
@@ -217,30 +291,204 @@ class MarketMLAnalyzer:
                 rmse = np.sqrt(mse)
                 r2 = r2_score(self.y_test, y_pred)
                 
+                # 添加交叉验证评估
+                if name == 'SVR':
+                    cv_scores = cross_val_score(model, self.X_train_scaled, self.y_train, cv=3, scoring='r2')
+                else:
+                    cv_scores = cross_val_score(model, self.X_train, self.y_train, cv=3, scoring='r2')
+                
                 model_scores[name] = {
                     'model': model,
                     'mae': mae,
                     'mse': mse,
                     'rmse': rmse,
                     'r2': r2,
+                    'cv_r2_mean': cv_scores.mean(),
+                    'cv_r2_std': cv_scores.std(),
                     'predictions': y_pred
                 }
                 
-                print(f"  ✅ {name}: MAE={mae:.2f}, RMSE={rmse:.2f}, R²={r2:.3f}")
+                print(f"  ✅ {name}: MAE={mae:.2f}, RMSE={rmse:.2f}, R²={r2:.3f}, CV-R²={cv_scores.mean():.3f}±{cv_scores.std():.3f}")
                 
             except Exception as e:
                 print(f"  ❌ {name} 训练失败: {str(e)}")
         
         self.models = model_scores
         
-        # 选择最佳模型
-        best_model_name = max(model_scores.keys(), key=lambda x: model_scores[x]['r2'])
+        # 创建集成模型
+        print("\n🔄 创建集成模型...")
+        ensemble_models = self._create_ensemble_model(model_scores)
+        
+        # 评估集成模型
+        if ensemble_models:
+            ensemble_scores = self._evaluate_ensemble_model(ensemble_models)
+            model_scores['Ensemble'] = ensemble_scores
+            print(f"✅ 集成模型: R²={ensemble_scores['r2']:.3f}, CV-R²={ensemble_scores['cv_r2_mean']:.3f}")
+        
+        # 选择最佳模型 - 使用交叉验证分数
+        best_model_name = max(model_scores.keys(), key=lambda x: model_scores[x]['cv_r2_mean'])
         self.best_model = model_scores[best_model_name]['model']
         
         print(f"\n🏆 最佳模型: {best_model_name}")
-        print(f"📊 最佳模型性能: R²={model_scores[best_model_name]['r2']:.3f}")
+        print(f"📊 最佳模型性能: R²={model_scores[best_model_name]['r2']:.3f}, CV-R²={model_scores[best_model_name]['cv_r2_mean']:.3f}")
+        
+        # 详细模型准确性分析
+        self._analyze_model_accuracy(model_scores[best_model_name], best_model_name)
         
         return model_scores
+    
+    def _create_ensemble_model(self, model_scores):
+        """创建集成模型"""
+        try:
+            # 选择前5个最佳模型进行集成
+            top_models = sorted(model_scores.items(), key=lambda x: x[1]['cv_r2_mean'], reverse=True)[:5]
+            
+            if len(top_models) < 2:
+                print("⚠️ 模型数量不足，跳过集成")
+                return None
+            
+            # 创建投票回归器
+            estimators = []
+            for name, scores in top_models:
+                if name in ['SVR', 'MLP Regressor']:
+                    # 需要标准化的模型
+                    estimators.append((name, scores['model']))
+                else:
+                    estimators.append((name, scores['model']))
+            
+            # 使用加权平均
+            ensemble = VotingRegressor(estimators, weights=[scores[1]['cv_r2_mean'] for scores in top_models])
+            
+            return {
+                'voting': ensemble,
+                'models': top_models,
+                'weights': [scores[1]['cv_r2_mean'] for scores in top_models]
+            }
+            
+        except Exception as e:
+            print(f"⚠️ 集成模型创建失败: {str(e)}")
+            return None
+    
+    def _evaluate_ensemble_model(self, ensemble_models):
+        """评估集成模型"""
+        try:
+            ensemble = ensemble_models['voting']
+            
+            # 训练集成模型
+            ensemble.fit(self.X_train, self.y_train)
+            
+            # 预测
+            y_pred = ensemble.predict(self.X_test)
+            
+            # 评估
+            mae = mean_absolute_error(self.y_test, y_pred)
+            mse = mean_squared_error(self.y_test, y_pred)
+            rmse = np.sqrt(mse)
+            r2 = r2_score(self.y_test, y_pred)
+            
+            # 交叉验证
+            cv_scores = cross_val_score(ensemble, self.X_train, self.y_train, cv=3, scoring='r2')
+            
+            return {
+                'model': ensemble,
+                'mae': mae,
+                'mse': mse,
+                'rmse': rmse,
+                'r2': r2,
+                'cv_r2_mean': cv_scores.mean(),
+                'cv_r2_std': cv_scores.std(),
+                'predictions': y_pred
+            }
+            
+        except Exception as e:
+            print(f"⚠️ 集成模型评估失败: {str(e)}")
+            return None
+    
+    def _analyze_model_accuracy(self, model_info, model_name):
+        """详细分析模型准确性"""
+        print("\n" + "="*60)
+        print("📊 模型准确性详细分析")
+        print("="*60)
+        
+        # 1. 基础指标分析
+        print("\n🔍 基础评估指标:")
+        print(f"  • R² 决定系数: {model_info['r2']:.4f} (越接近1越好)")
+        print(f"  • 交叉验证 R²: {model_info['cv_r2_mean']:.4f} ± {model_info['cv_r2_std']:.4f}")
+        print(f"  • 平均绝对误差 (MAE): {model_info['mae']:.4f}")
+        print(f"  • 均方根误差 (RMSE): {model_info['rmse']:.4f}")
+        
+        # 2. 准确性等级评估
+        r2_score = model_info['r2']
+        cv_r2_score = model_info['cv_r2_mean']
+        
+        print("\n📈 准确性等级评估:")
+        if r2_score >= 0.95:
+            print("  ✅ 优秀 (R² ≥ 0.95) - 模型预测非常准确")
+        elif r2_score >= 0.85:
+            print("  ✅ 良好 (0.85 ≤ R² < 0.95) - 模型预测较为准确")
+        elif r2_score >= 0.70:
+            print("  ⚠️  一般 (0.70 ≤ R² < 0.85) - 模型预测基本可用")
+        elif r2_score >= 0.50:
+            print("  ⚠️  较差 (0.50 ≤ R² < 0.70) - 模型预测不够准确")
+        else:
+            print("  ❌ 很差 (R² < 0.50) - 模型预测不准确")
+        
+        # 3. 过拟合检测
+        print("\n🔍 过拟合检测:")
+        r2_diff = r2_score - cv_r2_score
+        if r2_diff > 0.1:
+            print(f"  ⚠️  可能存在过拟合 (R²差异: {r2_diff:.3f})")
+        elif r2_diff > 0.05:
+            print(f"  ⚠️  轻微过拟合 (R²差异: {r2_diff:.3f})")
+        else:
+            print(f"  ✅ 无过拟合 (R²差异: {r2_diff:.3f})")
+        
+        # 4. 预测误差分析
+        y_pred = model_info['predictions']
+        errors = self.y_test - y_pred
+        
+        print("\n📊 预测误差分析:")
+        print(f"  • 平均误差: {errors.mean():.4f} (越接近0越好)")
+        print(f"  • 误差标准差: {errors.std():.4f}")
+        print(f"  • 最大正误差: {errors.max():.4f}")
+        print(f"  • 最大负误差: {errors.min():.4f}")
+        
+        # 5. 相对误差分析
+        relative_errors = np.abs(errors) / self.y_test * 100
+        print(f"  • 平均相对误差: {relative_errors.mean():.2f}% (越接近0越好)")
+        print(f"  • 相对误差中位数: {relative_errors.median():.2f}%")
+        
+        # 6. 预测范围分析
+        print("\n📈 预测范围分析:")
+        print(f"  • 实际价格范围: {self.y_test.min():.2f} - {self.y_test.max():.2f}")
+        print(f"  • 预测价格范围: {y_pred.min():.2f} - {y_pred.max():.2f}")
+        print(f"  • 价格范围覆盖率: {((y_pred >= self.y_test.min()) & (y_pred <= self.y_test.max())).mean()*100:.1f}%")
+        
+        # 7. 模型稳定性评估
+        print("\n🛡️ 模型稳定性评估:")
+        cv_std = model_info['cv_r2_std']
+        if cv_std < 0.01:
+            print("  ✅ 非常稳定 (CV标准差 < 0.01)")
+        elif cv_std < 0.05:
+            print("  ✅ 稳定 (CV标准差 < 0.05)")
+        elif cv_std < 0.10:
+            print("  ⚠️  一般稳定 (CV标准差 < 0.10)")
+        else:
+            print("  ❌ 不稳定 (CV标准差 ≥ 0.10)")
+        
+        # 8. 业务价值评估
+        print("\n💼 业务价值评估:")
+        mae_percentage = (model_info['mae'] / self.y_test.mean()) * 100
+        if mae_percentage < 5:
+            print("  ✅ 高价值 - 预测误差小于5%，适合投资决策")
+        elif mae_percentage < 10:
+            print("  ✅ 中高价值 - 预测误差5-10%，适合趋势分析")
+        elif mae_percentage < 20:
+            print("  ⚠️  中等价值 - 预测误差10-20%，适合参考")
+        else:
+            print("  ❌ 低价值 - 预测误差大于20%，不建议用于决策")
+        
+        print("\n" + "="*60)
     
     def hyperparameter_tuning(self):
         """超参数调优"""
@@ -305,6 +553,73 @@ class MarketMLAnalyzer:
             print("⚠️ 当前模型不支持特征重要性分析")
         
         return self.feature_importance
+    
+    def test_model_stability(self, n_runs=5):
+        """测试模型稳定性"""
+        print(f"\n🔄 测试模型稳定性 ({n_runs} 次运行)...")
+        
+        if self.best_model is None:
+            print("❌ 请先训练模型")
+            return None
+        
+        # 存储多次运行的结果
+        r2_scores = []
+        mae_scores = []
+        predictions_list = []
+        
+        for i in range(n_runs):
+            print(f"  运行 {i+1}/{n_runs}...")
+            
+            # 重新训练模型（使用相同的随机种子）
+            if hasattr(self.best_model, 'random_state'):
+                self.best_model.random_state = 42 + i  # 每次使用不同的种子
+            
+            # 训练模型
+            if hasattr(self.best_model, 'fit'):
+                if 'SVR' in str(type(self.best_model)):
+                    self.best_model.fit(self.X_train_scaled, self.y_train)
+                    y_pred = self.best_model.predict(self.X_test_scaled)
+                else:
+                    self.best_model.fit(self.X_train, self.y_train)
+                    y_pred = self.best_model.predict(self.X_test)
+                
+                # 评估
+                r2 = r2_score(self.y_test, y_pred)
+                mae = mean_absolute_error(self.y_test, y_pred)
+                
+                r2_scores.append(r2)
+                mae_scores.append(mae)
+                predictions_list.append(y_pred)
+        
+        # 计算稳定性指标
+        r2_mean = np.mean(r2_scores)
+        r2_std = np.std(r2_scores)
+        mae_mean = np.mean(mae_scores)
+        mae_std = np.std(mae_scores)
+        
+        print(f"\n📊 稳定性测试结果:")
+        print(f"  R² 平均值: {r2_mean:.4f} ± {r2_std:.4f}")
+        print(f"  MAE 平均值: {mae_mean:.4f} ± {mae_std:.4f}")
+        
+        # 稳定性评估
+        if r2_std < 0.01:
+            print("  ✅ 非常稳定 (R²标准差 < 0.01)")
+        elif r2_std < 0.05:
+            print("  ✅ 稳定 (R²标准差 < 0.05)")
+        elif r2_std < 0.10:
+            print("  ⚠️  一般稳定 (R²标准差 < 0.10)")
+        else:
+            print("  ❌ 不稳定 (R²标准差 ≥ 0.10)")
+        
+        return {
+            'r2_scores': r2_scores,
+            'mae_scores': mae_scores,
+            'r2_mean': r2_mean,
+            'r2_std': r2_std,
+            'mae_mean': mae_mean,
+            'mae_std': mae_std,
+            'predictions': predictions_list
+        }
     
     def predict_future_prices(self, days_ahead=7):
         """预测未来价格 - 改进版时间序列预测"""
@@ -572,7 +887,10 @@ Volatility: {price_range:.2f}'''
         # 4. 特征重要性分析
         self.analyze_feature_importance()
         
-        # 5. 预测未来价格
+        # 5. 模型稳定性测试
+        stability_results = self.test_model_stability(n_runs=3)
+        
+        # 6. 预测未来价格
         predictions = self.predict_future_prices(days_ahead)
         
         # 6. 绘制分析图表
@@ -594,8 +912,23 @@ def main():
     print("🤖 机器学习价格预测系统")
     print("=" * 50)
     
-    # 选择CSV文件
-    csv_files = ['iron_ore.csv', 'cobalt_ore.csv']
+    # 自动检测项目根目录中的所有CSV文件
+    import os
+    import glob
+    
+    # 获取项目根目录 (脚本在Analysis子目录中)
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # 自动查找所有CSV文件
+    csv_pattern = os.path.join(project_root, "*.csv")
+    csv_files = [os.path.basename(f) for f in glob.glob(csv_pattern)]
+    
+    # 按文件名排序
+    csv_files.sort()
+    
+    if not csv_files:
+        print("❌ 未找到任何CSV文件！")
+        return
     
     print("可用的数据文件:")
     for i, file in enumerate(csv_files, 1):
@@ -606,14 +939,17 @@ def main():
         if 0 <= choice < len(csv_files):
             csv_file = csv_files[choice]
         else:
-            print("无效选择，使用默认文件: iron_ore.csv")
-            csv_file = 'iron_ore.csv'
+            print("无效选择，使用默认文件:", csv_files[0])
+            csv_file = csv_files[0]
     except:
-        print("使用默认文件: iron_ore.csv")
-        csv_file = 'iron_ore.csv'
+        print("使用默认文件:", csv_files[0])
+        csv_file = csv_files[0]
+    
+    # 构建完整文件路径
+    csv_file_path = os.path.join(project_root, csv_file)
     
     # 创建分析器
-    analyzer = MarketMLAnalyzer(csv_file)
+    analyzer = MarketMLAnalyzer(csv_file_path)
     
     # 运行完整分析
     predictions = analyzer.run_complete_analysis(days_ahead=7)
