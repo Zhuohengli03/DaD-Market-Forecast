@@ -101,7 +101,8 @@ pip install -r requirements.txt
 
 3. **Configure database** / **配置数据库**
    - Set up PostgreSQL database / 设置PostgreSQL数据库
-   - Update connection settings in `Database_connect.py` / 在`Database_connect.py`中更新连接设置
+   - Update connection settings in `.env` / 在`.env`中更新连接设置
+   - more detail check out `env_example`
 
 4. **Configure tasks** / **配置任务**
    - Edit `Scheduler/task_config.py` to customize scheduled tasks / 编辑`Scheduler/task_config.py`自定义定时任务
