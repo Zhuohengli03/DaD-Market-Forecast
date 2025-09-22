@@ -1,11 +1,36 @@
+# 数据文件 / Data files
 *.csv
 *.db
 *.json
 *.log
 *.txt
+
+# Python 缓存 / Python cache
 *.pyc
 *.pyo
 *.pyd
 *.pyw
 *.pyz
 *.pywz
+__pycache__/
+*.egg-info/
+
+# 环境变量文件 / Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# 敏感配置文件 / Sensitive config files
+config_local.py
+secrets.py
+
+# IDE 文件 / IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件 / System files
+.DS_Store
+Thumbs.db

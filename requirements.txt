@@ -1,21 +1,26 @@
-# 核心依赖
-pandas>=1.5.0
+# Core Dependencies / 核心依赖
 requests>=2.28.0
+pandas>=1.5.0
+numpy>=1.21.0
+python-dotenv>=1.0.0
 
-# 数据库驱动 (可选安装)
-# SQLite - 内置支持，无需额外安装
-
-# MySQL支持 (可选)
-mysql-connector-python>=8.0.0
-
-# PostgreSQL支持 (可选)
+# Database / 数据库
 psycopg2-binary>=2.9.0
 
-# 时间序列分析
-statsmodels>=0.14.0
-scikit-learn>=1.3.0
-matplotlib>=3.7.0
-numpy>=1.24.0
+# Time Series Analysis / 时间序列分析
+statsmodels>=0.13.0
+matplotlib>=3.5.0
+seaborn>=0.11.0
 
-# 其他有用的包
-python-dotenv>=0.19.0  # 用于环境变量管理
+# Machine Learning / 机器学习
+scikit-learn>=1.1.0
+
+# Task Scheduling / 任务调度
+schedule>=1.2.0
+
+# Data Processing / 数据处理
+scipy>=1.9.0
+
+# Optional: Jupyter for analysis / 可选：用于分析的Jupyter
+# jupyter>=1.0.0
+# ipykernel>=6.0.0

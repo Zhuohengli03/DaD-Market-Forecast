@@ -10,6 +10,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from Database_connect import DarkerMarketDB
+from config import config
 
 
 
@@ -30,9 +31,7 @@ class DarkerMarketAPI:
         self.db = None  # 数据库连接对象
         self.seen_records = set()  # 用于去重的已见记录集合
         
-        self.headers = {
-            "Authorization": "960f723902200d13d5c7"
-        }
+        self.headers = config.get_api_headers()
 
     def _load_existing_records(self):
         """加载数据库中已存在的记录到seen_records"""
