@@ -18,7 +18,7 @@ TASKS = [
         "schedule_type": "daily",  # daily, hourly, interval, weekly
         "schedule_value": "23:00",  # 时间或间隔
         "enabled": True,
-        "description": "每日早上8点运行Iron Ore数据收集"
+        "description": "每日晚上23点运行Iron Ore数据收集"
     },
     {
         "name": "Gold Ore API", 
@@ -26,7 +26,7 @@ TASKS = [
         "schedule_type": "daily",
         "schedule_value": "23:00",
         "enabled": True,
-        "description": "每日晚上8点运行Gold Ore数据收集"
+        "description": "每日晚上23点运行Gold Ore数据收集"
     },
     {
         "name": "Cobalt Ore API",
@@ -34,7 +34,7 @@ TASKS = [
         "schedule_type": "daily",
         "schedule_value": "23:00",
         "enabled": True,  # 已启用
-        "description": "每日中午12点运行Cobalt Ore数据收集"
+        "description": "每日晚上23点运行Cobalt Ore数据收集"
     },
     # 可以添加更多任务...
     # {

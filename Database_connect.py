@@ -2,17 +2,21 @@ import psycopg2
 import pandas as pd
 from datetime import datetime
 from typing import List, Dict, Any
+from config import config
 
 
 class DarkerMarketDB:
     """Darker Market 数据库连接器"""
     
-    def __init__(self, host="localhost", database="darkerdb", user="zhuohengli", password="0728", items="items", df="df"):
+    def __init__(self, host=None, database=None, user=None, password=None, items="items", df="df"):
+        # 使用环境变量配置，如果没有提供参数则使用默认值
+        db_config = config.get_db_config()
         self.connection_params = {
-            'host': host,
-            'database': database,
-            'user': user,
-            'password': password
+            'host': host or db_config['host'],
+            'database': database or db_config['database'],
+            'user': user or db_config['user'],
+            'password': password or db_config['password'],
+            'port': db_config['port']
         }
         self.connector = None
         self.items = items
@@ -20,7 +24,7 @@ class DarkerMarketDB:
         self.all_data = []  # 存储所有待插入的数据
         self.is_connected = False  # 连接状态标志
 
-        self.path = f"/Users/zhuohengli/Cursor/darkerdb/data/{items}.csv"
+        self.path = f"{config.DATA_DIR}/{items}.csv"
 
 
     def connect(self):
