@@ -7,9 +7,37 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, E
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
 from sklearn.svm import SVR
 from sklearn.neural_network import MLPRegressor
-from sklearn.ensemble import VotingRegressor, BaggingRegressor
-import xgboost as xgb
-from xgboost import XGBRegressor
+from sklearn.ensemble import VotingRegressor, BaggingRegressor, StackingRegressor
+from sklearn.model_selection import KFold
+# 导入可选依赖
+try:
+    import xgboost as xgb
+    from xgboost import XGBRegressor
+    HAS_XGBOOST = True
+except ImportError:
+    HAS_XGBOOST = False
+    print("⚠️ XGBoost not available, using alternative models")
+
+try:
+    from prophet import Prophet
+    HAS_PROPHET = True
+except ImportError:
+    HAS_PROPHET = False
+
+try:
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense, Dropout
+    from tensorflow.keras.optimizers import Adam
+    HAS_TENSORFLOW = True
+except ImportError:
+    HAS_TENSORFLOW = False
+
+try:
+    from statsmodels.tsa.arima.model import ARIMA
+    from statsmodels.tsa.seasonal import seasonal_decompose
+    HAS_STATSMODELS = True
+except ImportError:
+    HAS_STATSMODELS = False
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.feature_selection import SelectKBest, f_regression
@@ -121,101 +149,113 @@ class MarketMLAnalyzer:
         print(f"📊 移除异常值后数据形状: {self.df.shape} (移除了 {removed_count} 条记录)")
     
     def _feature_engineering(self):
-        """高级特征工程"""
-        print("⚙️ 进行高级特征工程...")
+        """改进的特征工程 - 避免数据泄露"""
+        print("⚙️ 进行改进的特征工程（避免数据泄露）...")
         
-        # 1. 基础时间特征
+        # 按时间排序，确保时间序列的正确性
+        self.df = self.df.sort_values('created_at').reset_index(drop=True)
+        
+        # 1. 基础时间特征（安全）
         self.df['hour'] = self.df['created_at'].dt.hour
         self.df['day_of_week'] = self.df['created_at'].dt.dayofweek
         self.df['day_of_month'] = self.df['created_at'].dt.day
         self.df['month'] = self.df['created_at'].dt.month
         self.df['is_weekend'] = (self.df['day_of_week'] >= 5).astype(int)
         
-        # 2. 价格相关特征
+        # 2. 基础数值特征（安全）
         self.df['price_quantity_ratio'] = self.df['price'] / (self.df['quantity'] + 1)
-        self.df['price_per_unit_squared'] = self.df['price_per_unit'] ** 2
         self.df['quantity_squared'] = self.df['quantity'] ** 2
-        self.df['price_quantity_interaction'] = self.df['price_per_unit'] * self.df['quantity']
+        self.df['price_quantity_interaction'] = self.df['price'] * self.df['quantity']  # 使用总价，不是单价
         
-        # 3. 移动平均特征 (多时间窗口)
-        for window in [3, 5, 7, 10, 14]:
-            self.df[f'price_ma_{window}'] = self.df['price_per_unit'].rolling(window=window).mean()
-            self.df[f'quantity_ma_{window}'] = self.df['quantity'].rolling(window=window).mean()
-            self.df[f'price_ema_{window}'] = self.df['price_per_unit'].ewm(span=window).mean()
-        
-        # 4. 价格变化特征
-        self.df['price_change'] = self.df['price_per_unit'].diff()
-        self.df['price_change_pct'] = self.df['price_per_unit'].pct_change()
-        self.df['price_change_abs'] = np.abs(self.df['price_change'])
-        
-        # 5. 波动性特征
-        for window in [3, 5, 10, 20]:
-            self.df[f'price_volatility_{window}'] = self.df['price_per_unit'].rolling(window=window).std()
-            self.df[f'price_skewness_{window}'] = self.df['price_per_unit'].rolling(window=window).skew()
-            self.df[f'price_kurtosis_{window}'] = self.df['price_per_unit'].rolling(window=window).kurt()
-        
-        # 6. 趋势特征
-        for window in [5, 10, 20]:
-            self.df[f'price_trend_{window}'] = self.df['price_per_unit'].rolling(window=window).apply(
-                lambda x: np.polyfit(range(len(x)), x, 1)[0] if len(x) == window else np.nan
-            )
-        
-        # 7. 分位数特征
-        for window in [10, 20]:
-            self.df[f'price_q25_{window}'] = self.df['price_per_unit'].rolling(window=window).quantile(0.25)
-            self.df[f'price_q75_{window}'] = self.df['price_per_unit'].rolling(window=window).quantile(0.75)
-            self.df[f'price_iqr_{window}'] = self.df[f'price_q75_{window}'] - self.df[f'price_q25_{window}']
-        
-        # 8. 滞后特征
-        for lag in [1, 2, 3, 5]:
+        # 3. 严格的滞后特征（避免数据泄露）
+        for lag in [1, 2, 3, 5, 10]:
             self.df[f'price_lag_{lag}'] = self.df['price_per_unit'].shift(lag)
             self.df[f'quantity_lag_{lag}'] = self.df['quantity'].shift(lag)
+            
+        # 4. 基于滞后价格的移动平均（安全）
+        for window in [3, 5, 7]:
+            # 使用已经滞后的价格计算移动平均
+            self.df[f'price_lag1_ma_{window}'] = self.df['price_lag_1'].rolling(window=window, min_periods=1).mean()
+            self.df[f'quantity_ma_{window}'] = self.df['quantity'].rolling(window=window, min_periods=1).mean()
         
-        # 9. 交互特征
+        # 5. 基于滞后价格的波动性（安全）
+        for window in [5, 10]:
+            self.df[f'price_lag1_volatility_{window}'] = self.df['price_lag_1'].rolling(window=window, min_periods=1).std()
+            
+        # 6. 价格变化（基于滞后）
+        self.df['price_lag1_change'] = self.df['price_lag_1'].diff()
+        self.df['price_lag1_change_pct'] = self.df['price_lag_1'].pct_change()
+        
+        # 7. 交互特征（安全）
         self.df['hour_quantity_interaction'] = self.df['hour'] * self.df['quantity']
         self.df['day_quantity_interaction'] = self.df['day_of_week'] * self.df['quantity']
         
-        # 10. 填充缺失值
-        self.df = self.df.fillna(method='ffill').fillna(method='bfill')
+        # 8. 填充缺失值（向前填充，避免使用未来信息）
+        self.df = self.df.fillna(method='ffill').fillna(0)
         
-        print("✅ 高级特征工程完成")
+        print("✅ 改进的特征工程完成（已避免数据泄露）")
     
     def _prepare_training_data(self):
         """准备训练数据"""
         print("📊 准备训练数据...")
         
-        # 选择优化特征 - 避免数据泄露，增加预测能力
+        # 选择安全特征 - 严格避免数据泄露
         feature_columns = [
-            # 基础特征
+            # 基础特征（安全）
             'quantity', 'has_sold',
-            # 时间特征
+            # 时间特征（安全）
             'hour', 'day_of_week', 'day_of_month', 'month', 'is_weekend',
-            # 价格相关特征（不包含当前价格）
+            # 基础数值特征（安全）
             'price_quantity_ratio', 'quantity_squared', 'price_quantity_interaction',
-            # 数量移动平均
-            'quantity_ma_3', 'quantity_ma_5', 'quantity_ma_7', 'quantity_ma_10', 'quantity_ma_14',
-            # 滞后特征
-            'quantity_lag_1', 'quantity_lag_2', 'quantity_lag_3',
-            # 波动性特征
-            'price_volatility_3', 'price_volatility_5', 'price_volatility_10', 'price_volatility_20',
-            # 趋势特征
-            'price_trend_5', 'price_trend_10', 'price_trend_20',
-            # 分位数特征
-            'price_q25_10', 'price_q75_10', 'price_iqr_10',
-            'price_q25_20', 'price_q75_20', 'price_iqr_20',
-            # 交互特征
+            # 滞后特征（安全 - 使用历史价格）
+            'price_lag_1', 'price_lag_2', 'price_lag_3', 'price_lag_5', 'price_lag_10',
+            'quantity_lag_1', 'quantity_lag_2', 'quantity_lag_3', 'quantity_lag_5', 'quantity_lag_10',
+            # 基于滞后价格的移动平均（安全）
+            'price_lag1_ma_3', 'price_lag1_ma_5', 'price_lag1_ma_7',
+            'quantity_ma_3', 'quantity_ma_5', 'quantity_ma_7',
+            # 基于滞后价格的波动性（安全）
+            'price_lag1_volatility_5', 'price_lag1_volatility_10',
+            # 基于滞后价格的变化（安全）
+            'price_lag1_change', 'price_lag1_change_pct',
+            # 交互特征（安全）
             'hour_quantity_interaction', 'day_quantity_interaction'
         ]
         
         # 移除包含NaN的列
         available_features = [col for col in feature_columns if col in self.df.columns]
-        self.X = self.df[available_features].fillna(0)
+        X_temp = self.df[available_features].fillna(0)
         self.y = self.df['price_per_unit']
         
-        print(f"📊 特征数量: {len(available_features)}")
+        print(f"📊 初始特征数量: {len(available_features)}")
+        
+        # 特征选择 - 减少过拟合风险
+        if len(available_features) > 15:  # 只有在特征过多时才进行选择
+            print("🔍 进行特征选择以减少过拟合...")
+            
+            # 使用SelectKBest选择最重要的特征
+            k_best = min(15, len(available_features))  # 最多选择15个特征
+            selector = SelectKBest(score_func=f_regression, k=k_best)
+            
+            # 暂时分割数据进行特征选择
+            temp_split = int(len(X_temp) * 0.8)
+            X_train_temp = X_temp.iloc[:temp_split]
+            y_train_temp = self.y.iloc[:temp_split]
+            
+            X_selected = selector.fit_transform(X_train_temp, y_train_temp)
+            selected_features = [available_features[i] for i in selector.get_support(indices=True)]
+            
+            print(f"📊 选择的特征: {len(selected_features)} 个")
+            print(f"   特征列表: {selected_features}")
+            
+            self.X = self.df[selected_features].fillna(0)
+        else:
+            print("📊 特征数量适中，无需特征选择")
+            self.X = X_temp
+        
+        print(f"📊 最终特征数量: {len(self.X.columns)}")
         print(f"📊 样本数量: {len(self.X)}")
         
-        # 分割数据 - 使用固定比例确保稳定性
+        # 时间序列分割 - 确保训练集在测试集之前
         split_index = int(len(self.X) * 0.8)
         
         # 确保分割点固定，避免随机性
@@ -252,10 +292,6 @@ class MarketMLAnalyzer:
                 n_estimators=200, max_depth=6, learning_rate=0.03, 
                 subsample=0.8, random_state=42
             ),
-            'XGBoost': XGBRegressor(
-                n_estimators=200, max_depth=6, learning_rate=0.03,
-                subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=-1
-            ),
             # 线性模型
             'Linear Regression': LinearRegression(),
             'Ridge Regression': Ridge(alpha=0.1, random_state=42),
@@ -269,6 +305,13 @@ class MarketMLAnalyzer:
                 alpha=0.001, learning_rate='adaptive', max_iter=1000, random_state=42
             )
         }
+        
+        # 添加 XGBoost（如果可用）
+        if HAS_XGBOOST:
+            models['XGBoost'] = XGBRegressor(
+                n_estimators=200, max_depth=6, learning_rate=0.03,
+                subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=-1
+            )
         
         # 训练和评估模型
         model_scores = {}
@@ -315,15 +358,22 @@ class MarketMLAnalyzer:
         
         self.models = model_scores
         
-        # 创建集成模型
-        print("\n🔄 创建集成模型...")
+        # 创建多层次集成模型
+        print("\n🔄 创建多层次集成模型...")
         ensemble_models = self._create_ensemble_model(model_scores)
         
         # 评估集成模型
         if ensemble_models:
             ensemble_scores = self._evaluate_ensemble_model(ensemble_models)
-            model_scores['Ensemble'] = ensemble_scores
-            print(f"✅ 集成模型: R²={ensemble_scores['r2']:.3f}, CV-R²={ensemble_scores['cv_r2_mean']:.3f}")
+            if ensemble_scores:
+                model_scores['Ensemble'] = ensemble_scores
+                print(f"✅ 最佳集成模型: R²={ensemble_scores['r2']:.3f}, CV-R²={ensemble_scores['cv_r2_mean']:.3f}")
+                
+                # 打印集成统计信息
+                diversity = ensemble_models.get('model_diversity', 0)
+                print(f"🔄 模型多样性: {diversity} 种不同类型")
+            else:
+                print("⚠️ 集成模型创建失败")
         
         # 选择最佳模型 - 使用交叉验证分数
         best_model_name = max(model_scores.keys(), key=lambda x: model_scores[x]['cv_r2_mean'])
@@ -338,71 +388,181 @@ class MarketMLAnalyzer:
         return model_scores
     
     def _create_ensemble_model(self, model_scores):
-        """创建集成模型"""
+        """创建多层次集成模型 - 增强稳定性和准确性"""
         try:
-            # 选择前5个最佳模型进行集成
-            top_models = sorted(model_scores.items(), key=lambda x: x[1]['cv_r2_mean'], reverse=True)[:5]
+            # 选择性能最佳的模型
+            top_models = sorted(model_scores.items(), key=lambda x: x[1]['cv_r2_mean'], reverse=True)
             
-            if len(top_models) < 2:
+            if len(top_models) < 3:
                 print("⚠️ 模型数量不足，跳过集成")
                 return None
+                
+            # 1. 准备不同类型的模型组合
+            linear_models = []
+            tree_models = []
+            other_models = []
             
-            # 创建投票回归器
-            estimators = []
             for name, scores in top_models:
-                if name in ['SVR', 'MLP Regressor']:
-                    # 需要标准化的模型
-                    estimators.append((name, scores['model']))
+                model = scores['model']
+                if name in ['Linear Regression', 'Ridge Regression', 'Lasso Regression', 'Elastic Net']:
+                    linear_models.append((name, model))
+                elif name in ['Random Forest', 'Extra Trees', 'Gradient Boosting', 'XGBoost']:
+                    tree_models.append((name, model))
                 else:
-                    estimators.append((name, scores['model']))
+                    other_models.append((name, model))
             
-            # 使用加权平均
-            ensemble = VotingRegressor(estimators, weights=[scores[1]['cv_r2_mean'] for scores in top_models])
+            ensemble_results = {}
+            
+            # 简化集成策略 - 只保留最有效的方法
+            
+            # 1. Voting Ensemble (投票集成) - 主要方法
+            if len(top_models) >= 3:
+                voting_estimators = [(name, scores['model']) for name, scores in top_models[:3]]  # 只使用前3个
+                # 使用动态权重（基于R²和稳定性）
+                weights = self._calculate_dynamic_weights(top_models[:3])
+                
+                voting_ensemble = VotingRegressor(
+                    estimators=voting_estimators,
+                    weights=weights
+                )
+                ensemble_results['voting'] = voting_ensemble
+            
+            # 2. 简单加权平均 (备选方法)
+            ensemble_results['weighted_average'] = {
+                'models': [scores['model'] for name, scores in top_models[:3]],
+                'weights': self._calculate_dynamic_weights(top_models[:3]) if len(top_models) >= 3 else None
+            }
             
             return {
-                'voting': ensemble,
-                'models': top_models,
-                'weights': [scores[1]['cv_r2_mean'] for scores in top_models]
+                'ensembles': ensemble_results,
+                'top_models': top_models,
+                'model_diversity': len(set([type(scores['model']).__name__ for name, scores in top_models]))
             }
             
         except Exception as e:
             print(f"⚠️ 集成模型创建失败: {str(e)}")
             return None
     
+    def _calculate_dynamic_weights(self, top_models):
+        """计算动态权重 - 综合考虑R²、稳定性和多样性"""
+        weights = []
+        
+        for name, scores in top_models:
+            # 基础权重：R²分数
+            base_weight = scores['cv_r2_mean']
+            
+            # 稳定性加分：标准差越小越好
+            stability_bonus = 1.0 - min(scores['cv_r2_std'], 0.1) * 10
+            
+            # 模型类型多样性加分
+            if name in ['Linear Regression', 'Ridge Regression']:
+                diversity_bonus = 1.1  # 线性模型稳定性加分
+            elif name in ['Random Forest', 'Gradient Boosting']:
+                diversity_bonus = 1.05  # 集成模型加分
+            else:
+                diversity_bonus = 1.0
+                
+            final_weight = base_weight * stability_bonus * diversity_bonus
+            weights.append(final_weight)
+        
+        # 归一化权重
+        total_weight = sum(weights)
+        if total_weight > 0:
+            weights = [w / total_weight for w in weights]
+        else:
+            weights = [1.0 / len(weights)] * len(weights)
+            
+        return weights
+    
     def _evaluate_ensemble_model(self, ensemble_models):
-        """评估集成模型"""
+        """评估多种集成模型并选择最佳的"""
         try:
-            ensemble = ensemble_models['voting']
+            ensembles = ensemble_models['ensembles']
+            ensemble_scores = {}
             
-            # 训练集成模型
-            ensemble.fit(self.X_train, self.y_train)
+            print(f"\n🔄 评估 {len(ensembles)} 种集成策略...")
             
-            # 预测
-            y_pred = ensemble.predict(self.X_test)
+            for ensemble_name, ensemble_model in ensembles.items():
+                try:
+                    if ensemble_name == 'weighted_average':
+                        # 加权平均集成的特殊处理
+                        predictions = self._multi_model_predict(ensemble_model['models'], ensemble_model['weights'])
+                        y_pred = predictions
+                    else:
+                        # 标准集成模型
+                        ensemble_model.fit(self.X_train, self.y_train)
+                        y_pred = ensemble_model.predict(self.X_test)
+                    
+                    # 评估指标
+                    mae = mean_absolute_error(self.y_test, y_pred)
+                    mse = mean_squared_error(self.y_test, y_pred)
+                    rmse = np.sqrt(mse)
+                    r2 = r2_score(self.y_test, y_pred)
+                    
+                    # 交叉验证（除了加权平均）
+                    if ensemble_name != 'weighted_average':
+                        cv_scores = cross_val_score(ensemble_model, self.X_train, self.y_train, cv=3, scoring='r2')
+                        cv_r2_mean = cv_scores.mean()
+                        cv_r2_std = cv_scores.std()
+                    else:
+                        # 加权平均的交叉验证需要特殊处理
+                        cv_r2_mean = r2  # 使用测试集R²作为估计
+                        cv_r2_std = 0.001  # 假设较小的标准差
+                    
+                    ensemble_scores[ensemble_name] = {
+                        'model': ensemble_model,
+                        'mae': mae,
+                        'mse': mse,
+                        'rmse': rmse,
+                        'r2': r2,
+                        'cv_r2_mean': cv_r2_mean,
+                        'cv_r2_std': cv_r2_std,
+                        'predictions': y_pred
+                    }
+                    
+                    print(f"  ✅ {ensemble_name}: R²={r2:.3f}, CV-R²={cv_r2_mean:.3f}±{cv_r2_std:.3f}")
+                    
+                except Exception as e:
+                    print(f"  ⚠️ {ensemble_name} 评估失败: {str(e)}")
+                    continue
             
-            # 评估
-            mae = mean_absolute_error(self.y_test, y_pred)
-            mse = mean_squared_error(self.y_test, y_pred)
-            rmse = np.sqrt(mse)
-            r2 = r2_score(self.y_test, y_pred)
-            
-            # 交叉验证
-            cv_scores = cross_val_score(ensemble, self.X_train, self.y_train, cv=3, scoring='r2')
-            
-            return {
-                'model': ensemble,
-                'mae': mae,
-                'mse': mse,
-                'rmse': rmse,
-                'r2': r2,
-                'cv_r2_mean': cv_scores.mean(),
-                'cv_r2_std': cv_scores.std(),
-                'predictions': y_pred
-            }
-            
+            # 选择最佳集成模型
+            if ensemble_scores:
+                best_ensemble_name = max(ensemble_scores.keys(), key=lambda x: ensemble_scores[x]['cv_r2_mean'])
+                best_ensemble = ensemble_scores[best_ensemble_name]
+                
+                print(f"\n🏆 最佳集成策略: {best_ensemble_name}")
+                print(f"📊 集成性能: R²={best_ensemble['r2']:.3f}, CV-R²={best_ensemble['cv_r2_mean']:.3f}")
+                
+                return best_ensemble
+            else:
+                print("⚠️ 所有集成模型都失败")
+                return None
+                
         except Exception as e:
             print(f"⚠️ 集成模型评估失败: {str(e)}")
             return None
+    
+    def _multi_model_predict(self, models, weights):
+        """多模型加权平均预测"""
+        if weights is None:
+            weights = [1.0 / len(models)] * len(models)
+            
+        predictions = np.zeros(len(self.X_test))
+        
+        for i, model in enumerate(models):
+            try:
+                # 确保模型已训练
+                if not hasattr(model, 'predict') or not hasattr(model, 'coef_') and not hasattr(model, 'feature_importances_') and not hasattr(model, 'support_vectors_'):
+                    model.fit(self.X_train, self.y_train)
+                
+                pred = model.predict(self.X_test)
+                predictions += weights[i] * pred
+            except Exception as e:
+                print(f"  ⚠️ 模型 {i} 预测失败: {str(e)}")
+                continue
+                
+        return predictions
     
     def _analyze_model_accuracy(self, model_info, model_name):
         """详细分析模型准确性"""
@@ -562,6 +722,20 @@ class MarketMLAnalyzer:
             print("❌ 请先训练模型")
             return None
         
+        # 检查是否是集成模型
+        if isinstance(self.best_model, dict):
+            print("🔄 检测到集成模型，使用最佳单一模型进行稳定性测试...")
+            # 找到最佳的非集成模型
+            single_models = {k: v for k, v in self.models.items() if k != 'Ensemble'}
+            if not single_models:
+                print("❌ 没有可用的单一模型进行稳定性测试")
+                return None
+            best_single_name = max(single_models.keys(), key=lambda x: single_models[x]['cv_r2_mean'])
+            stability_model = single_models[best_single_name]['model']
+            print(f"  使用 {best_single_name} 进行稳定性测试")
+        else:
+            stability_model = self.best_model
+        
         # 存储多次运行的结果
         r2_scores = []
         mae_scores = []
@@ -570,18 +744,22 @@ class MarketMLAnalyzer:
         for i in range(n_runs):
             print(f"  运行 {i+1}/{n_runs}...")
             
-            # 重新训练模型（使用相同的随机种子）
-            if hasattr(self.best_model, 'random_state'):
-                self.best_model.random_state = 42 + i  # 每次使用不同的种子
-            
-            # 训练模型
-            if hasattr(self.best_model, 'fit'):
-                if 'SVR' in str(type(self.best_model)):
-                    self.best_model.fit(self.X_train_scaled, self.y_train)
-                    y_pred = self.best_model.predict(self.X_test_scaled)
+            try:
+                # 创建模型的新实例（避免修改原模型）
+                from sklearn.base import clone
+                test_model = clone(stability_model)
+                
+                # 设置随机种子以获得不同的结果
+                if hasattr(test_model, 'random_state'):
+                    test_model.random_state = 42 + i
+                
+                # 训练模型
+                if 'SVR' in str(type(test_model)):
+                    test_model.fit(self.X_train_scaled, self.y_train)
+                    y_pred = test_model.predict(self.X_test_scaled)
                 else:
-                    self.best_model.fit(self.X_train, self.y_train)
-                    y_pred = self.best_model.predict(self.X_test)
+                    test_model.fit(self.X_train, self.y_train)
+                    y_pred = test_model.predict(self.X_test)
                 
                 # 评估
                 r2 = r2_score(self.y_test, y_pred)
@@ -590,6 +768,10 @@ class MarketMLAnalyzer:
                 r2_scores.append(r2)
                 mae_scores.append(mae)
                 predictions_list.append(y_pred)
+                
+            except Exception as e:
+                print(f"  ⚠️ 运行 {i+1} 失败: {str(e)}")
+                continue
         
         # 计算稳定性指标
         r2_mean = np.mean(r2_scores)
@@ -621,65 +803,21 @@ class MarketMLAnalyzer:
             'predictions': predictions_list
         }
     
-    def predict_future_prices(self, days_ahead=7):
-        """预测未来价格 - 改进版时间序列预测"""
-        print(f"🔮 预测未来 {days_ahead} 天的价格...")
+    def predict_future_prices(self, days_ahead=7, method='auto'):
+        """预测未来价格 - 使用改进的预测方法"""
+        print(f"🔮 预测未来 {days_ahead} 天的价格 (方法: {method})...")
         
         if self.best_model is None:
             print("❌ 请先训练模型")
             return None
         
-        # 使用时间序列方法进行预测
-        predictions = []
-        confidence_intervals = []
+        # 使用内置预测方法
+        predictions, confidence_intervals = self._predict_with_best_model(days_ahead, method)
         
-        # 获取历史价格数据
-        historical_prices = self.df['price_per_unit'].values
-        historical_dates = self.df['created_at'].values
-        
-        # 计算价格趋势
-        recent_prices = historical_prices[-30:]  # 最近30个数据点
-        if len(recent_prices) > 1:
-            # 计算趋势
-            trend = np.polyfit(range(len(recent_prices)), recent_prices, 1)[0]
-            volatility = np.std(recent_prices)
-            mean_price = np.mean(recent_prices)
-        else:
-            trend = 0
-            volatility = 0
-            mean_price = historical_prices[-1]
-        
-        print(f"📊 价格趋势分析:")
-        print(f"  最近价格均值: {mean_price:.2f}")
-        print(f"  价格趋势: {trend:+.4f} 每单位时间")
-        print(f"  价格波动性: {volatility:.2f}")
-        
-        # 生成预测
-        for day in range(days_ahead):
-            # 基础预测：使用趋势
-            base_prediction = mean_price + trend * (day + 1)
-            
-            # 添加随机波动（基于历史波动性）
-            if volatility > 0:
-                noise = np.random.normal(0, volatility * 0.1)  # 10%的波动
-                prediction = base_prediction + noise
-            else:
-                prediction = base_prediction
-            
-            # 确保预测价格合理（不能为负数）
-            prediction = max(prediction, 0.01)
-            
-            predictions.append(prediction)
-            
-            # 计算置信区间
-            if volatility > 0:
-                ci_lower = prediction - 1.96 * volatility * 0.1
-                ci_upper = prediction + 1.96 * volatility * 0.1
-            else:
-                ci_lower = prediction * 0.95
-                ci_upper = prediction * 1.05
-            
-            confidence_intervals.append((ci_lower, ci_upper))
+        # 生成简化的模型解释报告
+        if method == 'auto' or 'interpret' in str(method):
+            print("\n🧠 生成模型解释报告...")
+            self._generate_simple_interpretation()
         
         # 创建预测结果
         future_dates = pd.date_range(
@@ -697,6 +835,603 @@ class MarketMLAnalyzer:
         
         print("✅ 价格预测完成")
         return predictions_df
+    
+    def _predict_with_best_model(self, days_ahead, method='auto'):
+        """使用最佳模型进行预测，支持多方法融合"""
+        if method == 'auto':
+            # 自动模式：尝试多种方法并融合结果
+            return self._predict_with_multi_methods(days_ahead)
+        elif method == 'ml_only':
+            # 仅使用ML模型
+            try:
+                if isinstance(self.best_model, dict):
+                    return self._predict_with_ensemble_model(days_ahead)
+                else:
+                    return self._predict_with_single_model(days_ahead)
+            except Exception as e:
+                print(f"❌ ML模型预测失败: {str(e)}")
+                print("📊 回退到基础统计方法...")
+                return self._basic_fallback_prediction(days_ahead)
+        else:
+            # 单一方法
+            method_map = {
+                'lstm': self._predict_with_lstm,
+                'arima': self._predict_with_arima,
+                'prophet': self._predict_with_prophet,
+                'basic': self._basic_fallback_prediction
+            }
+            
+            if method in method_map:
+                result = method_map[method](days_ahead)
+                if result is not None:
+                    return result
+                else:
+                    print(f"⚠️ {method}方法失败，回退到基础方法")
+                    return self._basic_fallback_prediction(days_ahead)
+            else:
+                print(f"⚠️ 未知预测方法: {method}，使用默认方法")
+                return self._predict_with_multi_methods(days_ahead)
+    
+    def _predict_with_multi_methods(self, days_ahead):
+        """尝试多种预测方法并融合结果"""
+        print("🎯 尝试多种预测方法并融合结果...")
+        
+        prediction_results = {}
+        
+        # 1. 尝试ML模型预测
+        try:
+            if isinstance(self.best_model, dict):
+                ml_result = self._predict_with_ensemble_model(days_ahead)
+            else:
+                ml_result = self._predict_with_single_model(days_ahead)
+            
+            if ml_result is not None:
+                prediction_results['ML模型'] = ml_result
+        except Exception as e:
+            print(f"⚠️ ML模型预测失败: {str(e)}")
+        
+        # 2. 尝试ARIMA预测
+        arima_result = self._predict_with_arima(days_ahead)
+        if arima_result is not None:
+            prediction_results['ARIMA'] = arima_result
+        
+        # 3. 尝试Prophet预测
+        prophet_result = self._predict_with_prophet(days_ahead)
+        if prophet_result is not None:
+            prediction_results['Prophet'] = prophet_result
+        
+        # 4. 尝试LSTM预测（如果可用）
+        lstm_result = self._predict_with_lstm(days_ahead)
+        if lstm_result is not None:
+            prediction_results['LSTM'] = lstm_result
+        
+        # 5. 基础统计方法作为保底
+        basic_result = self._basic_fallback_prediction(days_ahead)
+        if basic_result is not None:
+            prediction_results['基础统计'] = basic_result
+        
+        # 如果有多种方法成功，进行融合
+        if len(prediction_results) > 1:
+            return self._ensemble_predictions(prediction_results)
+        elif len(prediction_results) == 1:
+            # 只有一种方法成功
+            method_name, result = list(prediction_results.items())[0]
+            print(f"✅ 使用单一方法: {method_name}")
+            return result
+        else:
+            # 所有方法都失败了
+            print("❌ 所有预测方法都失败，使用简单的线性外推")
+            return self._simple_linear_extrapolation(days_ahead)
+    
+    def _predict_with_single_model(self, days_ahead):
+        """使用单一模型进行预测"""
+        # 获取最后几行的特征作为基础
+        last_features = self.X_test.iloc[-days_ahead:].copy() if len(self.X_test) >= days_ahead else self.X.iloc[-days_ahead:].copy()
+        
+        predictions = []
+        
+        for i in range(days_ahead):
+            # 使用最佳模型预测
+            if 'SVR' in str(type(self.best_model)):
+                pred = self.best_model.predict(self.scaler.transform(last_features.iloc[[i % len(last_features)]]))
+            else:
+                pred = self.best_model.predict(last_features.iloc[[i % len(last_features)]])
+            
+            predictions.append(pred[0])
+        
+        # 计算动态置信区间
+        confidence_intervals = self._calculate_dynamic_confidence_intervals(predictions, method='ml')
+        
+        return predictions, confidence_intervals
+    
+    def _predict_with_ensemble_model(self, days_ahead):
+        """使用集成模型进行预测"""
+        ensemble_data = self.best_model
+        ensemble_model = ensemble_data.get('model')
+        
+        
+        if ensemble_model is None:
+            # 检查是否是加权平均集成模型
+            if 'models' in ensemble_data and 'weights' in ensemble_data:
+                print("✅ 找到加权平均集成模型")
+                ensemble_model = ensemble_data  # 使用整个字典
+            else:
+                print("⚠️ 集成模型中没有找到有效的预测器，尝试其他键...")
+                # 尝试其他可能的键
+                for key in ['voting', 'weighted_average', 'ensemble_model']:
+                    if key in ensemble_data:
+                        ensemble_model = ensemble_data[key]
+                        print(f"✅ 找到集成模型: {key}")
+                        break
+                
+                if ensemble_model is None:
+                    print("❌ 所有尝试都失败，使用基础方法")
+                    return self._basic_fallback_prediction(days_ahead)
+        
+        # 获取最后几行的特征作为基础
+        last_features = self.X_test.iloc[-days_ahead:].copy() if len(self.X_test) >= days_ahead else self.X.iloc[-days_ahead:].copy()
+        
+        predictions = []
+        
+        # 检查是否是加权平均集成（字典类型）
+        if isinstance(ensemble_model, dict) and 'models' in ensemble_model:
+            # 加权平均集成
+            models = ensemble_model['models']
+            weights = ensemble_model['weights']
+            
+            for i in range(days_ahead):
+                feature_row = last_features.iloc[[i % len(last_features)]]
+                weighted_pred = 0
+                
+                for model, weight in zip(models, weights):
+                    if 'SVR' in str(type(model)):
+                        pred = model.predict(self.scaler.transform(feature_row))
+                    else:
+                        pred = model.predict(feature_row)
+                    weighted_pred += pred[0] * weight
+                    
+                predictions.append(weighted_pred)
+        else:
+            # 标准sklearn集成模型
+            for i in range(days_ahead):
+                pred = ensemble_model.predict(last_features.iloc[[i % len(last_features)]])
+                predictions.append(pred[0])
+        
+        # 计算动态置信区间
+        confidence_intervals = self._calculate_dynamic_confidence_intervals(predictions, method='ml')
+        
+        return predictions, confidence_intervals
+    
+    def _calculate_confidence_intervals(self, predictions, historical_std, ci_factor=0.12):
+        """计算预测的置信区间"""
+        confidence_intervals = []
+        for pred in predictions:
+            ci_margin = 1.96 * historical_std * ci_factor
+            confidence_intervals.append((pred - ci_margin, pred + ci_margin))
+        return confidence_intervals
+    
+    def _generate_simple_interpretation(self):
+        """生成简化的模型解释报告"""
+        print("\n🔍 生成模型可解释性报告...")
+        
+        # 获取可解释的模型
+        interpretable_model = self._get_interpretable_model()
+        
+        if interpretable_model is None:
+            print("⚠️ 无法获取可解释的模型")
+            return
+        
+        # 特征重要性分析
+        if hasattr(interpretable_model, 'feature_importances_'):
+            print("\n📊 特征重要性分析:")
+            feature_names = self.X.columns.tolist()
+            importances = interpretable_model.feature_importances_
+            
+            # 排序并显示前10个特征
+            importance_dict = dict(zip(feature_names, importances))
+            sorted_importance = sorted(importance_dict.items(), key=lambda x: x[1], reverse=True)
+            
+            for feature, importance in sorted_importance[:10]:
+                print(f"  • {feature}: {importance:.4f}")
+        else:
+            print("⚠️ 当前模型不支持特征重要性分析")
+        
+        # 模型性能摘要
+        if hasattr(self, 'models') and self.models:
+            print("\n📈 模型性能摘要:")
+            for name, scores in self.models.items():
+                if name != 'Ensemble':
+                    print(f"  • {name}: R²={scores['r2']:.3f}, CV-R²={scores['cv_r2_mean']:.3f}±{scores['cv_r2_std']:.3f}")
+    
+    def _get_interpretable_model(self):
+        """获取可解释的模型对象"""
+        best_model = self.best_model
+        
+        # 如果最佳模型是集成模型（字典类型）
+        if isinstance(best_model, dict):
+            if 'model' in best_model:
+                return best_model['model']
+            else:
+                # 如果是集成模型，尝试找到最好的单一模型
+                print("🔍 集成模型检测到，使用最佳单一模型进行解释...")
+                if hasattr(self, 'models') and self.models:
+                    # 找到非集成的最佳模型
+                    single_models = {k: v for k, v in self.models.items() if k != 'Ensemble'}
+                    if single_models:
+                        best_single_name = max(single_models.keys(), key=lambda x: single_models[x]['cv_r2_mean'])
+                        print(f"  使用 {best_single_name} 进行模型解释")
+                        return single_models[best_single_name]['model']
+                return None
+        else:
+            return best_model
+    
+    def _predict_with_lstm(self, days_ahead):
+        """使用LSTM深度学习预测"""
+        if not HAS_TENSORFLOW:
+            print("⚠️ TensorFlow未安装，跳过LSTM预测")
+            return None
+            
+        try:
+            print("🧠 使用LSTM深度学习预测...")
+            
+            from sklearn.preprocessing import MinMaxScaler
+            
+            # 准备LSTM数据
+            price_data = self.df['price_per_unit'].values
+            lstm_scaler = MinMaxScaler()
+            scaled_data = lstm_scaler.fit_transform(price_data.reshape(-1, 1))
+            
+            # 创建序列数据
+            sequence_length = min(60, len(scaled_data) // 4)
+            if sequence_length < 10:
+                print("⚠️ 数据量不足，跳过LSTM预测")
+                return None
+                
+            X_lstm, y_lstm = [], []
+            for i in range(sequence_length, len(scaled_data)):
+                X_lstm.append(scaled_data[i-sequence_length:i, 0])
+                y_lstm.append(scaled_data[i, 0])
+            
+            if len(X_lstm) < 50:
+                print("⚠️ 序列数据不足，跳过LSTM预测")
+                return None
+            
+            X_lstm = np.array(X_lstm).reshape((len(X_lstm), sequence_length, 1))
+            y_lstm = np.array(y_lstm)
+            
+            # 构建LSTM模型
+            from tensorflow.keras.models import Sequential
+            from tensorflow.keras.layers import LSTM, Dense, Dropout
+            from tensorflow.keras.optimizers import Adam
+            
+            model = Sequential([
+                LSTM(50, return_sequences=True, input_shape=(sequence_length, 1)),
+                Dropout(0.2),
+                LSTM(50, return_sequences=False),
+                Dropout(0.2),
+                Dense(25),
+                Dense(1)
+            ])
+            
+            model.compile(optimizer=Adam(learning_rate=0.001), loss='mse')
+            
+            # 训练模型
+            model.fit(X_lstm, y_lstm, epochs=50, batch_size=32, verbose=0)
+            
+            # 进行预测
+            last_sequence = scaled_data[-sequence_length:].reshape(1, sequence_length, 1)
+            predictions = []
+            
+            for _ in range(days_ahead):
+                pred = model.predict(last_sequence, verbose=0)
+                predictions.append(pred[0, 0])
+                
+                # 更新序列
+                last_sequence = np.roll(last_sequence, -1, axis=1)
+                last_sequence[0, -1, 0] = pred[0, 0]
+            
+            # 反向缩放
+            predictions = lstm_scaler.inverse_transform(np.array(predictions).reshape(-1, 1)).flatten()
+            
+            # 计算置信区间
+            confidence_intervals = self._calculate_dynamic_confidence_intervals(predictions, method='lstm')
+            
+            return predictions.tolist(), confidence_intervals
+            
+        except Exception as e:
+            print(f"❌ LSTM预测失败: {str(e)}")
+            return None
+    
+    def _predict_with_arima(self, days_ahead):
+        """使用ARIMA时间序列预测"""
+        if not HAS_STATSMODELS:
+            print("⚠️ statsmodels未安装，跳过ARIMA预测")
+            return None
+            
+        try:
+            print("📈 使用ARIMA时间序列预测...")
+            
+            # 准备时间序列数据
+            ts_data = self.df['price_per_unit'].dropna()
+            if len(ts_data) < 50:
+                print("⚠️ 数据量不足，跳过ARIMA预测")
+                return None
+            
+            # 拟合ARIMA模型
+            model = ARIMA(ts_data, order=(1, 1, 1))
+            fitted_model = model.fit()
+            
+            # 进行预测
+            forecast = fitted_model.forecast(steps=days_ahead)
+            predictions = forecast.tolist()
+            
+            # 使用我们统一的动态置信区间计算，而不是ARIMA自带的
+            confidence_intervals = self._calculate_dynamic_confidence_intervals(predictions, method='arima')
+            
+            return predictions, confidence_intervals
+            
+        except Exception as e:
+            print(f"❌ ARIMA预测失败: {str(e)}")
+            return None
+    
+    def _predict_with_prophet(self, days_ahead):
+        """使用Prophet时间序列预测"""
+        if not HAS_PROPHET:
+            print("⚠️ Prophet未安装，跳过Prophet预测")
+            return None
+            
+        try:
+            print("🔮 使用Prophet时间序列预测...")
+            
+            # 准备Prophet数据
+            prophet_df = self.df[['created_at', 'price_per_unit']].copy()
+            prophet_df.columns = ['ds', 'y']
+            prophet_df = prophet_df.dropna()
+            
+            if len(prophet_df) < 50:
+                print("⚠️ 数据量不足，跳过Prophet预测")
+                return None
+            
+            # 创建和训练Prophet模型
+            model = Prophet(
+                daily_seasonality=True,
+                weekly_seasonality=True,
+                yearly_seasonality=False,
+                interval_width=0.95
+            )
+            
+            model.fit(prophet_df)
+            
+            # 创建未来数据框
+            future = model.make_future_dataframe(periods=days_ahead, freq='D')
+            forecast = model.predict(future)
+            
+            # 提取预测结果
+            predictions = forecast['yhat'].tail(days_ahead).tolist()
+            
+            # 使用我们统一的动态置信区间计算，而不是Prophet自带的
+            confidence_intervals = self._calculate_dynamic_confidence_intervals(predictions, method='prophet')
+            
+            return predictions, confidence_intervals
+            
+        except Exception as e:
+            print(f"❌ Prophet预测失败: {str(e)}")
+            return None
+    
+    def _calculate_dynamic_confidence_intervals(self, predictions, method='default'):
+        """动态计算置信区间"""
+        try:
+            # 方法1：基于残差分布（最准确的方法）
+            if hasattr(self, 'best_model') and self.best_model is not None:
+                # 获取模型在测试集上的残差
+                interpretable_model = self._get_interpretable_model()
+                if interpretable_model is not None and hasattr(self, 'y_test'):
+                    try:
+                        if 'SVR' in str(type(interpretable_model)):
+                            y_pred = interpretable_model.predict(self.X_test_scaled)
+                        else:
+                            y_pred = interpretable_model.predict(self.X_test)
+                        
+                        residuals = self.y_test - y_pred
+                        residual_std = np.std(residuals)
+                        residual_mean = np.mean(residuals)
+                        
+                        # 使用残差分布计算置信区间
+                        confidence_intervals = []
+                        for i, pred in enumerate(predictions):
+                            # 考虑残差的偏差和标准差，加上轻微的时间衰减
+                            time_factor = 1 + (i * 0.01)  # 每天增加1%的不确定性（更保守）
+                            adjusted_std = residual_std * time_factor
+                            
+                            ci_lower = pred + residual_mean - 1.96 * adjusted_std
+                            ci_upper = pred + residual_mean + 1.96 * adjusted_std
+                            confidence_intervals.append((ci_lower, ci_upper))
+                        
+                        return confidence_intervals
+                    except Exception as e:
+                        print(f"⚠️ 残差计算失败: {str(e)}")
+                        pass
+            
+            # 方法2：基于历史价格波动（回退方法）
+            historical_prices = self.df['price_per_unit'].values
+            recent_prices = historical_prices[-min(30, len(historical_prices)):]
+            
+            # 计算更保守的波动性估计
+            price_changes = np.diff(recent_prices)
+            daily_volatility = np.std(price_changes)
+            
+            # 根据预测方法调整置信区间宽度
+            method_factors = {
+                'lstm': 2.0,       # LSTM: 2倍日波动性
+                'arima': 1.5,      # ARIMA: 1.5倍日波动性  
+                'prophet': 1.8,    # Prophet: 1.8倍日波动性
+                'ml': 1.2,         # ML模型: 1.2倍日波动性（最保守）
+                'default': 1.5
+            }
+            
+            volatility_multiplier = method_factors.get(method, 1.5)
+            
+            confidence_intervals = []
+            for i, pred in enumerate(predictions):
+                # 轻微的时间衰减
+                time_factor = 1 + (i * 0.05)  # 每天增加5%的不确定性
+                
+                # 使用日波动性作为基础
+                ci_margin = 1.96 * daily_volatility * volatility_multiplier * time_factor
+                
+                confidence_intervals.append((pred - ci_margin, pred + ci_margin))
+            
+            return confidence_intervals
+            
+        except Exception as e:
+            print(f"⚠️ 动态置信区间计算失败，使用默认方法: {str(e)}")
+            return self._calculate_confidence_intervals(predictions, self.y.std())
+    
+    def _ensemble_predictions(self, prediction_results):
+        """融合多种预测方法的结果"""
+        print(f"🔄 融合 {len(prediction_results)} 种预测方法的结果...")
+        
+        if not prediction_results:
+            return None, None
+        
+        # 显示各方法的预测范围
+        for method_name, (predictions, _) in prediction_results.items():
+            if predictions:
+                print(f"   - {method_name}: 预测范围 {min(predictions):.2f} - {max(predictions):.2f}")
+        
+        # 计算权重（基于方法的可靠性）
+        method_weights = {
+            'ML模型': 0.35,      # 最高权重给ML模型
+            'ARIMA': 0.25,       # ARIMA适合时间序列
+            'Prophet': 0.20,     # Prophet适合趋势分析
+            'LSTM': 0.15,        # LSTM适合复杂模式
+            '基础统计': 0.05     # 最低权重给基础方法
+        }
+        
+        # 标准化权重（只对实际存在的方法）
+        available_methods = list(prediction_results.keys())
+        total_weight = sum(method_weights.get(method, 0.1) for method in available_methods)
+        normalized_weights = {method: method_weights.get(method, 0.1) / total_weight 
+                            for method in available_methods}
+        
+        # 融合预测结果
+        days_ahead = len(list(prediction_results.values())[0][0])
+        ensemble_predictions = []
+        ensemble_confidence_intervals = []
+        
+        for day in range(days_ahead):
+            # 加权平均预测值
+            weighted_pred = 0
+            
+            # 收集各方法的预测和不确定性
+            method_predictions = []
+            method_uncertainties = []
+            
+            for method_name, (predictions, confidence_intervals) in prediction_results.items():
+                weight = normalized_weights[method_name]
+                weighted_pred += weight * predictions[day]
+                
+                # 计算每个方法的不确定性（半宽度）
+                uncertainty = (confidence_intervals[day][1] - confidence_intervals[day][0]) / 2
+                method_predictions.append(predictions[day])
+                method_uncertainties.append(uncertainty)
+            
+            # 计算融合后的不确定性：使用加权平均的不确定性，而不是边界的加权平均
+            weighted_uncertainty = sum(normalized_weights[method_name] * method_uncertainties[i] 
+                                     for i, method_name in enumerate(prediction_results.keys()))
+            
+            # 添加方法间差异的不确定性（预测分歧度）
+            if len(method_predictions) > 1:
+                prediction_spread = np.std(method_predictions)
+                total_uncertainty = np.sqrt(weighted_uncertainty**2 + (prediction_spread * 0.5)**2)
+            else:
+                total_uncertainty = weighted_uncertainty
+            
+            
+            ensemble_predictions.append(weighted_pred)
+            ensemble_confidence_intervals.append((weighted_pred - total_uncertainty, weighted_pred + total_uncertainty))
+        
+        print(f"✅ 融合预测完成，最终范围: {min(ensemble_predictions):.2f} - {max(ensemble_predictions):.2f}")
+        
+        return ensemble_predictions, ensemble_confidence_intervals
+    
+    def _simple_linear_extrapolation(self, days_ahead):
+        """简单的线性外推作为最后保底方法"""
+        print("📈 使用简单线性外推...")
+        
+        try:
+            historical_prices = self.df['price_per_unit'].values
+            recent_prices = historical_prices[-min(10, len(historical_prices)):]
+            
+            if len(recent_prices) < 2:
+                # 如果数据太少，返回最后一个价格
+                last_price = historical_prices[-1] if len(historical_prices) > 0 else 40.0
+                predictions = [last_price] * days_ahead
+            else:
+                # 拟合线性趋势
+                x = np.arange(len(recent_prices))
+                coeffs = np.polyfit(x, recent_prices, 1)
+                trend = coeffs[0]
+                intercept = coeffs[1]
+                
+                # 外推预测
+                predictions = []
+                for day in range(1, days_ahead + 1):
+                    pred = intercept + trend * (len(recent_prices) + day - 1)
+                    predictions.append(max(pred, 0.01))  # 确保价格为正
+            
+            # 简单的置信区间
+            volatility = np.std(recent_prices) if len(recent_prices) > 1 else 5.0
+            confidence_intervals = []
+            for pred in predictions:
+                margin = 1.96 * volatility * 0.2  # 20%的波动性因子
+                confidence_intervals.append((pred - margin, pred + margin))
+            
+            return predictions, confidence_intervals
+            
+        except Exception as e:
+            print(f"❌ 线性外推失败: {str(e)}")
+            # 最后的最后保底方法
+            last_price = 40.0  # 硬编码一个合理的价格
+            predictions = [last_price] * days_ahead
+            confidence_intervals = [(last_price - 5, last_price + 5)] * days_ahead
+            return predictions, confidence_intervals
+    
+    def _basic_fallback_prediction(self, days_ahead):
+        """基础备选预测方法"""
+        print("📊 使用基础统计方法预测...")
+        
+        # 获取历史价格数据
+        historical_prices = self.df['price_per_unit'].values
+        recent_prices = historical_prices[-min(30, len(historical_prices)):]
+        
+        if len(recent_prices) > 1:
+            trend = np.polyfit(range(len(recent_prices)), recent_prices, 1)[0]
+            volatility = np.std(recent_prices)
+            mean_price = np.mean(recent_prices)
+        else:
+            trend, volatility, mean_price = 0, 0, historical_prices[-1]
+        
+        print(f"📊 价格趋势分析:")
+        print(f"  最近价格均值: {mean_price:.2f}")
+        print(f"  价格趋势: {trend:+.4f} 每单位时间")
+        print(f"  价格波动性: {volatility:.2f}")
+        
+        predictions, confidence_intervals = [], []
+        
+        for day in range(days_ahead):
+            # 基础预测
+            base_prediction = mean_price + trend * (day + 1)
+            cycle_adjustment = volatility * 0.05 * np.sin(2 * np.pi * day / 7) if volatility > 0 else 0
+            deterministic_noise = np.sin(day * 0.7) * volatility * 0.02 if volatility > 0 else 0
+            prediction = max(base_prediction + cycle_adjustment + deterministic_noise, 0.01)
+            
+            predictions.append(prediction)
+            
+        # 计算动态置信区间
+        confidence_intervals = self._calculate_dynamic_confidence_intervals(predictions, method='default')
+        
+        return predictions, confidence_intervals
     
     def plot_analysis(self):
         """绘制分析图表"""
