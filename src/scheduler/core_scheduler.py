@@ -48,8 +48,10 @@ class SmartScheduler:
             start_time = datetime.now()
             self.running_tasks[script_name] = start_time
             
-            # 设置工作目录为项目根目录，这样模块导入才能正常工作
-            project_root = os.path.dirname(os.path.abspath(__file__))
+            # 设置工作目录为项目根目录，这样模块导入才能正常工作，CSV文件也会生成到根目录
+            # 从 src/scheduler/ 向上两级到达项目根目录
+            current_dir = os.path.dirname(os.path.abspath(__file__))  # src/scheduler/
+            project_root = os.path.dirname(os.path.dirname(current_dir))  # 项目根目录
             
             # 运行脚本
             result = subprocess.run(
@@ -65,11 +67,28 @@ class SmartScheduler:
             
             if result.returncode == 0:
                 logging.info(f"✅ 脚本运行成功: {script_name} (耗时: {duration:.2f}秒)")
+                logging.info(f"✅ Script execution successful: {script_name} (duration: {duration:.2f}s)")
+                
+                # 解析并显示关键输出信息
                 if result.stdout:
-                    logging.info(f"输出: {result.stdout}")
+                    output_lines = result.stdout.strip().split('\n')
+                    for line in output_lines[-5:]:  # 显示最后5行输出
+                        if line.strip() and any(keyword in line for keyword in ["成功", "完成", "总计", "错误", "失败", "Success", "Complete", "Total", "Error", "Failed"]):
+                            logging.info(f"📊 输出摘要: {line.strip()}")
             else:
-                logging.error(f"❌ 脚本运行失败: {script_name} (耗时: {duration:.2f}秒)")
-                logging.error(f"错误: {result.stderr}")
+                logging.error(f"❌ 脚本运行失败: {script_name} (耗时: {duration:.2f}秒, 返回码: {result.returncode})")
+                logging.error(f"❌ Script execution failed: {script_name} (duration: {duration:.2f}s, return code: {result.returncode})")
+                
+                # 显示错误信息
+                if result.stderr:
+                    error_lines = result.stderr.strip().split('\n')
+                    for line in error_lines[-3:]:  # 显示最后3行错误
+                        if line.strip():
+                            logging.error(f"🚨 错误详情: {line.strip()}")
+                
+                # 如果有stdout但返回码非0，也显示输出（可能包含有用信息）
+                if result.stdout:
+                    logging.warning(f"⚠️ 程序输出: {result.stdout.strip()[-200:]}")  # 显示最后200字符
             
             # 移除运行中的任务
             if script_name in self.running_tasks:
@@ -86,10 +105,20 @@ class SmartScheduler:
     def run_script_async(self, script_path, script_name="Unknown"):
         """异步运行脚本（避免阻塞）"""
         def run():
-            self.run_script(script_path, script_name)
+            logging.info(f"🔄 异步任务开始: {script_name}")
+            logging.info(f"🔄 Async task started: {script_name}")
+            success = self.run_script(script_path, script_name)
+            if success:
+                logging.info(f"🎉 异步任务完成: {script_name}")
+                logging.info(f"🎉 Async task completed: {script_name}")
+            else:
+                logging.error(f"💥 异步任务失败: {script_name}")
+                logging.error(f"💥 Async task failed: {script_name}")
         
-        thread = threading.Thread(target=run, daemon=True)
+        thread = threading.Thread(target=run, name=f"AsyncTask-{script_name}", daemon=True)
         thread.start()
+        logging.info(f"📋 任务已提交到后台执行: {script_name}")
+        logging.info(f"📋 Task submitted to background: {script_name}")
         return thread
     
     def add_task_from_config(self, task_config):

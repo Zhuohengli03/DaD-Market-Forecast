@@ -7,14 +7,14 @@
 
 import os
 
-# 获取项目根目录（Scheduler的上级目录）
-CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 获取项目根目录（从src/scheduler/向上两级到项目根）
+CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 任务配置
 TASKS = [
     {
         "name": "Iron Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "Ore", "Iron_Ore_API.py"),
+        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Iron_Ore_API.py"),
         "schedule_type": "daily",  # daily, hourly, interval, weekly
         "schedule_value": "23:00",  # 时间或间隔
         "enabled": True,
@@ -22,7 +22,7 @@ TASKS = [
     },
     {
         "name": "Gold Ore API", 
-        "script_path": os.path.join(CURRENT_DIR, "Ore", "Gold_Ore_API.py"),
+        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Gold_Ore_API.py"),
         "schedule_type": "daily",
         "schedule_value": "23:00",
         "enabled": True,
@@ -30,11 +30,19 @@ TASKS = [
     },
     {
         "name": "Cobalt Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "Ore", "Cobalt_Ore_API.py"),
+        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Cobalt_Ore_API.py"),
         "schedule_type": "daily",
         "schedule_value": "23:00",
         "enabled": True,  # 已启用
         "description": "每日晚上23点运行Cobalt Ore数据收集"
+    },
+    {
+        "name": "Copper Ore API",
+        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Copper_Ore_API.py"),
+        "schedule_type": "daily",
+        "schedule_value": "13:50",
+        "enabled": True,
+        "description": "每日下午13点44分运行Copper Ore数据收集"
     },
     # 可以添加更多任务...
     # {
