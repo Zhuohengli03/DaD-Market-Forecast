@@ -4,11 +4,8 @@ from datetime import datetime
 from typing import List, Dict, Any
 import sys
 import os
-# 添加项目根目录到路径
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.insert(0, project_root)
-
-from config import config
+# 导入同目录下的配置文件
+from src.database.config import config
 
 
 class DarkerMarketDB:

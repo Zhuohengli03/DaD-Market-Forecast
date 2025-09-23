@@ -10,7 +10,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from src.database.Database_connect import DarkerMarketDB
-from config import config
+from src.database.config import config
 
 
 

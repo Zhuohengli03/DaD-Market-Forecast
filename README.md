@@ -81,8 +81,7 @@ Darker Market/
 │   │   └── Machine_learning_analysis.py  # ML analysis system / 机器学习分析系统
 │   │
 │   └── scheduler/                    # Scheduling modules / 调度模块
-│       ├── scheduler.py              # Main scheduler / 主调度器
-│       ├── smart_scheduler.py        # Smart scheduler / 智能调度器
+│       ├── core_scheduler.py         # Core scheduler engine / 核心调度引擎
 │       ├── start_scheduler.py        # Scheduler starter / 调度器启动器
 │       └── task_config.py            # Task configuration / 任务配置
 │
@@ -174,7 +173,7 @@ python src/api/Gold_Ore_API.py
 
 ### Scheduled Tasks / 定时任务
 ```bash
-python src/scheduler/smart_scheduler.py
+python src/scheduler/start_scheduler.py --start
 ```
 
 ## 🔧 Configuration / 配置
