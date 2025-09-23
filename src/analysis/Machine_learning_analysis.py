@@ -1642,17 +1642,424 @@ Volatility: {price_range:.2f}'''
         return predictions
 
 
-def main():
-    """主函数"""
-    print("🤖 机器学习价格预测系统")
+def load_items_config():
+    """
+    加载物品配置文件
+    """
+    import os
+    import json
+    
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    config_path = os.path.join(project_root, 'items_config.json')
+    
+    # 默认配置（向后兼容）
+    default_config = {
+        "items": [
+            {"name": "Gold Ore", "file": "Gold_Ore_API.py", "csv": "gold_ore.csv", "category": "ore", "enabled": True},
+            {"name": "Iron Ore", "file": "Iron_Ore_API.py", "csv": "iron_ore.csv", "category": "ore", "enabled": True},
+            {"name": "Cobalt Ore", "file": "Cobalt_Ore_API.py", "csv": "cobalt_ore.csv", "category": "ore", "enabled": True}
+        ],
+        "auto_discovery": {"enabled": True, "ore_directory": "Ore", "naming_pattern": "*_API.py"}
+    }
+    
+    try:
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            return config
+        else:
+            return default_config
+    except Exception as e:
+        print(f"⚠️ 配置文件加载失败，使用默认配置: {str(e)}")
+        return default_config
+
+
+def get_available_items():
+    """
+    动态获取可用物品列表，支持配置文件和自动发现
+    """
+    import os
+    import glob
+    
+    # 加载配置
+    config = load_items_config()
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
+    available_items = {}
+    item_index = 1
+    
+    # 1. 从配置文件加载已启用的物品
+    for item in config.get("items", []):
+        if not item.get("enabled", True):
+            continue
+            
+        # 检查API文件是否存在
+        category = item.get("category", "ore")
+        directory = "src/api"  # 统一使用src/api目录
+        api_path = os.path.join(project_root, directory, item["file"])
+        
+        if os.path.exists(api_path):
+            item_info = {
+                "name": item["name"],
+                "file": item["file"],
+                "csv": item["csv"],
+                "category": item.get("category", "ore"),
+                "description": item.get("description", ""),
+                "directory": directory
+            }
+            available_items[item_index] = item_info
+            item_index += 1
+        else:
+            print(f"⚠️ API文件不存在: {api_path}")
+    
+    # 2. 自动发现新物品（如果启用）
+    auto_discovery = config.get("auto_discovery", {})
+    if auto_discovery.get("enabled", True):
+        directories_to_scan = ["src/api"]
+        
+        for directory in directories_to_scan:
+            dir_path = os.path.join(project_root, directory)
+            if not os.path.exists(dir_path):
+                continue
+                
+            pattern = auto_discovery.get("naming_pattern", "*_API.py")
+            api_files = glob.glob(os.path.join(dir_path, pattern))
+            
+            # 获取已知的文件名列表
+            known_files = [item["file"] for item in config.get("items", [])]
+            
+            for api_file in api_files:
+                filename = os.path.basename(api_file)
+                
+                # 跳过已配置的物品
+                if filename in known_files:
+                    continue
+                
+                # 解析物品名称和CSV名称
+                item_name = filename.replace("_API.py", "").replace("_", " ")
+                csv_name = filename.replace("_API.py", ".csv").lower()
+                
+                # 根据文件名确定类别 (默认为ore)
+                category = "consumable" if "potion" in item_name.lower() or "consumable" in filename.lower() else "ore"
+                
+                new_item = {
+                    "name": item_name,
+                    "file": filename,
+                    "csv": csv_name,
+                    "category": category,
+                    "description": f"自动发现的{item_name}",
+                    "directory": directory
+                }
+                
+                available_items[item_index] = new_item
+                item_index += 1
+                print(f"🆕 自动发现新物品: {item_name} ({category})")
+    
+    return available_items
+
+
+def add_new_item(name, api_file, csv_file, category="ore", description="", enabled=True):
+    """
+    添加新物品到配置文件
+    
+    Args:
+        name: 物品名称 (例: "Silver Ore")
+        api_file: API文件名 (例: "Silver_Ore_API.py")
+        csv_file: CSV文件名 (例: "silver_ore.csv")
+        category: 物品类别 ("ore", "consumable", "equipment", "material")
+        description: 物品描述
+        enabled: 是否启用
+    """
+    import os
+    import json
+    
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    config_path = os.path.join(project_root, 'items_config.json')
+    
+    # 加载现有配置
+    config = load_items_config()
+    
+    # 检查是否已存在
+    for item in config.get("items", []):
+        if item["name"] == name or item["file"] == api_file:
+            print(f"⚠️ 物品 '{name}' 已存在!")
+            return False
+    
+    # 添加新物品
+    new_item = {
+        "name": name,
+        "file": api_file,
+        "csv": csv_file,
+        "category": category,
+        "description": description,
+        "enabled": enabled
+    }
+    
+    config.setdefault("items", []).append(new_item)
+    
+    # 保存配置
+    try:
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        print(f"✅ 成功添加新物品: {name}")
+        return True
+    except Exception as e:
+        print(f"❌ 保存配置失败: {str(e)}")
+        return False
+
+
+def list_items_config():
+    """
+    显示当前物品配置
+    """
+    config = load_items_config()
+    
+    print("\n📋 当前物品配置:")
     print("=" * 50)
     
-    # 自动检测项目根目录中的所有CSV文件
+    for i, item in enumerate(config.get("items", []), 1):
+        status = "✅" if item.get("enabled", True) else "❌"
+        category = item.get("category", "unknown")
+        description = item.get("description", "")
+        
+        print(f"{i:2d}. {status} {item['name']} ({category})")
+        print(f"     API: {item['file']}")
+        print(f"     CSV: {item['csv']}")
+        if description:
+            print(f"     描述: {description}")
+        print()
+    
+    auto_discovery = config.get("auto_discovery", {})
+    print(f"🔍 自动发现: {'启用' if auto_discovery.get('enabled') else '禁用'}")
+
+
+def manage_items_config():
+    """
+    物品配置管理菜单
+    """
+    while True:
+        print("\n🛠️ 物品配置管理")
+        print("=" * 30)
+        print("1. 查看当前配置")
+        print("2. 添加新物品")
+        print("3. 返回主菜单")
+        
+        choice = input("\n请选择操作 (1-3): ").strip()
+        
+        if choice == "1":
+            list_items_config()
+        elif choice == "2":
+            print("\n➕ 添加新物品")
+            name = input("物品名称 (例: Silver Ore): ").strip()
+            if not name:
+                print("❌ 物品名称不能为空")
+                continue
+                
+            api_file = input("API文件名 (例: Silver_Ore_API.py): ").strip()
+            if not api_file.endswith("_API.py"):
+                api_file += "_API.py"
+                
+            csv_file = input(f"CSV文件名 (默认: {name.lower().replace(' ', '_')}.csv): ").strip()
+            if not csv_file:
+                csv_file = f"{name.lower().replace(' ', '_')}.csv"
+                
+            category = input("类别 (ore/consumable/equipment/material, 默认: ore): ").strip()
+            if not category:
+                category = "ore"
+                
+            description = input("描述 (可选): ").strip()
+            
+            add_new_item(name, api_file, csv_file, category, description)
+        elif choice == "3":
+            break
+        else:
+            print("❌ 无效选择")
+
+
+def collect_and_analyze():
+    """
+    集成功能：选择物品 → 调用API获取数据 → 生成CSV → 进行机器学习分析
+    支持自定义物品和API文件
+    """
+    import os
+    import sys
+    import subprocess
+    
+    print("🚀 启动智能市场分析系统")
+    print("=" * 60)
+    
+    # 1. 动态获取可用物品列表
+    available_items = get_available_items()
+    
+    print("\n📦 可用物品列表:")
+    for key, item in available_items.items():
+        category_emoji = "⛏️" if item.get('category') == 'ore' else "🧪"
+        description = item.get('description', '')
+        if description:
+            print(f"  {key}. {category_emoji} {item['name']} - {description}")
+        else:
+            print(f"  {key}. {category_emoji} {item['name']}")
+    
+    # 2. 用户选择物品
+    try:
+        choice = int(input("\n请选择要分析的物品 (输入数字): "))
+        if choice not in available_items:
+            print("❌ 无效选择，使用默认选项: Gold Ore")
+            choice = 1
+        
+        selected_item = available_items[choice]
+        print(f"✅ 已选择: {selected_item['name']} ({selected_item.get('category', 'unknown')})")
+        
+    except ValueError:
+        print("❌ 输入无效，使用默认选项: Gold Ore")
+        choice = 1
+        selected_item = available_items[1]
+    
+    # 3. 询问是否需要更新数据
+    update_data = input("\n🔄 是否需要获取最新数据? (y/n, 默认n): ").lower().strip()
+    
+    if update_data in ['y', 'yes', '是']:
+        print(f"\n📡 正在调用 {selected_item['name']} API 获取最新数据...")
+        
+        try:
+            # 构建API文件路径 - 统一使用src/api目录
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            api_directory = "src/api"  # 统一使用src/api目录
+            api_file_path = os.path.join(project_root, api_directory, selected_item['file'])
+            
+            if not os.path.exists(api_file_path):
+                print(f"❌ API文件不存在: {api_file_path}")
+                return None
+            
+            print(f"🔄 执行: {api_file_path}")
+            
+            # 执行API脚本
+            result = subprocess.run([sys.executable, api_file_path], 
+                                  capture_output=True, text=True, 
+                                  cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+            
+            if result.returncode == 0:
+                print("✅ 数据获取完成!")
+                print("📊 API输出摘要:")
+                # 显示最后几行输出
+                output_lines = result.stdout.strip().split('\n')
+                for line in output_lines[-5:]:
+                    if line.strip():
+                        print(f"  {line}")
+            else:
+                print("⚠️ API执行出现警告，但继续分析...")
+                print("错误输出:", result.stderr[-500:] if result.stderr else "无")
+                
+        except Exception as e:
+            print(f"❌ 数据获取失败: {str(e)}")
+            print("📊 将使用现有CSV文件进行分析...")
+    
+    # 4. 确定CSV文件路径
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    csv_path = os.path.join(project_root, selected_item['csv'])
+    
+    if not os.path.exists(csv_path):
+        print(f"❌ CSV文件不存在: {csv_path}")
+        print("💡 建议先运行API获取数据")
+        return None
+    
+    print(f"\n📊 开始分析 {selected_item['name']} 数据...")
+    print(f"📁 数据文件: {csv_path}")
+    
+    # 5. 进行机器学习分析
+    try:
+        analyzer = MarketMLAnalyzer(csv_path)
+        predictions = analyzer.run_complete_analysis(days_ahead=7)
+        
+        if predictions is not None:
+            print(f"\n🎯 {selected_item['name']} 分析完成!")
+            print("📈 未来7天价格预测:")
+            print(predictions)
+            
+            # 6. 生成分析总结
+            print(f"\n📋 {selected_item['name']} 分析总结:")
+            print("=" * 50)
+            
+            # 基本统计
+            avg_price = predictions['predicted_price'].mean()
+            price_trend = predictions['predicted_price'].iloc[-1] - predictions['predicted_price'].iloc[0]
+            
+            print(f"📊 平均预测价格: {avg_price:.2f}")
+            print(f"📈 7天价格趋势: {price_trend:+.2f} ({price_trend/predictions['predicted_price'].iloc[0]*100:+.1f}%)")
+            
+            # 投资建议
+            if price_trend > 0:
+                print("💡 投资建议: 📈 价格呈上升趋势，考虑买入")
+            elif price_trend < -1:
+                print("💡 投资建议: 📉 价格呈下降趋势，考虑卖出")
+            else:
+                print("💡 投资建议: ➡️  价格相对稳定，观望")
+            
+            # 风险评估
+            ci_width = (predictions['ci_upper'] - predictions['ci_lower']).mean()
+            risk_level = "低风险" if ci_width < 2 else "中风险" if ci_width < 5 else "高风险"
+            print(f"⚠️  风险评估: {risk_level} (置信区间宽度: ±{ci_width/2:.2f})")
+            
+            return predictions
+        else:
+            print("❌ 分析失败")
+            return None
+            
+    except Exception as e:
+        print(f"❌ 分析过程出错: {str(e)}")
+        return None
+
+
+def main():
+    """主函数"""
+    while True:
+        print("\n🎯 Darker Market 机器学习分析系统")
+        print("=" * 60)
+        print("1. 🚀 智能模式 (选择物品 → 获取数据 → 自动分析)")
+        print("2. 📊 传统模式 (分析现有CSV文件)")
+        print("3. 🛠️ 物品配置管理")
+        print("4. ❌ 退出")
+        
+        try:
+            choice = input("\n请选择模式 (1-4, 默认1): ").strip()
+            
+            if choice == "2":
+                main_traditional()
+            elif choice == "3":
+                manage_items_config()
+                # 配置管理后返回主菜单
+                continue
+            elif choice == "4":
+                print("👋 再见!")
+                break
+            else:
+                # 默认或选择1
+                collect_and_analyze()
+                
+            # 询问是否继续
+            continue_choice = input("\n🔄 是否继续使用系统? (y/n, 默认n): ").lower().strip()
+            if continue_choice not in ['y', 'yes', '是']:
+                print("👋 再见!")
+                break
+                
+        except KeyboardInterrupt:
+            print("\n👋 程序已退出")
+            break
+        except Exception as e:
+            print(f"❌ 程序出错: {str(e)}")
+            continue
+
+
+def main_traditional():
+    """传统模式：直接选择CSV文件进行分析"""
+    print("\n📁 传统模式：选择现有CSV文件")
+    print("=" * 40)
+    
     import os
     import glob
     
     # 获取项目根目录 (脚本在Analysis子目录中)
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     
     # 自动查找所有CSV文件
     csv_pattern = os.path.join(project_root, "*.csv")
@@ -1663,25 +2070,28 @@ def main():
     
     if not csv_files:
         print("❌ 未找到任何CSV文件！")
-        return
+        print("💡 建议先使用智能模式获取数据")
+        return None
     
-    print("可用的数据文件:")
+    print("📄 可用的数据文件:")
     for i, file in enumerate(csv_files, 1):
-        print(f"{i}. {file}")
+        print(f"  {i}. {file}")
     
     try:
-        choice = int(input("请选择数据文件 (输入数字): ")) - 1
+        choice = int(input("\n请选择数据文件 (输入数字): ")) - 1
         if 0 <= choice < len(csv_files):
             csv_file = csv_files[choice]
         else:
-            print("无效选择，使用默认文件:", csv_files[0])
+            print("❌ 无效选择，使用默认文件:", csv_files[0])
             csv_file = csv_files[0]
     except:
-        print("使用默认文件:", csv_files[0])
+        print("❌ 输入无效，使用默认文件:", csv_files[0])
         csv_file = csv_files[0]
     
     # 构建完整文件路径
     csv_file_path = os.path.join(project_root, csv_file)
+    
+    print(f"\n📊 开始分析文件: {csv_file}")
     
     # 创建分析器
     analyzer = MarketMLAnalyzer(csv_file_path)
@@ -1692,6 +2102,10 @@ def main():
     if predictions is not None:
         print(f"\n🎯 预测完成! 未来7天的价格预测已生成")
         print(predictions)
+        return predictions
+    else:
+        print("❌ 分析失败")
+        return None
 
 
 if __name__ == "__main__":
