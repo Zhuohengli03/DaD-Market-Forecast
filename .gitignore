@@ -1,7 +1,7 @@
 # 数据文件 / Data files
 *.csv
 *.db
-*.json
+
 *.log
 *.txt
 

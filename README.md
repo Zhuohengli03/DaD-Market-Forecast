@@ -5,348 +5,299 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-12+-blue.svg)](https://postgresql.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A comprehensive data collection and analysis system for Darker Market API, featuring automated data collection, time series analysis, machine learning predictions, and scheduled task management.
+A comprehensive data collection and analysis system for Darker Market API, featuring automated data collection, machine learning predictions, time series analysis, and intelligent item management.
 
-一个全面的暗黑市场API数据收集与分析系统，具有自动化数据收集、时间序列分析、机器学习预测和定时任务管理功能。
+一个全面的暗黑市场API数据收集与分析系统，具有自动化数据收集、机器学习预测、时间序列分析和智能物品管理功能。
 
 ## 🌟 Features / 功能特性
+
+### 🚀 Intelligent Item Management / 智能物品管理
+- **Dynamic Item Configuration** / **动态物品配置**
+  - JSON-based configuration system / 基于JSON的配置系统
+  - Auto-discovery of new API files / 自动发现新API文件
+  - Category-based organization (ore, consumable, equipment, material) / 按类别组织（矿石、消耗品、装备、材料）
+  - Enable/disable items without code changes / 无需代码更改即可启用/禁用物品
 
 ### 📊 Data Collection / 数据收集
 - **Automated API Data Collection** / **自动化API数据收集**
   - Real-time data fetching from Darker Market API / 从暗黑市场API实时获取数据
-  - Support for multiple ore types (Iron, Gold, Cobalt) / 支持多种矿石类型（铁、金、钴）
+  - Support for multiple item types with extensible architecture / 支持多种物品类型的可扩展架构
   - Intelligent deduplication to prevent data redundancy / 智能去重防止数据冗余
   - Batch processing for efficient database operations / 批量处理提高数据库操作效率
+  - Automatic stop mechanism after consecutive pages with no new data / 连续无新数据页面后自动停止机制
 
 ### 🗄️ Database Management / 数据库管理
 - **PostgreSQL Integration** / **PostgreSQL集成**
   - Robust database connection management / 强大的数据库连接管理
   - Automatic table creation and schema management / 自动表创建和模式管理
   - Data integrity and duplicate prevention / 数据完整性和重复预防
+  - Single connection batch processing / 单连接批量处理
   - CSV export functionality / CSV导出功能
 
-### 📈 Time Series Analysis / 时间序列分析
-- **ARIMA Forecasting** / **ARIMA预测**
-  - Advanced time series analysis / 高级时间序列分析
-  - Price trend prediction / 价格趋势预测
-  - Statistical analysis and visualization / 统计分析和可视化
-  - Data quality assessment / 数据质量评估
+### 🤖 Machine Learning Analysis / 机器学习分析
+- **Advanced Price Prediction** / **高级价格预测**
+  - Multiple algorithm ensemble (Random Forest, Gradient Boosting, Linear Models, SVR, MLP) / 多算法集成（随机森林、梯度提升、线性模型、SVR、MLP）
+  - LSTM deep learning for time series / LSTM深度学习时间序列
+  - ARIMA and Prophet time series models / ARIMA和Prophet时间序列模型
+  - Dynamic confidence intervals / 动态置信区间
+  - Feature engineering with lag features / 滞后特征工程
+  - Model stability testing / 模型稳定性测试
 
-### 🤖 Machine Learning / 机器学习
-- **Price Prediction Models** / **价格预测模型**
-  - Multiple ML algorithms (Random Forest, Gradient Boosting, SVR, etc.) / 多种ML算法（随机森林、梯度提升、SVR等）
-  - Feature engineering and preprocessing / 特征工程和预处理
-  - Model evaluation and hyperparameter tuning / 模型评估和超参数调优
-  - Confidence intervals for predictions / 预测置信区间
+### 📈 Time Series Analysis / 时间序列分析
+- **Multi-Method Forecasting** / **多方法预测**
+  - Ensemble prediction fusion / 集成预测融合
+  - Outlier detection and handling / 异常值检测和处理
+  - Trend analysis and visualization / 趋势分析和可视化
+  - Risk assessment and investment advice / 风险评估和投资建议
 
 ### ⏰ Task Scheduling / 任务调度
-- **Automated Task Management** / **自动化任务管理**
-  - Flexible scheduling (daily, hourly, interval, weekly) / 灵活调度（每日、每小时、间隔、每周）
-  - Configuration-based task management / 基于配置的任务管理
-  - Real-time monitoring and logging / 实时监控和日志记录
-  - Command-line interface / 命令行界面
-
-## 🚀 Quick Start / 快速开始
-
-### Prerequisites / 前置要求
-
-```bash
-# Python 3.8+
-# PostgreSQL 12+
-# Required packages / 所需包
-pip install -r requirements.txt
-```
-
-### Environment Setup / 环境设置
-
-1. **Copy environment template** / **复制环境模板**
-```bash
-cp env.template .env
-```
-
-2. **Configure your settings** / **配置你的设置**
-Edit `.env` file with your actual values:
-编辑`.env`文件为你的实际值：
-
-```env
-# Database Configuration / 数据库配置
-DB_HOST=localhost
-DB_DATABASE=darkerdb
-DB_USER=your_username
-DB_PASSWORD=your_password
-DB_PORT=5432
-
-# API Configuration / API配置
-DARKER_MARKET_API_KEY=your_api_key_here
-
-# File Paths / 文件路径
-DATA_DIR=/path/to/your/data/directory
-```
-
-**⚠️ Security Note / 安全提示**: The `.env` file is already included in `.gitignore` to prevent accidental commits of sensitive information.
-**⚠️ 安全提示**: `.env`文件已包含在`.gitignore`中，以防止意外提交敏感信息。
-
-### Installation / 安装
-
-1. **Clone the repository** / **克隆仓库**
-```bash
-git clone <repository-url>
-cd "Darker Market"
-```
-
-2. **Install dependencies** / **安装依赖**
-```bash
-pip install -r requirements.txt
-```
-
-3. **Configure database** / **配置数据库**
-   - Set up PostgreSQL database / 设置PostgreSQL数据库
-   - Create new file `.env` / 创建env环境文件
-   - Update connection settings in `.env` / 在`.env`中更新连接设置
-   - more detail check out `ENV_SETUP_GUIDE.md`
-
-4. **Configure tasks** / **配置任务**
-   - Edit `Scheduler/task_config.py` to customize scheduled tasks / 编辑`Scheduler/task_config.py`自定义定时任务
+- **Intelligent Scheduler** / **智能调度器**
+  - Multiple scheduling options (daily, hourly, interval, weekly) / 多种调度选项（每日、每小时、间隔、每周）
+  - Task management and monitoring / 任务管理和监控
+  - Asynchronous execution / 异步执行
+  - Enable/disable tasks dynamically / 动态启用/禁用任务
 
 ## 📁 Project Structure / 项目结构
 
 ```
 Darker Market/
-├── 📁 Ore/                          # API数据收集模块
-│   ├── Iron_Ore_API.py             # 铁矿石API
-│   ├── Gold_Ore_API.py             # 金矿石API
-│   └── Cobalt_Ore_API.py           # 钴矿石API
-├── 📁 Scheduler/                    # 任务调度模块
-│   ├── smart_scheduler.py          # 智能调度器
-│   ├── start_scheduler.py          # 启动脚本
-│   ├── task_config.py              # 任务配置
-│   └── scheduler.log               # 调度日志
-├── 📁 Analysis/                     # 分析模块
-│   └── Machine_learning_analysis.py # 机器学习分析
-├── 📄 Database_connect.py           # 数据库连接
-├── 📄 ARIMA_analysis.py            # ARIMA时间序列分析
-├── 📄 requirements.txt              # 依赖包列表
-└── 📄 README.md                    # 项目说明
+├── README.md                          # This file / 本文件
+├── requirements.txt                   # Python dependencies / Python依赖
+├── env.template                       # Environment variables template / 环境变量模板
+├── items_config.json                  # Item configuration / 物品配置
+├── *.csv                             # Data files / 数据文件
+│
+├── src/                              # Source code / 源代码
+│   ├── api/                          # API modules / API模块
+│   │   ├── Gold_Ore_API.py           # Gold ore data collection / 金矿数据收集
+│   │   ├── Iron_Ore_API.py           # Iron ore data collection / 铁矿数据收集
+│   │   └── Cobalt_Ore_API.py         # Cobalt ore data collection / 钴矿数据收集
+│   │
+│   ├── database/                     # Database modules / 数据库模块
+│   │   ├── Database_connect.py       # Database connection / 数据库连接
+│   │   └── config.py                 # Configuration management / 配置管理
+│   │
+│   ├── analysis/                     # Analysis modules / 分析模块
+│   │   └── Machine_learning_analysis.py  # ML analysis system / 机器学习分析系统
+│   │
+│   └── scheduler/                    # Scheduling modules / 调度模块
+│       ├── scheduler.py              # Main scheduler / 主调度器
+│       ├── smart_scheduler.py        # Smart scheduler / 智能调度器
+│       ├── start_scheduler.py        # Scheduler starter / 调度器启动器
+│       └── task_config.py            # Task configuration / 任务配置
+│
+└── docs/                             # Documentation / 文档
+    ├── guides/                       # User guides / 用户指南
+    │   ├── QUICK_START.md            # Quick start guide / 快速开始指南
+    │   ├── ENV_SETUP_GUIDE.md        # Environment setup / 环境设置
+    │   └── ITEMS_CONFIG_GUIDE.md     # Item configuration guide / 物品配置指南
+    │
+    ├── api/                          # API documentation / API文档
+    │   └── API_REFERENCE.md          # API reference / API参考
+    │
+    └── scheduler/                    # Scheduler documentation / 调度器文档
+        └── SCHEDULER_README.md       # Scheduler guide / 调度器指南
 ```
 
-## 🎯 Usage / 使用方法
+## 🚀 Quick Start / 快速开始
 
-### Data Collection / 数据收集
+### 1. Environment Setup / 环境设置
 
-#### Manual Collection / 手动收集
 ```bash
-# Run individual API collectors / 运行单个API收集器
-python Ore/Iron_Ore_API.py
-python Ore/Gold_Ore_API.py
-python Ore/Cobalt_Ore_API.py
+# Clone the repository / 克隆仓库
+git clone <repository-url>
+cd "Darker Market"
+
+# Install dependencies / 安装依赖
+pip install -r requirements.txt
+
+# Setup environment variables / 设置环境变量
+cp env.template .env
+# Edit .env with your credentials / 编辑.env文件添加你的凭证
 ```
 
-#### Scheduled Collection / 定时收集
+### 2. Database Configuration / 数据库配置
+
+Edit `.env` file with your database credentials:
+编辑`.env`文件添加数据库凭证：
+
 ```bash
-# Start the scheduler / 启动调度器
-cd Scheduler
-python start_scheduler.py --start
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=your_database
+DB_USER=your_username
+DB_PASSWORD=your_password
 
-# Check status / 查看状态
-python start_scheduler.py --status
-
-# List tasks / 列出任务
-python start_scheduler.py --list
-
-# Run specific task immediately / 立即运行特定任务
-python start_scheduler.py --run "../Ore/Iron_Ore_API.py"
+# API Configuration
+DARKER_MARKET_API_KEY=your_api_key
 ```
 
-### Data Analysis / 数据分析
+### 3. Run Analysis System / 运行分析系统
 
-#### Time Series Analysis / 时间序列分析
 ```bash
-# Run ARIMA analysis / 运行ARIMA分析
-python ARIMA_analysis.py
+# Start the ML analysis system / 启动机器学习分析系统
+python src/analysis/Machine_learning_analysis.py
 ```
 
-#### Machine Learning Analysis / 机器学习分析
+**System Menu / 系统菜单:**
+1. 🚀 Smart Mode (Item Selection → Data Collection → Analysis) / 智能模式（物品选择→数据收集→分析）
+2. 📊 Traditional Mode (Analyze existing CSV files) / 传统模式（分析现有CSV文件）
+3. 🛠️ Item Configuration Management / 物品配置管理
+4. ❌ Exit / 退出
+
+### 4. Item Management / 物品管理
+
+The system automatically discovers API files and allows easy addition of new items:
+系统自动发现API文件并允许轻松添加新物品：
+
+**Adding New Items / 添加新物品:**
+- Through configuration UI / 通过配置界面
+- Auto-discovery from `src/api/` directory / 从`src/api/`目录自动发现
+- Manual configuration in `items_config.json` / 在`items_config.json`中手动配置
+
+## 📊 Usage Examples / 使用示例
+
+### Smart Mode Analysis / 智能模式分析
 ```bash
-# Run ML analysis / 运行ML分析
-python Analysis/Machine_learning_analysis.py
+python src/analysis/Machine_learning_analysis.py
+# Select 1 for Smart Mode
+# Choose item (Gold Ore, Iron Ore, Cobalt Ore)
+# Choose whether to fetch new data
+# Automatic analysis with predictions
 ```
 
-## ⚙️ Configuration / 配置
+### Direct API Collection / 直接API收集
+```bash
+python src/api/Gold_Ore_API.py
+```
 
-### Task Scheduling / 任务调度配置
+### Scheduled Tasks / 定时任务
+```bash
+python src/scheduler/smart_scheduler.py
+```
 
-Edit `Scheduler/task_config.py` to customize your scheduled tasks:
+## 🔧 Configuration / 配置
 
-编辑`Scheduler/task_config.py`来自定义定时任务：
+### Item Configuration / 物品配置
+Edit `items_config.json` to manage items:
+编辑`items_config.json`管理物品：
 
-```python
-TASKS = [
+```json
+{
+  "items": [
     {
-        "name": "Iron Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "Ore", "Iron_Ore_API.py"),
-        "schedule_type": "daily",      # daily, hourly, interval, weekly
-        "schedule_value": "23:00",     # Time or interval
-        "enabled": True,
-        "description": "Daily Iron Ore data collection at 23:00"
-    },
-    # Add more tasks...
-]
-```
-
-### Database Configuration / 数据库配置
-
-Update database settings in `Database_connect.py`:
-
-在`Database_connect.py`中更新数据库设置：
-
-```python
-# Database connection settings
-DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'darker_market',
-    'user': 'your_username',
-    'password': 'your_password',
-    'port': 5432
+      "name": "Gold Ore",
+      "file": "Gold_Ore_API.py",
+      "csv": "gold_ore.csv",
+      "category": "ore",
+      "description": "Golden ore data",
+      "enabled": true
+    }
+  ],
+  "auto_discovery": {
+    "enabled": true,
+    "ore_directory": "src/api",
+    "naming_pattern": "*_API.py"
+  }
 }
 ```
 
-## 📊 Data Output / 数据输出
+### Environment Variables / 环境变量
+All sensitive information is stored in environment variables:
+所有敏感信息存储在环境变量中：
 
-### CSV Files / CSV文件
-- `iron_ore.csv` - Iron ore market data / 铁矿石市场数据
-- `gold_ore.csv` - Gold ore market data / 金矿石市场数据
-- `cobalt_ore.csv` - Cobalt ore market data / 钴矿石市场数据
+- Database credentials / 数据库凭证
+- API keys / API密钥
+- Configuration paths / 配置路径
 
-### Database Tables / 数据库表
-- `iron_ore` - Iron ore data table / 铁矿石数据表
-- `gold_ore` - Gold ore data table / 金矿石数据表
-- `cobalt_ore` - Cobalt ore data table / 钴矿石数据表
+## 🤖 Machine Learning Features / 机器学习功能
 
-### Logs / 日志
-- `scheduler.log` - Task execution logs / 任务执行日志
-- Console output with detailed progress information / 控制台输出包含详细进度信息
+### Models Used / 使用的模型
+- **Traditional ML**: Random Forest, Gradient Boosting, Linear Regression, Ridge, Lasso, SVR, Extra Trees, MLP / 传统机器学习
+- **Deep Learning**: LSTM for time series / LSTM时间序列
+- **Time Series**: ARIMA, Prophet / 时间序列模型
+- **Ensemble**: Voting, Weighted Average / 集成方法
 
-## 🔧 Advanced Features / 高级功能
+### Key Features / 主要功能
+- **Feature Engineering**: Lag features, moving averages, volatility indicators / 特征工程
+- **Model Selection**: Automatic best model selection / 自动最佳模型选择
+- **Ensemble Methods**: Multiple model fusion / 多模型融合
+- **Confidence Intervals**: Dynamic CI calculation / 动态置信区间计算
+- **Stability Testing**: Model reliability assessment / 模型可靠性评估
 
-### Intelligent Deduplication / 智能去重
-- API-level deduplication during data collection / 数据收集期间的API级去重
-- Database-level duplicate prevention / 数据库级重复预防
-- Efficient memory usage with set-based operations / 基于集合操作的高效内存使用
+### Investment Insights / 投资洞察
+- **Price Predictions**: 7-day price forecasts / 7天价格预测
+- **Trend Analysis**: Market direction indicators / 市场方向指标
+- **Risk Assessment**: Confidence interval-based risk evaluation / 基于置信区间的风险评估
+- **Investment Advice**: Buy/Sell/Hold recommendations / 买入/卖出/持有建议
 
-### Error Handling / 错误处理
-- Comprehensive error logging / 全面的错误日志记录
-- Automatic retry mechanisms / 自动重试机制
-- Graceful failure handling / 优雅的故障处理
+## 📚 Documentation / 文档
 
-### Performance Optimization / 性能优化
-- Batch database operations / 批量数据库操作
-- Asynchronous task execution / 异步任务执行
-- Memory-efficient data processing / 内存高效的数据处理
+Detailed documentation is available in the `docs/` directory:
+详细文档位于`docs/`目录：
 
-## 📈 Analysis Capabilities / 分析能力
+- **[Quick Start Guide](docs/guides/QUICK_START.md)** - Get started quickly / 快速开始
+- **[Environment Setup](docs/guides/ENV_SETUP_GUIDE.md)** - Detailed setup instructions / 详细设置说明
+- **[Item Configuration](docs/guides/ITEMS_CONFIG_GUIDE.md)** - Item management guide / 物品管理指南
+- **[API Reference](docs/api/API_REFERENCE.md)** - API documentation / API文档
+- **[Scheduler Guide](docs/scheduler/SCHEDULER_README.md)** - Task scheduling / 任务调度
 
-### Time Series Analysis / 时间序列分析
-- **ARIMA Modeling** / **ARIMA建模**
-  - Automatic parameter optimization / 自动参数优化
-  - Stationarity testing / 平稳性测试
-  - Trend and seasonality analysis / 趋势和季节性分析
+## 🔒 Security / 安全
 
-### Machine Learning / 机器学习
-- **Multiple Algorithms** / **多种算法**
-  - Random Forest Regression / 随机森林回归
-  - Gradient Boosting / 梯度提升
-  - Support Vector Regression / 支持向量回归
-  - Linear Regression variants / 线性回归变体
+- **Environment Variables**: All sensitive data in `.env` file / 所有敏感数据在`.env`文件中
+- **Git Ignore**: Sensitive files excluded from version control / 敏感文件排除在版本控制外
+- **Input Validation**: SQL injection prevention / SQL注入防护
+- **Error Handling**: Graceful error management / 优雅的错误管理
 
-- **Feature Engineering** / **特征工程**
-  - Time-based features / 基于时间的特征
-  - Moving averages / 移动平均
-  - Volatility indicators / 波动性指标
-  - Price change patterns / 价格变化模式
+## 🛠️ Development / 开发
 
-## 🚨 Troubleshooting / 故障排除
+### Adding New Items / 添加新物品
+1. Create API file in `src/api/` following naming pattern `ItemName_API.py` / 在`src/api/`中创建API文件
+2. System automatically discovers new files / 系统自动发现新文件
+3. Or use configuration management UI / 或使用配置管理界面
+4. Or manually edit `items_config.json` / 或手动编辑`items_config.json`
 
-### Common Issues / 常见问题
+### Code Structure / 代码结构
+- **Modular Design**: Separate modules for different functionalities / 模块化设计
+- **Error Handling**: Comprehensive error management / 全面的错误管理
+- **Logging**: Detailed logging for debugging / 详细的调试日志
+- **Documentation**: Inline comments and docstrings / 内联注释和文档字符串
 
-#### Database Connection Issues / 数据库连接问题
-```bash
-# Check PostgreSQL service / 检查PostgreSQL服务
-sudo service postgresql status
+## 📈 Performance / 性能
 
-# Verify connection settings / 验证连接设置
-python -c "from Database_connect import DarkerMarketDB; db = DarkerMarketDB(); print(db.connect())"
-```
-
-#### Module Import Errors / 模块导入错误
-```bash
-# Ensure you're in the correct directory / 确保在正确的目录
-cd "Darker Market"
-
-# Check Python path / 检查Python路径
-python -c "import sys; print(sys.path)"
-```
-
-#### Task Scheduling Issues / 任务调度问题
-```bash
-# Check task configuration / 检查任务配置
-cd Scheduler
-python start_scheduler.py --list
-
-# Verify file paths / 验证文件路径
-python start_scheduler.py --run "../Ore/Iron_Ore_API.py"
-```
-
-## 📝 Logs and Monitoring / 日志和监控
-
-### Log Files / 日志文件
-- **scheduler.log** - Task execution logs / 任务执行日志
-- **Console output** - Real-time progress information / 控制台输出 - 实时进度信息
-
-### Monitoring Commands / 监控命令
-```bash
-# View recent logs / 查看最近日志
-tail -f scheduler.log
-
-# Check task status / 检查任务状态
-python start_scheduler.py --status
-
-# View all scheduled tasks / 查看所有定时任务
-python start_scheduler.py --list
-```
+- **Batch Processing**: Efficient database operations / 高效的数据库操作
+- **Deduplication**: In-memory and database-level / 内存和数据库级别去重
+- **Auto-stop**: Intelligent collection termination / 智能收集终止
+- **Caching**: Model and data caching / 模型和数据缓存
 
 ## 🤝 Contributing / 贡献
 
 1. Fork the repository / 分叉仓库
-2. Create a feature branch / 创建功能分支
-3. Make your changes / 进行更改
-4. Add tests if applicable / 如适用则添加测试
-5. Submit a pull request / 提交拉取请求
+2. Create feature branch / 创建功能分支
+3. Make changes / 进行更改
+4. Test thoroughly / 彻底测试
+5. Submit pull request / 提交拉取请求
 
-## 📄 License / 许可证
+## 📝 License / 许可
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
+本项目采用MIT许可证 - 详见LICENSE文件。
 
-本项目采用MIT许可证 - 详情请参阅[LICENSE](LICENSE)文件。
+## 🆘 Support / 支持
 
-## 📞 Support / 支持
-
-For questions, issues, or contributions, please:
-
-如有问题、问题或贡献，请：
-
-- Open an issue on GitHub / 在GitHub上提出问题
-- Contact the maintainers / 联系维护者
-- Check the documentation / 查看文档
+- **Documentation**: Check `docs/` directory / 查看`docs/`目录
+- **Issues**: Report bugs and feature requests / 报告错误和功能请求
+- **Guides**: Step-by-step tutorials available / 提供逐步教程
 
 ## 🔄 Version History / 版本历史
 
-### v1.0.0
-- Initial release / 初始版本
-- Basic data collection functionality / 基本数据收集功能
-- ARIMA time series analysis / ARIMA时间序列分析
-- Machine learning price prediction / 机器学习价格预测
-- Task scheduling system / 任务调度系统
+- **v2.0**: Restructured project with intelligent item management / 智能物品管理的重构项目
+- **v1.5**: Enhanced ML models and ensemble methods / 增强的机器学习模型和集成方法
+- **v1.0**: Initial release with basic functionality / 基本功能的初始版本
 
 ---
 
-**Happy Data Mining! / 祝数据挖掘愉快！** 🚀📊
+**Ready to start? / 准备开始？**  
+Run `python src/analysis/Machine_learning_analysis.py` and explore the intelligent market analysis system!  
+运行 `python src/analysis/Machine_learning_analysis.py` 探索智能市场分析系统！
