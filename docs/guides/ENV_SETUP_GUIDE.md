@@ -8,8 +8,7 @@
 
 ### 1. 复制环境变量模板
 ```bash
-cp env.example .env
-cp config.example.py config.py
+cp env.template .env
 ```
 
 ### 2. 编辑 .env 文件
@@ -53,16 +52,16 @@ python -c "from config import config; config.validate_config(); print('✅ 配�
 
 ## 📁 相关文件
 
-- `env.example` - 环境变量模板（可提交到Git）
+- `env.template` - 环境变量模板（可提交到Git）
 - `.env` - 实际环境变量文件（已忽略，不会提交）
-- `config.py` - 配置加载模块
+- `src/database/config.py` - 配置加载模块
 - `.gitignore` - 已更新，保护敏感文件
 
 ## 🚀 使用方法
 
 ### 在代码中使用
 ```python
-from config import config
+from src.database.config import config
 
 # 获取数据库配置
 db_config = config.get_db_config()
@@ -98,7 +97,7 @@ pwd
 # 应该显示: /path/to/Darker Market
 
 # 测试配置
-python -c "from config import config; print('OK')"
+python -c "from src.database.config import config; print('OK')"
 ```
 
 ### 如果数据库连接失败
@@ -107,7 +106,7 @@ python -c "from config import config; print('OK')"
 ls -la .env
 
 # 检查数据库配置
-python -c "from config import config; print(config.get_db_config())"
+python -c "from src.database.config import config; print(config.get_db_config())"
 ```
 
 现在你的敏感信息已经安全地存储在环境变量中，可以安全地提交代码到GitHub了！🎉

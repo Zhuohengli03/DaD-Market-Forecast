@@ -7,40 +7,31 @@
 pip install -r requirements.txt
 ```
 
-### Step 2: Configure Database / 步骤2：配置数据库
-Edit `Database_connect.py` and update your PostgreSQL connection settings:
-编辑`Database_connect.py`并更新你的PostgreSQL连接设置：
+### Step 2: Configure Environment / 步骤2：配置环境变量
+Copy environment template and edit with your credentials:
+复制环境变量模板并编辑你的凭证：
 
-```python
-# Update these settings / 更新这些设置
-DB_CONFIG = {
-    'host': 'localhost',
-    'database': 'darker_market',
-    'user': 'your_username',
-    'password': 'your_password',
-    'port': 5432
-}
+```bash
+cp env.template .env
+# Edit .env with your actual database credentials and API key
+# 编辑.env文件添加你的数据库凭证和API密钥
 ```
 
 ### Step 3: Test Data Collection / 步骤3：测试数据收集
 ```bash
 # Test Iron Ore collection / 测试铁矿石收集
-python Ore/Iron_Ore_API.py
+python src/api/Iron_Ore_API.py
 ```
 
 ### Step 4: Start Task Scheduler / 步骤4：启动任务调度器
 ```bash
-cd Scheduler
-python start_scheduler.py --start
+python src/scheduler/start_scheduler.py --start
 ```
 
 ### Step 5: Run Analysis / 步骤5：运行分析
 ```bash
-# Time series analysis / 时间序列分析
-python ARIMA_analysis.py
-
 # Machine learning analysis / 机器学习分析
-python Analysis/Machine_learning_analysis.py
+python src/analysis/Machine_learning_analysis.py
 ```
 ————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
 ———————————————————————————————————————— 📋 Common Commands / 常用命令————————————————————————————————————————————-————
@@ -48,48 +39,43 @@ python Analysis/Machine_learning_analysis.py
 ### Data Collection / 数据收集
 ```bash
 # Manual collection / 手动收集
-python Ore/Iron_Ore_API.py
-python Ore/Gold_Ore_API.py
-python Ore/Cobalt_Ore_API.py
+python src/api/Iron_Ore_API.py
+python src/api/Gold_Ore_API.py
+python src/api/Cobalt_Ore_API.py
 ```
 
 ### Task Management / 任务管理
 ```bash
-cd Scheduler
-
 # Check status / 查看状态
-python start_scheduler.py --status
+python src/scheduler/start_scheduler.py --status
 
 # List tasks / 列出任务
-python start_scheduler.py --list
+python src/scheduler/start_scheduler.py --list
 
 # Run specific task / 运行特定任务
-python start_scheduler.py --run "../Ore/Iron_Ore_API.py"
+python src/scheduler/start_scheduler.py --run "src/api/Iron_Ore_API.py"
 
 # Start scheduler / 启动调度器
-python start_scheduler.py --start
+python src/scheduler/start_scheduler.py --start
 ```
 
 ### Data Analysis / 数据分析
 ```bash
-# ARIMA analysis / ARIMA分析
-python ARIMA_analysis.py
-
 # Machine learning / 机器学习
-python Analysis/Machine_learning_analysis.py
+python src/analysis/Machine_learning_analysis.py
 ```
 
 ## ⚙️ Configuration / 配置
 
 ### Schedule Tasks / 调度任务
-Edit `Scheduler/task_config.py`:
-编辑`Scheduler/task_config.py`：
+Edit `src/scheduler/task_config.py`:
+编辑`src/scheduler/task_config.py`：
 
 ```python
 TASKS = [
     {
         "name": "Iron Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "Ore", "Iron_Ore_API.py"),
+        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Iron_Ore_API.py"),
         "schedule_type": "daily",
         "schedule_value": "23:00",
         "enabled": True,
@@ -112,7 +98,7 @@ TASKS = [
 sudo service postgresql status
 
 # Test connection / 测试连接
-python -c "from Database_connect import DarkerMarketDB; print('OK' if DarkerMarketDB().connect() else 'Failed')"
+python -c "from src.database.Database_connect import DarkerMarketDB; print('OK' if DarkerMarketDB().connect() else 'Failed')"
 ```
 
 ### Import Errors / 导入错误
@@ -128,11 +114,11 @@ python -c "import sys; print('\\n'.join(sys.path))"
 ### Task Scheduler Issues / 任务调度问题
 ```bash
 # Check if files exist / 检查文件是否存在
-ls -la Ore/
-ls -la Scheduler/
+ls -la src/api/
+ls -la src/scheduler/
 
 # Test individual components / 测试单个组件
-python start_scheduler.py --run "../Ore/Iron_Ore_API.py"
+python src/scheduler/start_scheduler.py --run "src/api/Iron_Ore_API.py"
 ```
 
 ## 📊 Expected Output / 预期输出
