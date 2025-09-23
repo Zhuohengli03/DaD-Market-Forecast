@@ -5,7 +5,7 @@
       "file": "Gold_Ore_API.py",
       "csv": "gold_ore.csv",
       "category": "ore",
-      "description": "黄金矿石 - 高价值贵金属",
+      "description": "黄金矿石",
       "enabled": true
     },
     {
@@ -13,7 +13,7 @@
       "file": "Iron_Ore_API.py",
       "csv": "iron_ore.csv",
       "category": "ore",
-      "description": "铁矿石 - 基础工业材料",
+      "description": "铁矿石",
       "enabled": true
     },
     {
@@ -21,7 +21,15 @@
       "file": "Cobalt_Ore_API.py",
       "csv": "cobalt_ore.csv",
       "category": "ore",
-      "description": "钴矿石 - 稀有金属",
+      "description": "钴矿石",
+      "enabled": true
+    },
+    {
+      "name": "Copper Ore",
+      "file": "Copper_Ore_API.py",
+      "csv": "copper_ore.csv",
+      "category": "ore",
+      "description": "铜矿石",
       "enabled": true
     }
   ],

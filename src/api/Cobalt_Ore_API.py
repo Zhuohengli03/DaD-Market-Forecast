@@ -58,7 +58,7 @@ class DarkerMarketAPI:
             print("🔌 连接数据库...")
             self.db = DarkerMarketDB(items=self.item.replace(" ", "_").lower())
             if not self.db.connect():
-                print("❌ 数据库连接失败")
+                print("❌ 数据库连接失败\n❌ Database connection failed")
                 return
             
             # 加载数据库中已存在的记录到去重集合
@@ -107,7 +107,7 @@ class DarkerMarketAPI:
                 # 单次运行也保存到CSV
                 self.save_data_to_csv()
             else:
-                print("❌ 数据库连接失败")
+                print("❌ 数据库连接失败\n❌ Database connection failed")
 
 
     def get_market_data(self):
@@ -192,7 +192,7 @@ class DarkerMarketAPI:
             # 连接数据库
             db = DarkerMarketDB(items=self.item.replace(" ", "_").lower())
             if not db.connect():
-                print("❌ 数据库连接失败")
+                print("❌ 数据库连接失败\n❌ Database connection failed")
                 return False
             
             # 查询所有数据

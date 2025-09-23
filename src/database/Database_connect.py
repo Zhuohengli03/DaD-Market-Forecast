@@ -34,29 +34,33 @@ class DarkerMarketDB:
 
 
     def connect(self):
-        """连接到PostgreSQL数据库"""
+        """连接到PostgreSQL数据库 / Connect to PostgreSQL Database"""
         try:
             if not self.is_connected:
                 self.connector = psycopg2.connect(**self.connection_params)
                 self.is_connected = True
-                print("✅ 成功连接到PostgreSQL数据库")
+                print("✅ 成功连接到PostgreSQL数据库\n✅ Successfully connected to PostgreSQL database")
+                print("✅ Successfully connected to PostgreSQL database")
                 self.create_table()
             return True
         except Exception as e:
             print(f"❌ 数据库连接失败: {str(e)}")
+            print(f"❌ Database connection failed: {str(e)}")
             return False
     
     def disconnect(self):
-        """断开数据库连接"""
+        """断开数据库连接 / Disconnect from Database"""
         if self.connector and self.is_connected:
             self.connector.close()
             self.is_connected = False
             print("🔌 数据库连接已断开")
+            print("🔌 Database connection closed")
     
     def create_table(self):
-        """创建Dark_market_items表"""
+        """创建Dark_market_items表 / Create Dark_market_items Table"""
         if not self.connector:
             print("❌ 请先连接数据库")
+            print("❌ Please connect to database first")
             return False
             
         try:

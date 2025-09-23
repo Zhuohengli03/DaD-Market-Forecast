@@ -19,7 +19,7 @@ time_sleep = 0
 
 class DarkerMarketAPI:
     def __init__(self):
-        self.item = "Gold Ore"
+        self.item = "Copper Ore"
         self.page = 1
         self.limit = 50
         self.order = "desc"
@@ -54,13 +54,11 @@ class DarkerMarketAPI:
 
     def run(self):
         if need_run:
-            # 连接数据库 / Connect to database
+            # 连接数据库
             print("🔌 连接数据库...")
-            print("🔌 Connecting to database...")
             self.db = DarkerMarketDB(items=self.item.replace(" ", "_").lower())
             if not self.db.connect():
                 print("❌ 数据库连接失败\n❌ Database connection failed")
-                print("❌ Database connection failed")
                 return
             
             # 加载数据库中已存在的记录到去重集合
@@ -69,20 +67,17 @@ class DarkerMarketAPI:
             while need_run > self.page and self.no_new_data_count < self.max_no_new_data:
                 new_data_count = self.get_market_data()
                 
-                # 检查是否有新数据 / Check if there's new data
+                # 检查是否有新数据
                 if new_data_count is not None and new_data_count > 0:
-                    self.no_new_data_count = 0  # 重置计数器 / Reset counter
+                    self.no_new_data_count = 0  # 重置计数器
                     print(f"✅ 第{self.page}页: 收集到 {new_data_count} 条数据")
-                    print(f"✅ Page {self.page}: Collected {new_data_count} records")
                 else:
                     self.no_new_data_count += 1
                     print(f"⚠️  第{self.page}页: 没有新数据 (连续 {self.no_new_data_count}/{self.max_no_new_data} 次)")
-                    print(f"⚠️  Page {self.page}: No new data (consecutive {self.no_new_data_count}/{self.max_no_new_data} times)")
                 
-                # 检查是否应该停止 / Check if should stop
+                # 检查是否应该停止
                 if self.no_new_data_count >= self.max_no_new_data:
                     print(f"\n🛑 连续 {self.max_no_new_data} 次没有新数据，自动停止数据收集")
-                    print(f"🛑 {self.max_no_new_data} consecutive times without new data, auto-stopping collection")
                     break
                 
                 time.sleep(time_sleep)
@@ -193,13 +188,11 @@ class DarkerMarketAPI:
         """从数据库导出数据到CSV文件"""
         try:
             print(f"\n💾 开始导出数据到CSV文件: {self.csv_filename}")
-            print(f"💾 Starting data export to CSV file: {self.csv_filename}")
             
-            # 连接数据库 / Connect to database
+            # 连接数据库
             db = DarkerMarketDB(items=self.item.replace(" ", "_").lower())
             if not db.connect():
                 print("❌ 数据库连接失败\n❌ Database connection failed")
-                print("❌ Database connection failed")
                 return False
             
             # 查询所有数据
@@ -229,22 +222,21 @@ class DarkerMarketAPI:
             df.to_csv(self.csv_filename, index=False, encoding='utf-8')
             
             print(f"✅ 成功导出 {len(data)} 条数据到 {self.csv_filename}")
-            print(f"✅ Successfully exported {len(data)} records to {self.csv_filename}")
-            print(f"📁 文件路径 / File path: {os.path.abspath(self.csv_filename)}")
+            print(f"📁 文件路径: {os.path.abspath(self.csv_filename)}")
             
-            # 显示文件大小 / Show file size
+            # 显示文件大小
             file_size = os.path.getsize(self.csv_filename)
             if file_size > 1024 * 1024:
-                print(f"📊 文件大小 / File size: {file_size / (1024 * 1024):.2f} MB")
+                print(f"📊 文件大小: {file_size / (1024 * 1024):.2f} MB")
             else:
-                print(f"📊 文件大小 / File size: {file_size / 1024:.2f} KB")
+                print(f"📊 文件大小: {file_size / 1024:.2f} KB")
             
             cursor.close()
             db.disconnect()
             return True
             
         except Exception as e:
-            print(f"❌ 导出CSV失败 / CSV export failed: {str(e)}")
+            print(f"❌ 导出CSV失败: {str(e)}")
             return False
         
 
