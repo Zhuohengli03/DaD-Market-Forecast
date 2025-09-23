@@ -8,7 +8,7 @@
 import os
 import sys
 import argparse
-from smart_scheduler import SmartScheduler
+from core_scheduler import SmartScheduler
 
 def main():
     parser = argparse.ArgumentParser(description='定时任务调度器')
@@ -45,11 +45,22 @@ def main():
         
         script_name = os.path.basename(script_path)
         print(f"▶️ 立即运行脚本: {script_name}")
+        print(f"▶️ Executing script immediately: {script_name}")
+        print("="*50)
+        
         success = scheduler.run_script(script_path, script_name)
+        
+        print("="*50)
         if success:
-            print("✅ 脚本运行完成")
+            print(f"✅ 脚本运行完成: {script_name}")
+            print(f"✅ Script execution completed: {script_name}")
+            print("📊 详细日志请查看上方输出信息")
+            print("📊 Check above output for detailed logs")
         else:
-            print("❌ 脚本运行失败")
+            print(f"❌ 脚本运行失败: {script_name}")
+            print(f"❌ Script execution failed: {script_name}")
+            print("🚨 详细错误信息请查看上方日志")
+            print("🚨 Check above logs for detailed error information")
             
     elif args.start:
         scheduler.load_tasks_from_config()

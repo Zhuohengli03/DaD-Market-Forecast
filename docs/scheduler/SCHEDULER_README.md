@@ -38,10 +38,10 @@ TASKS = [
 
 ```bash
 # 启动调度器
-python start_scheduler.py --start
+python src/scheduler/start_scheduler.py --start
 
 # 或者直接运行
-python smart_scheduler.py
+python src/scheduler/smart_scheduler.py
 ```
 
 ## 使用方法
@@ -50,21 +50,21 @@ python smart_scheduler.py
 
 ```bash
 # 列出所有任务
-python start_scheduler.py --list
+python src/scheduler/start_scheduler.py --list
 
 # 显示状态
-python start_scheduler.py --status
+python src/scheduler/start_scheduler.py --status
 
 # 立即运行指定脚本
-python start_scheduler.py --run "Ore/Iron_Ore_API.py"
+python src/scheduler/start_scheduler.py --run "src/api/Iron_Ore_API.py"
 
 # 启动调度器
-python start_scheduler.py --start
+python src/scheduler/start_scheduler.py --start
 ```
 
 ### 任务配置
 
-在 `task_config.py` 中配置任务：
+在 `scheduler` - `task_config.py` 中配置任务：
 
 #### 每日任务
 ```python
