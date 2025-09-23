@@ -1873,25 +1873,28 @@ def manage_items_config():
         elif choice == "3":
             break
         else:
-            print("❌ 无效选择")
+            print("❌ 无效选择\n❌ Invalid selection")
 
 
 def collect_and_analyze():
     """
     集成功能：选择物品 → 调用API获取数据 → 生成CSV → 进行机器学习分析
     支持自定义物品和API文件
+    
+    Integrated function: Select Item → Call API to Fetch Data → Generate CSV → ML Analysis
+    Supports custom items and API files
     """
     import os
     import sys
     import subprocess
     
-    print("🚀 启动智能市场分析系统")
-    print("=" * 60)
+    print("🚀 启动智能市场分析系统 / Starting Smart Market Analysis System")
+    print("=" * 80)
     
     # 1. 动态获取可用物品列表
     available_items = get_available_items()
     
-    print("\n📦 可用物品列表:")
+    print("\n📦 可用物品列表 / Available Items:")
     for key, item in available_items.items():
         category_emoji = "⛏️" if item.get('category') == 'ore' else "🧪"
         description = item.get('description', '')
@@ -1900,63 +1903,217 @@ def collect_and_analyze():
         else:
             print(f"  {key}. {category_emoji} {item['name']}")
     
-    # 2. 用户选择物品
+    # 2. 用户选择物品 / User selects item
     try:
-        choice = int(input("\n请选择要分析的物品 (输入数字): "))
+        choice = int(input("\n请选择要分析的物品 (输入数字) / Select item to analyze (enter number): "))
         if choice not in available_items:
             print("❌ 无效选择，使用默认选项: Gold Ore")
+            print("❌ Invalid selection, using default: Gold Ore")
             choice = 1
         
         selected_item = available_items[choice]
         print(f"✅ 已选择: {selected_item['name']} ({selected_item.get('category', 'unknown')})")
+        print(f"✅ Selected: {selected_item['name']} ({selected_item.get('category', 'unknown')})")
         
     except ValueError:
         print("❌ 输入无效，使用默认选项: Gold Ore")
+        print("❌ Invalid input, using default: Gold Ore")
         choice = 1
         selected_item = available_items[1]
     
-    # 3. 询问是否需要更新数据
-    update_data = input("\n🔄 是否需要获取最新数据? (y/n, 默认n): ").lower().strip()
+    # 3. 检查数据新鲜度并询问是否需要更新数据
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    csv_path = os.path.join(project_root, selected_item['csv'])
+    
+    # 检查CSV文件状态
+    csv_exists = os.path.exists(csv_path)
+    file_age_hours = 0
+    
+    if csv_exists:
+        import time
+        file_time = os.path.getmtime(csv_path)
+        current_time = time.time()
+        file_age_hours = (current_time - file_time) / 3600  # 转换为小时
+        
+        print(f"\n📄 发现现有数据文件: {selected_item['csv']}")
+        print(f"📄 Found existing data file: {selected_item['csv']}")
+        if file_age_hours < 1:
+            print(f"🆕 数据很新鲜 (约{file_age_hours:.1f}小时前更新)")
+            print(f"🆕 Data is fresh (updated about {file_age_hours:.1f} hours ago)")
+            print("💡 建议: 可以直接分析现有数据")
+            print("💡 Suggestion: Can analyze existing data directly")
+        elif file_age_hours < 24:
+            print(f"⏰ 数据较新 (约{file_age_hours:.1f}小时前更新)")
+            print(f"⏰ Data is recent (updated about {file_age_hours:.1f} hours ago)")
+            print("💡 建议: 可以获取最新数据或直接分析")
+            print("💡 Suggestion: Can fetch new data or analyze directly")
+        else:
+            days = file_age_hours / 24
+            print(f"📅 数据较旧 (约{days:.1f}天前更新)")
+            print(f"📅 Data is old (updated about {days:.1f} days ago)")
+            print("💡 建议: 建议获取最新数据")
+            print("💡 Suggestion: Recommend fetching latest data")
+    else:
+        print(f"\n❌ 未找到数据文件: {selected_item['csv']}")
+        print(f"❌ Data file not found: {selected_item['csv']}")
+        print("💡 建议: 必须先获取数据")
+        print("💡 Suggestion: Must fetch data first")
+    
+    # 智能提示 / Smart suggestions
+    if not csv_exists:
+        default_choice = "y"
+        prompt = "\n🔄 需要获取数据才能进行分析 (y/n, 默认y) / Need to fetch data for analysis (y/n, default y): "
+    elif file_age_hours > 24:
+        default_choice = "y" 
+        prompt = "\n🔄 建议获取最新数据 (y/n, 默认y) / Recommend fetching latest data (y/n, default y): "
+    else:
+        default_choice = "n"
+        prompt = "\n🔄 是否需要获取最新数据? (y/n, 默认n) / Fetch latest data? (y/n, default n): "
+    
+    update_data = input(prompt).lower().strip()
+    if not update_data:
+        update_data = default_choice
     
     if update_data in ['y', 'yes', '是']:
-        print(f"\n📡 正在调用 {selected_item['name']} API 获取最新数据...")
+        print(f"\n📡 正在自动调用 {selected_item['name']} API 获取最新数据...")
+        print(f"📡 Auto-calling {selected_item['name']} API to fetch latest data...")
+        print(f"🎯 目标文件 / Target file: {selected_item['file']}")
         
         try:
             # 构建API文件路径 - 统一使用src/api目录
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            api_directory = "src/api"  # 统一使用src/api目录
+            api_directory = "src/api"
             api_file_path = os.path.join(project_root, api_directory, selected_item['file'])
             
             if not os.path.exists(api_file_path):
                 print(f"❌ API文件不存在: {api_file_path}")
+                print(f"❌ API file not found: {api_file_path}")
+                print("💡 请确认API文件已正确放置在 src/api/ 目录中")
+                print("💡 Please ensure API file is correctly placed in src/api/ directory")
                 return None
             
-            print(f"🔄 执行: {api_file_path}")
+            print(f"⚡ 开始执行: {selected_item['file']}")
+            print(f"⚡ Starting execution: {selected_item['file']}")
+            print("📡 连接暗黑市场API中...")
+            print("📡 Connecting to Darker Market API...")
             
-            # 执行API脚本
-            result = subprocess.run([sys.executable, api_file_path], 
-                                  capture_output=True, text=True, 
-                                  cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-            
-            if result.returncode == 0:
-                print("✅ 数据获取完成!")
-                print("📊 API输出摘要:")
-                # 显示最后几行输出
-                output_lines = result.stdout.strip().split('\n')
-                for line in output_lines[-5:]:
-                    if line.strip():
-                        print(f"  {line}")
-            else:
-                print("⚠️ API执行出现警告，但继续分析...")
-                print("错误输出:", result.stderr[-500:] if result.stderr else "无")
+            # 启动API进程并实时显示输出
+            try:
+                import time
+                print("⏳ 启动API进程...")
+                print("⏳ Starting API process...")
                 
+                api_process = subprocess.Popen(
+                    [sys.executable, api_file_path], 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    cwd=project_root,
+                    bufsize=1,  # 行缓冲 / Line buffering
+                    universal_newlines=True
+                )
+                
+                connection_confirmed = False
+                data_collection_started = False
+                
+                # 实时监控输出
+                while True:
+                    # 读取输出行
+                    output = api_process.stdout.readline()
+                    
+                    # 检查进程是否结束
+                    if output == '' and api_process.poll() is not None:
+                        break
+                        
+                    if output:
+                        line = output.strip()
+                        
+                        # 检测连接状态 / Detect connection status
+                        if not connection_confirmed:
+                            if any(keyword in line.lower() for keyword in ["connecting", "连接", "开始", "启动", "初始化"]):
+                                print("🔗 正在连接暗黑市场API...")
+                                print("🔗 Connecting to Darker Market API...")
+                            elif any(keyword in line.lower() for keyword in ["connected", "成功", "获取", "页面", "数据"]):
+                                print("✅ API连接成功！")
+                                print("✅ API connection successful!")
+                                connection_confirmed = True
+                        
+                        # 检测数据收集开始 / Detect data collection start
+                        if not data_collection_started and any(keyword in line for keyword in ["页面", "page", "获取", "collecting"]):
+                            print("📥 开始收集数据...")
+                            print("📥 Starting data collection...")
+                            data_collection_started = True
+                        
+                        # 实时显示重要信息
+                        if line and any(keyword in line for keyword in ["页面", "条数据", "新数据", "重复数据", "总计", "连接", "获取", "完成"]):
+                            if "页面" in line and "数据" in line:
+                                print(f"📄 {line}")
+                            elif "新数据" in line or "去重后" in line:
+                                print(f"🆕 {line}")
+                            elif "重复" in line or "跳过" in line:
+                                print(f"🔄 {line}")
+                            elif "总计" in line:
+                                print(f"📊 {line}")
+                            elif "连接" in line:
+                                print(f"🔗 {line}")
+                            elif "获取" in line or "收集" in line:
+                                print(f"📥 {line}")
+                            elif "完成" in line:
+                                print(f"✅ {line}")
+                            else:
+                                print(f"ℹ️  {line}")
+                
+                # 等待进程完成并获取返回码
+                return_code = api_process.wait()
+                
+                # 获取剩余的错误输出
+                remaining_stdout, error_output = api_process.communicate()
+                
+                # 显示最终结果
+                if return_code == 0:
+                    print("✅ 数据收集完成！")
+                    
+                    # 检查CSV文件是否更新
+                    csv_path = os.path.join(project_root, selected_item['csv'])
+                    if os.path.exists(csv_path):
+                        file_time = os.path.getmtime(csv_path)
+                        current_time = time.time()
+                        if current_time - file_time < 300:  # 5分钟内更新的文件
+                            print(f"✅ CSV文件已更新: {selected_item['csv']}")
+                        else:
+                            print(f"⚠️ CSV文件可能未更新: {selected_item['csv']}")
+                    
+                    print("🎯 数据收集成功，准备开始分析...")
+                    
+                else:
+                    print(f"⚠️ API执行返回代码: {return_code}")
+                    if error_output and error_output.strip():
+                        print("❌ 错误信息:")
+                        for line in error_output.strip().split('\n')[-3:]:
+                            if line.strip():
+                                print(f"  ❌ {line}")
+                    print("🔄 将继续使用现有数据进行分析...")
+                    
+            except Exception as e:
+                print(f"❌ 执行API时出错: {str(e)}")
+                print("📊 将使用现有CSV文件进行分析...")
+                
+        except subprocess.TimeoutExpired:
+            print("⏰ API执行超时（5分钟），可能是数据量较大")
+            print("🔄 将使用现有CSV文件进行分析...")
         except Exception as e:
-            print(f"❌ 数据获取失败: {str(e)}")
+            print(f"❌ 数据获取过程出错: {str(e)}")
             print("📊 将使用现有CSV文件进行分析...")
+            
+        # 添加一个短暂的停顿让用户看到结果
+        import time
+        time.sleep(1)
+        print("\n" + "="*60)
+        print("🎯 数据收集阶段完成，准备开始机器学习分析...")
+        time.sleep(0.5)
     
-    # 4. 确定CSV文件路径
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    csv_path = os.path.join(project_root, selected_item['csv'])
+    # 4. 最终确认CSV文件路径
+    # project_root 和 csv_path 已在上面定义
     
     if not os.path.exists(csv_path):
         print(f"❌ CSV文件不存在: {csv_path}")
@@ -2011,17 +2168,20 @@ def collect_and_analyze():
 
 
 def main():
-    """主函数"""
+    """主函数 / Main Function"""
     while True:
-        print("\n🎯 Darker Market 机器学习分析系统")
-        print("=" * 60)
+        print("\n🎯 Darker Market 机器学习分析系统 / ML Analysis System")
+        print("=" * 80)
         print("1. 🚀 智能模式 (选择物品 → 获取数据 → 自动分析)")
+        print("   Smart Mode (Select Item → Fetch Data → Auto Analysis)")
         print("2. 📊 传统模式 (分析现有CSV文件)")
+        print("   Traditional Mode (Analyze Existing CSV Files)")
         print("3. 🛠️ 物品配置管理")
-        print("4. ❌ 退出")
+        print("   Item Configuration Management")
+        print("4. ❌ 退出 / Exit")
         
         try:
-            choice = input("\n请选择模式 (1-4, 默认1): ").strip()
+            choice = input("\n请选择模式 (1-4, 默认1) / Select mode (1-4, default 1): ").strip()
             
             if choice == "2":
                 main_traditional()
@@ -2030,29 +2190,30 @@ def main():
                 # 配置管理后返回主菜单
                 continue
             elif choice == "4":
-                print("👋 再见!")
+                print("👋 再见! / Goodbye!")
                 break
             else:
-                # 默认或选择1
+                # 默认或选择1 / Default or select 1
                 collect_and_analyze()
                 
-            # 询问是否继续
-            continue_choice = input("\n🔄 是否继续使用系统? (y/n, 默认n): ").lower().strip()
+            # 询问是否继续 / Ask if continue
+            continue_choice = input("\n🔄 是否继续使用系统? (y/n, 默认n) / Continue using system? (y/n, default n): ").lower().strip()
             if continue_choice not in ['y', 'yes', '是']:
-                print("👋 再见!")
+                print("👋 再见! / Goodbye!")
                 break
                 
         except KeyboardInterrupt:
-            print("\n👋 程序已退出")
+            print("\n👋 程序已退出 / Program exited")
             break
         except Exception as e:
-            print(f"❌ 程序出错: {str(e)}")
+            print(f"❌ 程序出错 / Program error: {str(e)}")
             continue
 
 
 def main_traditional():
-    """传统模式：直接选择CSV文件进行分析"""
+    """传统模式：直接选择CSV文件进行分析 / Traditional Mode: Analyze CSV Files Directly"""
     print("\n📁 传统模式：选择现有CSV文件")
+    print("📁 Traditional Mode: Select Existing CSV Files")
     print("=" * 40)
     
     import os
