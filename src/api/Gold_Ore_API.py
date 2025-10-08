@@ -23,7 +23,7 @@ class DarkerMarketAPI:
         self.page = 1
         self.limit = 50
         self.order = "desc"
-        self.from_time = "30 days ago"
+        self.from_time = "2025-10-05"
         self.csv_filename = f"{self.item.replace(' ', '_').lower()}.csv"
         self.total_inserted = 0  # Track total inserted data
         self.no_new_data_count = 0  # 连续没有新数据的次数
