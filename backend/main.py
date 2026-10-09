@@ -33,6 +33,7 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
         app.state.repo = repo or make_repository(settings)
         _attach_services(app)
         yield
+        app.state.scheduler.stop()
         app.state.jobs.shutdown()
 
     app = FastAPI(title="Darker Market", lifespan=lifespan)
@@ -55,7 +56,7 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
         return ok({
             "source": st.repo.source_name(),
             "python": settings.python_executable,
-            "items": [i.__dict__ for i in st.repo.list_items()],
+            "items": [i.__dict__ for i in st.item_stats.get()],
             "jobs_running": [j.to_dict() for j in st.jobs.active()],
             "scheduler_running": st.scheduler.running(),
         })
@@ -75,6 +76,21 @@ def _attach_services(app: FastAPI) -> None:
     st.runs = RunStore(st.settings.runs_dir)
     st.jobs = JobManager()
     st.scheduler = SchedulerController(st.settings, st.jobs)
+    st.item_stats = _TtlCache(lambda: st.repo.list_items(), ttl=60.0)
+
+
+class _TtlCache:
+    """list_items() scans every table; /status is polled every few seconds."""
+
+    def __init__(self, fn, ttl: float):
+        self._fn, self._ttl, self._at, self._value = fn, ttl, 0.0, None
+
+    def get(self):
+        import time
+        now = time.monotonic()
+        if self._value is None or now - self._at > self._ttl:
+            self._value, self._at = self._fn(), now
+        return self._value
 
 
 def _include_routers(app: FastAPI) -> None:
@@ -93,7 +109,8 @@ def _mount_frontend(app: FastAPI, settings: Settings) -> None:
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):
-        candidate = dist / path
-        if path and candidate.is_file():
+        root = dist.resolve()
+        candidate = (root / path).resolve()
+        if path and root in candidate.parents and candidate.is_file():
             return FileResponse(candidate)
-        return FileResponse(dist / "index.html")
+        return FileResponse(root / "index.html")

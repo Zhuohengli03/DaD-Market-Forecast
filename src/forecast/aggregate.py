@@ -72,6 +72,7 @@ def prepare_target(series: pd.DataFrame, max_gap_hours: int = 6) -> tuple[pd.Dat
         )
         s = s.iloc[last_gap_end + 1:]
     s = s.loc[s["median_price"].first_valid_index():]
+    s["observed"] = s["median_price"].notna()
     for c in ("median_price", "min_price", "max_price", "p25", "p75"):
         if c in s.columns:
             s[c] = s[c].ffill()

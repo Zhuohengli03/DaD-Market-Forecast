@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     db_connect_timeout: int = 3
     project_root: Path = Field(default=DEFAULT_ROOT)
     port: int = 5001
+    host: str = "127.0.0.1"  # single-user local app; set HOST=0.0.0.0 to expose on the LAN
     runs_dir: Path | None = None
     seasons_path: Path | None = None
     items_config_path: Path | None = None

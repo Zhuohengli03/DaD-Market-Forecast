@@ -17,7 +17,7 @@ def fail(error: str, meta: dict | None = None) -> dict:
 
 class SeasonIn(BaseModel):
     name: str = Field(min_length=1, max_length=64)
-    start: str
+    start: str = Field(min_length=1)
     end: str | None = None
     note: str = ""
 

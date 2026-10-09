@@ -35,6 +35,17 @@ def _to_float(v) -> float:
     return float(v)
 
 
+def canonical_ts(value) -> str:
+    """UTC second precision with Z, the format v1 stored, so dedupe keys stay stable across API versions."""
+    from datetime import datetime, timezone
+    if isinstance(value, (int, float)):
+        dt = datetime.fromtimestamp(value, tz=timezone.utc)
+    else:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        dt = dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def normalize_listing(row: dict, fallback_item_name: str) -> dict:
     """Map a v2 market row onto the legacy DB record shape used by DarkerMarketDB."""
     item = row.get("item")
@@ -56,7 +67,7 @@ def normalize_listing(row: dict, fallback_item_name: str) -> dict:
         "price_per_unit": price_per_unit,
         "price": price,
         "has_sold": bool(has_sold),
-        "created_at": row["created_at"],
+        "created_at": canonical_ts(row["created_at"]),
     }
 
 
