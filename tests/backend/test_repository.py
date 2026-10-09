@@ -54,3 +54,56 @@ def test_make_repository_falls_back_to_csv(project_root, monkeypatch):
     logs = []
     repo = make_repository(s, log=logs.append)
     assert repo.source_name() == "csv" and any("refused" in l for l in logs)
+
+
+class _FakeCursor:
+    def __init__(self, rows):
+        self.rows = rows
+        self.executed = []
+        self.description = [("item_id",), ("item",), ("quantity",), ("price_per_unit",), ("price",),
+                            ("has_sold",), ("created_at",)]
+
+    def execute(self, sql, params=None):
+        self.executed.append((sql, params))
+
+    def fetchall(self):
+        return self.rows
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _FakeConn:
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def cursor(self, **kw):
+        return self._cursor
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def test_postgres_where_casts_varchar_created_at():
+    from backend.data.postgres_repo import PostgresListingRepository
+    where, params = PostgresListingRepository._where(pd.Timestamp("2026-01-01T00:00:00Z"), None, sold=True)
+    assert "created_at::timestamptz >= %s" in where and "has_sold = %s" in where
+    assert len(params) == 2
+
+
+def test_postgres_fetch_all_without_sqlalchemy(project_root, monkeypatch):
+    from backend.data.postgres_repo import PostgresListingRepository
+    s = Settings(project_root=project_root, db_user="u", db_password="p")
+    repo = PostgresListingRepository(s)
+    cur = _FakeCursor([("1", "Gold Ore", 6, 20.0, 120.0, True, "2026-01-29T12:32:27Z")])
+    monkeypatch.setattr(repo, "_conn", lambda: _FakeConn(cur))
+    df = repo.fetch_all("Gold Ore", pd.Timestamp("2026-01-01T00:00:00Z"), None)
+    assert list(df.columns) == ["item_id", "item", "quantity", "price_per_unit", "price", "has_sold", "created_at"]
+    assert str(df["created_at"].dt.tz) == "UTC" and len(df) == 1
+    assert "ORDER BY created_at::timestamptz" in cur.executed[-1][0]

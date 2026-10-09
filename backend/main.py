@@ -22,18 +22,6 @@ def _format_validation(exc: RequestValidationError) -> str:
     return "; ".join(parts) or "invalid request"
 
 
-class _NoJobs:  # placeholder until services/jobs.py exists (removed in Task 9)
-    def active(self):
-        return []
-
-    def shutdown(self):
-        pass
-
-
-class _NoScheduler:  # placeholder until services/scheduler_ctl.py exists (removed in Task 9)
-    def running(self):
-        return False
-
 
 def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
     settings = settings or Settings()
@@ -78,35 +66,20 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
 
 
 def _attach_services(app: FastAPI) -> None:
+    from .data.seasons import SeasonStore
+    from .services.forecast_runs import RunStore
+    from .services.jobs import JobManager
+    from .services.scheduler_ctl import SchedulerController
     st = app.state
-    try:
-        from .data.seasons import SeasonStore
-        st.seasons = SeasonStore(st.settings.seasons_path)
-    except ImportError:
-        st.seasons = None
-    try:
-        from .services.forecast_runs import RunStore
-        st.runs = RunStore(st.settings.runs_dir)
-    except ImportError:
-        st.runs = None
-    try:
-        from .services.jobs import JobManager
-        st.jobs = JobManager()
-    except ImportError:
-        st.jobs = _NoJobs()
-    try:
-        from .services.scheduler_ctl import SchedulerController
-        st.scheduler = SchedulerController(st.settings, st.jobs)
-    except ImportError:
-        st.scheduler = _NoScheduler()
+    st.seasons = SeasonStore(st.settings.seasons_path)
+    st.runs = RunStore(st.settings.runs_dir)
+    st.jobs = JobManager()
+    st.scheduler = SchedulerController(st.settings, st.jobs)
 
 
 def _include_routers(app: FastAPI) -> None:
     for name in ROUTER_MODULES:
-        try:
-            module = importlib.import_module(f".api.{name}", __package__)
-        except ImportError:
-            continue
+        module = importlib.import_module(f".api.{name}", __package__)
         app.include_router(module.router, prefix="/api")
 
 
