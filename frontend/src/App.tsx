@@ -5,6 +5,7 @@ import { Shell } from './components/layout/Shell'
 import { ToastProvider } from './components/ui/Toast'
 import Dashboard from './pages/Dashboard'
 import Market from './pages/Market'
+import Forecast from './pages/Forecast'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 10_000 } } })
 
@@ -17,6 +18,7 @@ export default function App() {
             <Route element={<Shell />}>
               <Route index element={<Dashboard />} />
               <Route path="/market" element={<Market />} />
+              <Route path="/forecast" element={<Forecast />} />
             </Route>
           </Routes>
         </BrowserRouter>
