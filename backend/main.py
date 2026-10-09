@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from .schemas import fail, ok
 from .settings import Settings
 
-ROUTER_MODULES = ("items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config")
+ROUTER_MODULES = ("setup", "catalog", "items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config")
 
 
 def _format_validation(exc: RequestValidationError) -> str:
@@ -29,6 +29,7 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         from .data.repository import make_repository
+        settings.bootstrap()
         app.state.settings = settings
         app.state.repo = repo or make_repository(settings)
         _attach_services(app)
@@ -67,12 +68,18 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
 
 
 def _attach_services(app: FastAPI) -> None:
+    from .api.setup import default_key_validator
+    from .data.catalog import CatalogStore
+    from .data.items import ItemsStore
     from .data.seasons import SeasonStore
     from .services.forecast_runs import RunStore
     from .services.jobs import JobManager
     from .services.scheduler_ctl import SchedulerController
     st = app.state
     st.seasons = SeasonStore(st.settings.seasons_path)
+    st.items = ItemsStore(st.settings.items_config_path)
+    st.catalog = CatalogStore(st.settings.catalog_path)
+    st.key_validator = default_key_validator
     st.runs = RunStore(st.settings.runs_dir)
     st.jobs = JobManager()
     st.scheduler = SchedulerController(st.settings, st.jobs)
@@ -91,6 +98,9 @@ class _TtlCache:
         if self._value is None or now - self._at > self._ttl:
             self._value, self._at = self._fn(), now
         return self._value
+
+    def invalidate(self) -> None:
+        self._value = None
 
 
 def _include_routers(app: FastAPI) -> None:

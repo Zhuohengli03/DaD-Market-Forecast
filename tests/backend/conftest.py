@@ -32,7 +32,7 @@ def project_root(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def settings(project_root: Path) -> Settings:
-    return Settings(project_root=project_root, db_user="", db_password="")
+    return Settings(project_root=project_root, db_user="", db_password="", darker_market_api_key="", _env_file=None)
 
 
 @pytest.fixture

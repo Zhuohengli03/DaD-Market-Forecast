@@ -36,8 +36,9 @@ class RunTaskIn(BaseModel):
 
 class ItemConfigEntry(BaseModel):
     name: str = Field(pattern=ITEM_NAME_RE)
-    file: str = Field(pattern=r"^[A-Za-z0-9_]+\.py$")
-    csv: str = Field(pattern=r"^[A-Za-z0-9_]+\.csv$")
+    item_id: str | None = Field(default=None, pattern=r"^id\.item\.[A-Za-z0-9_]+$")
+    file: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_]+\.py$")
+    csv: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_]+\.csv$")
     category: str = "ore"
     description: str = ""
     enabled: bool = True

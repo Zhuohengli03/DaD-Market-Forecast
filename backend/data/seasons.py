@@ -8,6 +8,7 @@ import pandas as pd
 
 from src.forecast.pipeline import Season
 from ..schemas import SeasonIn
+from ..services.envfile import atomic_write
 
 
 class SeasonError(ValueError):
@@ -39,7 +40,7 @@ class SeasonStore:
         return json.loads(self._path.read_text(encoding="utf-8")).get("seasons", [])
 
     def _write(self, seasons: list[dict]) -> None:
-        self._path.write_text(json.dumps({"seasons": seasons}, ensure_ascii=False, indent=2), encoding="utf-8")
+        atomic_write(self._path, json.dumps({"seasons": seasons}, ensure_ascii=False, indent=2))
 
     def list(self) -> list[dict]:
         return sorted(self._read(), key=lambda s: s["start"])

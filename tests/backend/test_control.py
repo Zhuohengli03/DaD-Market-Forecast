@@ -56,6 +56,6 @@ def test_items_config_roundtrip(client, project_root):
     cfg = client.get("/api/config/items").json()["data"]
     cfg["items"][0]["description"] = "changed"
     assert client.put("/api/config/items", json=cfg).status_code == 200
-    assert json.loads((project_root / "items_config.json").read_text())["items"][0]["description"] == "changed"
+    assert json.loads((project_root / "data" / "items.json").read_text())["items"][0]["description"] == "changed"
     bad = {**cfg, "items": cfg["items"] + [cfg["items"][0]]}
     assert client.put("/api/config/items", json=bad).status_code == 422
