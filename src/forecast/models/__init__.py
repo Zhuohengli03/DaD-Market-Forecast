@@ -4,10 +4,17 @@ from typing import Callable
 
 from .base import Forecaster
 from .baselines import NaiveForecaster, SeasonalNaiveForecaster
+from .ml import make_hgb, make_rf, make_ridge
+from .statistical import ARIMAForecaster, ETSForecaster
 
 MODEL_FACTORIES: dict[str, Callable[[], Forecaster]] = {
     "naive": NaiveForecaster,
     "seasonal_naive_24": SeasonalNaiveForecaster,
+    "ets": ETSForecaster,
+    "arima": ARIMAForecaster,
+    "ridge": make_ridge,
+    "hgb": make_hgb,
+    "rf": make_rf,
 }
 BASELINE_MODELS: tuple[str, ...] = ("naive", "seasonal_naive_24")
 
