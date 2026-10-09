@@ -10,6 +10,7 @@ from ..settings import Settings
 from .repository import ItemInfo, ListingQuery, table_name
 
 _COLS = "item_id, item, quantity, price_per_unit, price, has_sold, created_at"
+_TS = "created_at::timestamptz"  # legacy tables store created_at as VARCHAR ISO strings
 
 
 class PostgresListingRepository:
@@ -44,7 +45,7 @@ class PostgresListingRepository:
                 if cur.fetchone()[0] is None:
                     out.append(ItemInfo(name, 0, None, None))
                     continue
-                cur.execute(f"SELECT COUNT(*), MIN(created_at), MAX(created_at) FROM {tbl}")
+                cur.execute(f"SELECT COUNT(*), MIN({_TS}), MAX({_TS}) FROM {tbl}")
                 n, lo, hi = cur.fetchone()
                 out.append(ItemInfo(name, int(n),
                                     pd.Timestamp(lo, tz="UTC").isoformat() if lo else None,
@@ -55,9 +56,9 @@ class PostgresListingRepository:
     def _where(start, end, sold=None, min_qty=None, max_qty=None) -> tuple[str, list]:
         clauses, params = [], []
         if start is not None:
-            clauses.append("created_at >= %s"); params.append(start.to_pydatetime())
+            clauses.append(f"{_TS} >= %s"); params.append(start.to_pydatetime())
         if end is not None:
-            clauses.append("created_at < %s"); params.append(end.to_pydatetime())
+            clauses.append(f"{_TS} < %s"); params.append(end.to_pydatetime())
         if sold is not None:
             clauses.append("has_sold = %s"); params.append(sold)
         if min_qty is not None:
@@ -72,7 +73,7 @@ class PostgresListingRepository:
         with self._conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(f"SELECT COUNT(*) AS n FROM {tbl}{where}", params)
             total = int(cur.fetchone()["n"])
-            cur.execute(f"SELECT {_COLS} FROM {tbl}{where} ORDER BY created_at DESC LIMIT %s OFFSET %s",
+            cur.execute(f"SELECT {_COLS} FROM {tbl}{where} ORDER BY {_TS} DESC LIMIT %s OFFSET %s",
                         params + [q.page_size, (q.page - 1) * q.page_size])
             rows = []
             for r in cur.fetchall():
@@ -85,7 +86,10 @@ class PostgresListingRepository:
     def fetch_all(self, item: str, start, end) -> pd.DataFrame:
         tbl = table_name(item)
         where, params = self._where(start, end)
-        with self._conn() as c:
-            df = pd.read_sql(f"SELECT {_COLS} FROM {tbl}{where} ORDER BY created_at", c, params=params)
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(f"SELECT {_COLS} FROM {tbl}{where} ORDER BY {_TS}", params)
+            rows = cur.fetchall()
+        df = pd.DataFrame(rows, columns=[d[0] for d in cur.description]) if rows else \
+            pd.DataFrame(columns=_COLS.split(", "))
         df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
         return df

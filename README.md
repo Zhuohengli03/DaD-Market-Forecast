@@ -161,22 +161,20 @@ python src/api/Gold_Ore_API.py
 python src/scheduler/start_scheduler.py --start
 ```
 
-### Web Console / Web 控制台（可视化操作）
+### Web App / 网页应用
 
-所有 CLI 操作均可通过浏览器完成：
+Backend (FastAPI) + frontend (React). Use the anaconda interpreter, it is the only one with the ML deps.
+后端 FastAPI，前端 React。请用 anaconda 解释器，只有它装了机器学习依赖。
 
 ```bash
-# 启动 Web 服务
-python app.py
+/opt/anaconda3/bin/python -m pip install -r requirements.txt
+/opt/anaconda3/bin/python -m backend          # API on http://localhost:5001 ; serves frontend/dist if built
+cd frontend && npm install && npm run dev     # dev UI on http://localhost:5173 (proxies /api)
 ```
 
-在浏览器打开 **http://localhost:5001** 即可使用（默认 5001 端口，避免与 macOS AirPlay 冲突；可通过环境变量 `PORT` 修改）：
-
-- **概览**：查看调度器/收集/分析状态与数据文件列表
-- **数据收集**：选择物品（铁矿、金矿等）一键运行 API 收集
-- **调度器**：启动/停止定时任务，查看任务列表，立即运行指定任务
-- **分析**：选择 CSV 文件与预测天数，运行机器学习分析并查看结果
-- **物品配置**：编辑并保存 `items_config.json`
+Data source: Postgres from `.env`; falls back to the CSV exports in the project root when the database is unreachable.
+Seasons (wipes) are configured in `seasons.json` or on the Settings page. Forecast runs are stored under `runs/`.
+数据源优先 Postgres（`.env`），连不上时退回项目根目录的 CSV。赛季在 `seasons.json` 或设置页配置，预测结果存放在 `runs/`。
 
 ## 🔧 Configuration / 配置
 
