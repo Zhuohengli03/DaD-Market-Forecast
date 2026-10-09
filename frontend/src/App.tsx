@@ -6,6 +6,9 @@ import { ToastProvider } from './components/ui/Toast'
 import Dashboard from './pages/Dashboard'
 import Market from './pages/Market'
 import Forecast from './pages/Forecast'
+import Collect from './pages/Collect'
+import Scheduler from './pages/Scheduler'
+import Settings from './pages/Settings'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 10_000 } } })
 
@@ -19,6 +22,9 @@ export default function App() {
               <Route index element={<Dashboard />} />
               <Route path="/market" element={<Market />} />
               <Route path="/forecast" element={<Forecast />} />
+              <Route path="/collect" element={<Collect />} />
+              <Route path="/scheduler" element={<Scheduler />} />
+              <Route path="/settings" element={<Settings />} />
             </Route>
           </Routes>
         </BrowserRouter>
