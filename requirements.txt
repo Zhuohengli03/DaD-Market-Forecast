@@ -9,8 +9,6 @@ psycopg2-binary>=2.9.0
 
 # Time Series Analysis / 时间序列分析
 statsmodels>=0.13.0
-matplotlib>=3.5.0
-seaborn>=0.11.0
 
 # Machine Learning / 机器学习
 scikit-learn>=1.1.0
@@ -20,6 +18,10 @@ schedule>=1.2.0
 
 # Data Processing / 数据处理
 scipy>=1.9.0
+
+# Web Console / Web 控制台
+flask>=2.3.0
+flask-cors>=4.0.0
 
 # Optional: Jupyter for analysis / 可选：用于分析的Jupyter
 # jupyter>=1.0.0

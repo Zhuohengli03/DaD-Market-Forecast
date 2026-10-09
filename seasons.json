@@ -1,0 +1,5 @@
+{"seasons": [
+  {"id": "s1", "name": "Season 1", "start": "2025-10-01T00:00:00Z", "end": "2026-01-01T00:00:00Z", "note": ""},
+  {"id": "s2", "name": "Season 2", "start": "2026-01-01T00:00:00Z", "end": "2026-03-01T00:00:00Z", "note": ""},
+  {"id": "s3", "name": "Season 3", "start": "2026-03-01T00:00:00Z", "end": null, "note": ""}
+]}

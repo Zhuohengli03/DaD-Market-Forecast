@@ -34,21 +34,12 @@ A comprehensive data collection and analysis system for Darker Market API, featu
   - Single connection batch processing / 单连接批量处理
   - CSV export functionality / CSV导出功能
 
-### 🤖 Machine Learning Analysis / 机器学习分析
-- **Advanced Price Prediction** / **高级价格预测**
-  - Multiple algorithm ensemble (Random Forest, Gradient Boosting, Linear Models, SVR, MLP) / 多算法集成（随机森林、梯度提升、线性模型、SVR、MLP）
-  - LSTM deep learning for time series / LSTM深度学习时间序列
-  - ARIMA and Prophet time series models / ARIMA和Prophet时间序列模型
-  - Dynamic confidence intervals / 动态置信区间
-  - Feature engineering with lag features / 滞后特征工程
-  - Model stability testing / 模型稳定性测试
-
-### 📈 Time Series Analysis / 时间序列分析
-- **Multi-Method Forecasting** / **多方法预测**
-  - Ensemble prediction fusion / 集成预测融合
-  - Outlier detection and handling / 异常值检测和处理
-  - Trend analysis and visualization / 趋势分析和可视化
-  - Risk assessment and investment advice / 风险评估和投资建议
+### 🤖 Hourly Price Forecast / 小时级价格预测
+- Listings are aggregated to an hourly median; features use only past hours (no target leakage) / 挂单按小时聚合为中位价，特征只用过去的小时
+- Rolling-origin backtest against naive baselines; the UI reports whether the model beats "repeat last hour" / 滚动起点回测对比基线，界面直接告知是否优于"复读上一小时"
+- Prediction intervals from empirical backtest residual quantiles / 区间来自回测残差的经验分位数
+- Trains only inside the selected season; other seasons shown as reference curves / 只在所选赛季内训练，其他赛季作为参考曲线
+- CLI: `python -m src.forecast.cli --item "Iron Ore" --season s3 --horizon 72`
 
 ### ⏰ Task Scheduling / 任务调度
 - **Intelligent Scheduler** / **智能调度器**
@@ -77,8 +68,11 @@ Darker Market/
 │   │   ├── Database_connect.py       # Database connection / 数据库连接
 │   │   └── config.py                 # Configuration management / 配置管理
 │   │
-│   ├── analysis/                     # Analysis modules / 分析模块
-│   │   └── Machine_learning_analysis.py  # ML analysis system / 机器学习分析系统
+│   ├── forecast/                     # Hourly forecast pipeline / 小时级预测流水线
+│   │   ├── aggregate.py  features.py  backtest.py  intervals.py  select.py
+│   │   ├── models/                   # naive, seasonal naive, ETS, ARIMA, ridge, hgb, rf
+│   │   ├── pipeline.py               # run_forecast()
+│   │   └── cli.py                    # python -m src.forecast.cli
 │   │
 │   └── scheduler/                    # Scheduling modules / 调度模块
 │       ├── core_scheduler.py         # Core scheduler engine / 核心调度引擎
@@ -132,18 +126,13 @@ DB_PASSWORD=your_password
 DARKER_MARKET_API_KEY=your_api_key
 ```
 
-### 3. Run Analysis System / 运行分析系统
+### 3. Run a Forecast / 运行预测
 
 ```bash
-# Start the ML analysis system / 启动机器学习分析系统
-python src/analysis/Machine_learning_analysis.py
+# Seasons (wipes) are defined in seasons.json; pick an item and a season id
+/opt/anaconda3/bin/python -m src.forecast.cli --item "Gold Ore" --season s2 --horizon 72 --out runs/gold.json
 ```
-
-**System Menu / 系统菜单:**
-1. 🚀 Smart Mode (Item Selection → Data Collection → Analysis) / 智能模式（物品选择→数据收集→分析）
-2. 📊 Traditional Mode (Analyze existing CSV files) / 传统模式（分析现有CSV文件）
-3. 🛠️ Item Configuration Management / 物品配置管理
-4. ❌ Exit / 退出
+The CLI prints the backtest table (MAE, MASE vs naive, direction accuracy), the selected model and whether it beats the baseline. The web app (below) shows the same with charts.
 
 ### 4. Item Management / 物品管理
 
@@ -157,13 +146,9 @@ The system automatically discovers API files and allows easy addition of new ite
 
 ## 📊 Usage Examples / 使用示例
 
-### Smart Mode Analysis / 智能模式分析
+### Forecast from CSV / 从 CSV 预测
 ```bash
-python src/analysis/Machine_learning_analysis.py
-# Select 1 for Smart Mode
-# Choose item (Gold Ore, Iron Ore, Cobalt Ore)
-# Choose whether to fetch new data
-# Automatic analysis with predictions
+/opt/anaconda3/bin/python -m src.forecast.cli --item "Iron Ore" --season s3 --horizon 48 --models ridge,hgb
 ```
 
 ### Direct API Collection / 直接API收集
@@ -175,6 +160,23 @@ python src/api/Gold_Ore_API.py
 ```bash
 python src/scheduler/start_scheduler.py --start
 ```
+
+### Web Console / Web 控制台（可视化操作）
+
+所有 CLI 操作均可通过浏览器完成：
+
+```bash
+# 启动 Web 服务
+python app.py
+```
+
+在浏览器打开 **http://localhost:5001** 即可使用（默认 5001 端口，避免与 macOS AirPlay 冲突；可通过环境变量 `PORT` 修改）：
+
+- **概览**：查看调度器/收集/分析状态与数据文件列表
+- **数据收集**：选择物品（铁矿、金矿等）一键运行 API 收集
+- **调度器**：启动/停止定时任务，查看任务列表，立即运行指定任务
+- **分析**：选择 CSV 文件与预测天数，运行机器学习分析并查看结果
+- **物品配置**：编辑并保存 `items_config.json`
 
 ## 🔧 Configuration / 配置
 
