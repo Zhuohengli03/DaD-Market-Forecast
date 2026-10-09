@@ -107,3 +107,23 @@ def test_postgres_fetch_all_without_sqlalchemy(project_root, monkeypatch):
     assert list(df.columns) == ["item_id", "item", "quantity", "price_per_unit", "price", "has_sold", "created_at"]
     assert str(df["created_at"].dt.tz) == "UTC" and len(df) == 1
     assert "ORDER BY created_at::timestamptz" in cur.executed[-1][0]
+
+
+def test_postgres_list_items_accepts_tz_aware_datetimes(project_root, monkeypatch):
+    from datetime import datetime, timezone
+    from backend.data.postgres_repo import PostgresListingRepository
+
+    class _Cur(_FakeCursor):
+        def __init__(self):
+            super().__init__([])
+            self._answers = [("test_ore",), (5, datetime(2026, 1, 20, tzinfo=timezone.utc), datetime(2026, 1, 29, 12, tzinfo=timezone.utc))]
+
+        def fetchone(self):
+            return self._answers.pop(0)
+
+    s = Settings(project_root=project_root, db_user="u", db_password="p")
+    repo = PostgresListingRepository(s)
+    monkeypatch.setattr(repo, "_conn", lambda: _FakeConn(_Cur()))
+    items = repo.list_items()
+    assert items[0].rows == 5 and items[0].first_ts == "2026-01-20T00:00:00+00:00"
+    assert items[0].last_ts == "2026-01-29T12:00:00+00:00"

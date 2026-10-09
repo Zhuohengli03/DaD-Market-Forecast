@@ -13,6 +13,15 @@ _COLS = "item_id, item, quantity, price_per_unit, price, has_sold, created_at"
 _TS = "created_at::timestamptz"  # legacy tables store created_at as VARCHAR ISO strings
 
 
+def _utc_iso(value) -> str | None:
+    """ISO string for a VARCHAR, naive or tz-aware timestamp coming back from Postgres."""
+    if value is None:
+        return None
+    t = pd.Timestamp(value)
+    t = t.tz_convert("UTC") if t.tzinfo else t.tz_localize("UTC")
+    return t.isoformat()
+
+
 class PostgresListingRepository:
     def __init__(self, settings: Settings):
         self._dsn = dict(host=settings.db_host, dbname=settings.db_database, user=settings.db_user,
@@ -47,9 +56,7 @@ class PostgresListingRepository:
                     continue
                 cur.execute(f"SELECT COUNT(*), MIN({_TS}), MAX({_TS}) FROM {tbl}")
                 n, lo, hi = cur.fetchone()
-                out.append(ItemInfo(name, int(n),
-                                    pd.Timestamp(lo, tz="UTC").isoformat() if lo else None,
-                                    pd.Timestamp(hi, tz="UTC").isoformat() if hi else None))
+                out.append(ItemInfo(name, int(n), _utc_iso(lo), _utc_iso(hi)))
         return out
 
     @staticmethod
@@ -79,7 +86,7 @@ class PostgresListingRepository:
             for r in cur.fetchall():
                 r = dict(r)
                 r["item_id"] = str(r["item_id"])
-                r["created_at"] = pd.Timestamp(r["created_at"], tz="UTC").isoformat()
+                r["created_at"] = _utc_iso(r["created_at"])
                 rows.append(r)
         return rows, total
 
