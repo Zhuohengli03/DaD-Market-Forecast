@@ -5,7 +5,7 @@ import type { Season, SeasonInput } from '../../api/types'
 import { Button } from '../../components/ui/Button'
 import { Field, inputCls } from '../../components/ui/Field'
 import { useToast } from '../../components/ui/Toast'
-import { fmtTs } from '../../lib/format'
+import { fmtTsUtc } from '../../lib/format'
 
 const toInput = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : '')
 const fromInput = (v: string) => (v ? new Date(v + 'Z').toISOString() : null)
@@ -37,7 +37,7 @@ export function SeasonEditor() {
     <div className="space-y-4">
       <table className="w-full text-sm"><thead className="text-left text-[var(--muted)]"><tr><th className="py-1">{t('settings.seasonName')}</th><th>{t('common.start')}</th><th>{t('common.end')}</th><th>{t('settings.note')}</th><th></th></tr></thead>
         <tbody>{(seasons.data ?? []).map(s => (
-          <tr key={s.id} className="border-t border-[var(--line)]"><td className="py-1.5 font-medium">{s.name}</td><td>{fmtTs(s.start)}</td><td>{s.end ? fmtTs(s.end) : '—'}</td><td className="text-[var(--muted)]">{s.note}</td>
+          <tr key={s.id} className="border-t border-[var(--line)]"><td className="py-1.5 font-medium">{s.name}</td><td>{fmtTsUtc(s.start)}</td><td>{s.end ? fmtTsUtc(s.end) : '—'}</td><td className="text-[var(--muted)]">{s.note}</td>
             <td className="text-right space-x-2"><Button size="sm" variant="ghost" onClick={() => { setEditing(s); setError(null) }}>✎</Button><Button size="sm" variant="danger" onClick={() => m.remove.mutate(s.id, { onSuccess: okay, onError: fail })}>{t('common.delete')}</Button></td></tr>))}</tbody></table>
       {editing
         ? <SeasonForm key={editing.id} initial={editing} pending={m.update.isPending} error={error} submitLabel={t('common.save')} onCancel={() => setEditing(null)} onSubmit={s => m.update.mutate({ id: editing.id, ...s }, { onSuccess: okay, onError: fail })} />

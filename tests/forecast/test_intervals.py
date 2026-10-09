@@ -33,3 +33,9 @@ def test_empirical_coverage_near_nominal():
     resid = rng.normal(0, 1, (300, 4))
     cov = empirical_coverage(resid, 0.9)
     assert 0.85 < cov < 0.95
+
+
+def test_apply_bounds_floor_clamps_negative_prices():
+    preds = np.array([1.0, 0.5])
+    lower, upper = apply_bounds(preds, np.array([-3.0, -3.0]), np.array([2.0, -1.0]), floor=0.0)
+    assert np.allclose(lower, [0.0, 0.0]) and np.allclose(upper, [3.0, 0.0])

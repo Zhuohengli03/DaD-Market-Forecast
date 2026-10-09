@@ -36,12 +36,17 @@ def quantile_bounds(resid: np.ndarray, coverage: float, min_samples: int = 10) -
     return lo, hi
 
 
-def apply_bounds(preds: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def apply_bounds(preds: np.ndarray, lo: np.ndarray, hi: np.ndarray,
+                 floor: float | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Add per-horizon offsets to point forecasts; `floor` clamps both bounds (prices are >= 0)."""
     n = len(preds)
     if len(lo) < n:
         lo = np.concatenate([lo, np.full(n - len(lo), lo[-1])])
         hi = np.concatenate([hi, np.full(n - len(hi), hi[-1])])
-    return preds + lo[:n], preds + hi[:n]
+    lower, upper = preds + lo[:n], preds + hi[:n]
+    if floor is not None:
+        lower, upper = np.maximum(lower, floor), np.maximum(upper, floor)
+    return lower, upper
 
 
 def empirical_coverage(resid: np.ndarray, coverage: float, min_samples: int = 10) -> float:
