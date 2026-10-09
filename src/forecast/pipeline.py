@@ -20,6 +20,7 @@ MIN_HOURS = 72
 HORIZON_RANGE = (24, 168)
 COVERAGE_RANGE = (0.5, 0.99)
 TAIL_HOURS = 168
+PRICE_FLOOR = 0.0
 
 ListingLoader = Callable[[str, pd.Timestamp, "pd.Timestamp | None"], pd.DataFrame]
 Logger = Callable[[str], None]
@@ -114,7 +115,8 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     point, importance = _fit_selected(selection, series, season.start, request.horizon_hours)
     resid = result.actuals - selection.predictions
     lo, hi = quantile_bounds(resid, request.coverage)
-    lower, upper = apply_bounds(point, lo, hi)
+    point = np.maximum(point, PRICE_FLOOR)
+    lower, upper = apply_bounds(point, lo, hi, floor=PRICE_FLOOR)
     coverage = empirical_coverage(resid, request.coverage)
     if request.horizon_hours > result.horizon:
         warnings.append(f"intervals beyond h={result.horizon} reuse the last backtested width")

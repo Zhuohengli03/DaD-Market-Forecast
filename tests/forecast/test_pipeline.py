@@ -77,3 +77,8 @@ def test_invalid_requests(frames, bad):
     kwargs.update(bad)
     with pytest.raises(InvalidRequestError):
         run_forecast(ForecastRequest(**kwargs), _loader(frames), [S1, S2])
+
+
+def test_forecast_bounds_never_negative(frames):
+    out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, S2])
+    assert all(f["lower"] >= 0 and f["upper"] >= f["lower"] for f in out["forecast"])

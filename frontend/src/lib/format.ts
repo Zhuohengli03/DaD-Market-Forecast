@@ -31,3 +31,9 @@ export function download(filename: string, text: string) {
   a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' }))
   a.download = filename; a.click(); URL.revokeObjectURL(a.href)
 }
+export function fmtTsUtc(iso: string | null | undefined): string {
+  if (!iso) return '–'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toISOString().slice(0, 16).replace('T', ' ') + 'Z'
+}
