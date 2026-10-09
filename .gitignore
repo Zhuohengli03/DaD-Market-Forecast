@@ -34,3 +34,5 @@ secrets.py
 # 系统文件 / System files
 .DS_Store
 Thumbs.db
+# forecast run outputs
+runs/
