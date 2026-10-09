@@ -52,6 +52,8 @@ class SeasonStore:
 
     def _validate(self, data: SeasonIn, others: list[dict]) -> dict:
         start, end = _ts(data.start), _ts(data.end)
+        if start is None:
+            raise SeasonError("start is required")
         if end is not None and end <= start:
             raise SeasonError("end must be after start")
         for o in others:

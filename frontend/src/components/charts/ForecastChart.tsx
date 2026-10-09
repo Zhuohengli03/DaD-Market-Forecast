@@ -2,6 +2,17 @@ import ReactECharts from 'echarts-for-react'
 import type { Actual, ForecastRun } from '../../api/types'
 import { fmtTs } from '../../lib/format'
 
+const REF_COLORS = ['#d97706', '#7c3aed', '#db2777']
+
+/** Other seasons at their raw hourly medians, aligned by hours since season start (spec §6.7). */
+export function referenceSeries(run: ForecastRun) {
+  const nH = run.series_tail.length
+  return run.references.map((r, i) => {
+    const byH = new Map(r.points.map(p => [p.h, p.median_price]))
+    return { name: `ref: ${r.name}`, type: 'line', data: [...Array(nH).fill(null), ...run.forecast.map(f => byH.get(f.h) ?? null)], symbol: 'none', lineStyle: { color: REF_COLORS[i % REF_COLORS.length], width: 1, type: 'dotted' } }
+  })
+}
+
 export function ForecastChart({ run, showRefs, actuals }: { run: ForecastRun; showRefs: boolean; actuals?: Actual[] }) {
   const histX = run.series_tail.map(p => p.ts)
   const fcX = run.forecast.map(p => p.ts)
@@ -17,15 +28,7 @@ export function ForecastChart({ run, showRefs, actuals }: { run: ForecastRun; sh
     { name: 'forecast', type: 'line', data: pad(run.forecast.map(p => p.pred), nH, 0), symbol: 'none', lineStyle: { color: '#2563eb', width: 2, type: 'dashed' } },
   ]
   if (actualMap.size) series.push({ name: 'actual', type: 'line', data: pad(fcX.map(ts => actualMap.get(ts) ?? null), nH, 0), symbol: 'circle', symbolSize: 4, lineStyle: { color: '#16a34a', width: 1.5 } })
-  if (showRefs) {
-    const lastHist = run.series_tail.at(-1)?.median_price ?? null
-    run.references.forEach((r, i) => {
-      const first = r.points[0]?.median_price ?? 1
-      const scale = lastHist && first ? lastHist / first : 1   // align level to current price
-      const byH = new Map(r.points.map(p => [p.h, p.median_price * scale]))
-      series.push({ name: `ref: ${r.name}`, type: 'line', data: pad(run.forecast.map(f => byH.get(f.h) ?? null), nH, 0), symbol: 'none', lineStyle: { color: ['#d97706', '#7c3aed', '#db2777'][i % 3], width: 1, type: 'dotted' } })
-    })
-  }
+  if (showRefs) series.push(...referenceSeries(run))
   const option = { animation: false, tooltip: { trigger: 'axis', valueFormatter: (v: number) => (v == null ? '–' : Number(v).toFixed(2)) }, legend: { top: 0 }, grid: { left: 56, right: 24, top: 36, bottom: 60 },
     xAxis: { type: 'category', data: x, axisLabel: { formatter: (v: string) => fmtTs(v) } }, yAxis: { type: 'value', scale: true },
     dataZoom: [{ type: 'inside' }, { type: 'slider', bottom: 4 }], series }

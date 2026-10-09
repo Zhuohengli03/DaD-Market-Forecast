@@ -60,3 +60,15 @@ def test_mae_h24_is_nan_when_horizon_shorter(synthetic_series, season_start):
     r = run_backtest(synthetic_series.iloc[:120], season_start, ["naive"], horizon=24)
     m = summarize(r)[0]
     assert np.isnan(m.mae_h24) or m.mae_h24 >= 0
+
+
+def test_filled_hours_are_not_scored(synthetic_series, season_start):
+    s = synthetic_series.copy()
+    observed = np.ones(len(s), dtype=bool)
+    observed[200:204] = False          # pretend these were forward-filled
+    r = run_backtest(s, season_start, ["naive"], horizon=24, observed=observed)
+    for i, o in enumerate(r.origins):
+        for j in range(r.horizon):
+            if not observed[o + j]:
+                assert np.isnan(r.actuals[i, j])
+    assert any("filled" in w for w in r.warnings)

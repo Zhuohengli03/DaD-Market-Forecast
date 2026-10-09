@@ -98,6 +98,9 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     listings = load_listings(request.item, season.start, season.end)
     full_series = hourly_series(listings)
     series, warnings = prepare_target(full_series)
+    filled = int((~series["observed"]).sum()) if "observed" in series.columns else 0
+    if filled:
+        warnings.append(f"{filled} gap hours forward-filled for model input (not scored)")
     if len(series) < MIN_HOURS:
         raise InsufficientDataError(
             f"need at least {MIN_HOURS} contiguous hours, have {len(series)} "

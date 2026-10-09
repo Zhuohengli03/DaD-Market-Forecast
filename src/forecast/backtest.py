@@ -50,10 +50,18 @@ class BacktestResult:
 
 def run_backtest(series: pd.DataFrame, season_start: pd.Timestamp, model_names: list[str] | tuple[str, ...],
                  horizon: int, origin_step: int = 6, min_origins: int = 5,
-                 log: Logger | None = None) -> BacktestResult:
+                 log: Logger | None = None, observed: np.ndarray | None = None) -> BacktestResult:
+    """`observed` marks hours with real listings; forward-filled hours are excluded from scoring."""
     y = series["median_price"].to_numpy(dtype=float)
+    if observed is None and "observed" in series.columns:
+        observed = series["observed"].to_numpy(dtype=bool)
     origins, h, warnings = plan_origins(len(series), horizon, origin_step, min_origins)
     actuals = np.stack([y[o:o + h] for o in origins])
+    if observed is not None:
+        mask = np.stack([~np.asarray(observed[o:o + h], dtype=bool) for o in origins])
+        if mask.any():
+            actuals = np.where(mask, np.nan, actuals)
+            warnings.append(f"{int(mask.sum())} forward-filled hour-steps excluded from backtest scoring")
     last_values = np.array([y[o - 1] for o in origins])
     predictions: dict[str, np.ndarray] = {}
     failures: dict[str, str] = {}
@@ -94,7 +102,8 @@ def summarize(result: BacktestResult) -> list[ModelMetrics]:
         mae = float(np.nanmean(np.abs(err)))
         rmse = float(np.sqrt(np.nanmean(err ** 2)))
         last = result.last_values[:, None]
-        direction = np.sign(pred - last) == np.sign(result.actuals - last)
+        scored = ~np.isnan(result.actuals)
+        direction = np.where(scored, np.sign(pred - last) == np.sign(result.actuals - last), np.nan)
         out.append(ModelMetrics(
             name=name,
             mae_h1=float(per_h[0]),

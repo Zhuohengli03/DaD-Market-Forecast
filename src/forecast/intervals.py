@@ -59,5 +59,6 @@ def empirical_coverage(resid: np.ndarray, coverage: float, min_samples: int = 10
         lo, hi = quantile_bounds(np.delete(resid, i, axis=0), coverage, min_samples)
         row = resid[i]
         ok = ~np.isnan(row)
-        hits.append(np.mean((row[ok] >= lo[ok]) & (row[ok] <= hi[ok])))
-    return float(np.mean(hits))
+        if ok.any():
+            hits.append(np.mean((row[ok] >= lo[ok]) & (row[ok] <= hi[ok])))
+    return float(np.mean(hits)) if hits else float("nan")

@@ -98,3 +98,9 @@ def test_normalize_listing_flat_and_nested():
 def test_normalize_listing_missing_fields_raise():
     with pytest.raises(KeyError):
         normalize_listing({"id": "1"}, "X")
+
+
+def test_normalize_listing_canonicalizes_created_at():
+    base = {"id": "1", "item": "Iron Ore", "quantity": 1, "price": 1, "price_per_unit": 1}
+    for raw in ("2026-04-04T14:17:24Z", "2026-04-04T14:17:24+00:00", "2026-04-04T14:17:24.123Z", 1775312244):
+        assert normalize_listing({**base, "created_at": raw}, "x")["created_at"] == "2026-04-04T14:17:24Z"

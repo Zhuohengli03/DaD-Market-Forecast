@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useActuals, useDeleteRun, useRun } from '../../api/hooks'
 import { ForecastChart } from '../../components/charts/ForecastChart'
@@ -6,6 +6,7 @@ import { HorizonErrorChart } from '../../components/charts/HorizonErrorChart'
 import { ImportanceChart } from '../../components/charts/ImportanceChart'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
+import { EmptyState } from '../../components/ui/EmptyState'
 import { useToast } from '../../components/ui/Toast'
 import { download, toCsv } from '../../lib/format'
 import { BacktestTable } from './BacktestTable'
@@ -19,6 +20,8 @@ export function RunResult({ runId, onDeleted }: { runId: string; onDeleted: () =
   const actuals = useActuals(runId, showActuals)
   const del = useDeleteRun()
   const toast = useToast()
+  useEffect(() => { if (run.isError) onDeleted() }, [run.isError, onDeleted])
+  if (run.isError) return <EmptyState title={t('forecast.runMissing')} hint={(run.error as Error | null)?.message} />
   if (run.isLoading || !run.data) return <p className="text-sm">{t('common.loading')}</p>
   const r = run.data
   const exportCsv = () => download(`${r.run_id}.csv`, toCsv(r.forecast.map(f => ({ ts: f.ts, h: f.h, pred: f.pred, lower: f.lower, upper: f.upper }))))

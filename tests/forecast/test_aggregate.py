@@ -80,3 +80,12 @@ def test_resample_4h_and_1d():
     assert resample_series(s, "1h").equals(s)
     with pytest.raises(ValueError):
         resample_series(s, "2h")
+
+
+def test_prepare_target_reports_observed_mask():
+    idx = pd.date_range("2026-01-01", periods=10, freq="h", tz="UTC", name="ts")
+    price = np.arange(10, dtype=float)
+    price[4:6] = np.nan
+    s = pd.DataFrame({"median_price": price, "volume": 1, "listings": 1}, index=idx)
+    out, _ = prepare_target(s)
+    assert list(out["observed"]) == [True] * 4 + [False] * 2 + [True] * 4

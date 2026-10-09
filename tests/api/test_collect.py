@@ -30,12 +30,12 @@ def test_collect_pages_dedups_and_stops_after_empty_streak():
 
 
 def test_collect_pages_normalizes_and_skips_bad_rows():
-    pages = [[{"id": "1", "item": {"name": "Iron Ore"}, "quantity": 2, "price": 10, "created_at": "t1"},
+    pages = [[{"id": "1", "item": {"name": "Iron Ore"}, "quantity": 2, "price": 10, "created_at": "2026-04-04T14:01:00Z"},
               {"id": "bad"}]]
     logs = []
     rows = collect_pages(_Client(pages), "x", "Iron Ore", since=None, seen=set(), max_pages=5, log=logs.append)
     assert rows == [{"id": "1", "item": "Iron Ore", "quantity": 2, "price_per_unit": 5.0, "price": 10.0,
-                     "has_sold": False, "created_at": "t1"}]
+                     "has_sold": False, "created_at": "2026-04-04T14:01:00Z"}]
     assert any("skipping" in l for l in logs)
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import queue
 import subprocess
 import threading
@@ -59,7 +60,9 @@ class JobManager:
         return self._jobs[job_id]
 
     def list(self) -> list[Job]:
-        return sorted(self._jobs.values(), key=lambda j: j.created_at, reverse=True)
+        with self._lock:
+            jobs = list(self._jobs.values())
+        return sorted(jobs, key=lambda j: j.created_at, reverse=True)
 
     def active(self) -> list[Job]:
         return [j for j in self.list() if j.status in ("queued", "running")]
@@ -76,8 +79,9 @@ class JobManager:
             q.put((event, data))
 
     def append_log(self, job: Job, line: str) -> None:
-        job._log.append(line)
-        self._publish(job, "log", line)
+        with self._lock:  # same lock as subscribe() so a replayed line is never also delivered live
+            job._log.append(line)
+            self._publish(job, "log", line)
 
     def _set_status(self, job: Job, status: str, error: str | None = None, result_ref: str | None = None) -> None:
         with self._lock:
@@ -143,8 +147,10 @@ class JobManager:
             self._set_status(job, "running")
             try:
                 proc = subprocess.Popen(argv, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                        text=True, encoding="utf-8", errors="replace", bufsize=1)
-                self._procs[job.id] = proc
+                                        text=True, encoding="utf-8", errors="replace", bufsize=1,
+                                        env={**os.environ, "PYTHONUNBUFFERED": "1"})
+                with self._lock:
+                    self._procs[job.id] = proc
                 for line in iter(proc.stdout.readline, ""):
                     self.append_log(job, line.rstrip("\n"))
                 code = proc.wait()
@@ -155,12 +161,18 @@ class JobManager:
             except Exception as exc:
                 self._set_status(job, "failed", error=f"{type(exc).__name__}: {exc}")
             finally:
-                self._procs.pop(job.id, None)
+                with self._lock:
+                    self._procs.pop(job.id, None)
         threading.Thread(target=target, daemon=True, name=f"job-{job.id}").start()
 
     def shutdown(self) -> None:
-        for proc in list(self._procs.values()):
+        with self._lock:
+            procs = list(self._procs.values())
+        for proc in procs:
             try:
                 proc.terminate()
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
             except Exception:
                 pass
