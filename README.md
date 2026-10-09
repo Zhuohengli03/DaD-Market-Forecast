@@ -151,10 +151,13 @@ The system automatically discovers API files and allows easy addition of new ite
 /opt/anaconda3/bin/python -m src.forecast.cli --item "Iron Ore" --season s3 --horizon 48 --models ridge,hgb
 ```
 
-### Direct API Collection / 直接API收集
+### Direct API Collection / 直接API收集 (DarkerDB v2)
 ```bash
-python src/api/Gold_Ore_API.py
+/opt/anaconda3/bin/python src/api/Gold_Ore_API.py            # wrapper around src/api/collect.py
+/opt/anaconda3/bin/python -m src.api.collect --item "Gold Ore" --probe   # show the first raw v2 row
 ```
+The v1 API was retired (HTTP 410). Collectors use `https://api.darkerdb.com/v2/market` with the `X-API-Key` header, `item_id` lookup via `/v2/items`, cursor pagination and a 60 requests/min throttle. Create a key with the `darkerdb.live` and `darkerdb.data` scopes at https://darkerdb.com/dashboard/api-keys and put it in `.env` as `DARKER_MARKET_API_KEY`.
+v1 接口已下线（410）。采集器改用 v2：`X-API-Key` 请求头、通过 `/v2/items` 查 `item_id`、游标分页、每分钟 60 次限流。请在 darkerdb 控制台创建带 `darkerdb.live` 和 `darkerdb.data` 权限的新 key 填入 `.env`。
 
 ### Scheduled Tasks / 定时任务
 ```bash

@@ -42,7 +42,7 @@ class Config:
     def get_api_headers(cls):
         """获取API请求头 / Get API headers"""
         return {
-            "Authorization": cls.DARKER_MARKET_API_KEY
+            "X-API-Key": cls.DARKER_MARKET_API_KEY
         }
     
     @classmethod
