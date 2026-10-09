@@ -14,11 +14,12 @@
 - **Smart deduplication**: Prevents data redundancy / 智能去重
 - **Auto-stop**: Stops when no new data found / 无新数据时自动停止
 
-### 2. Advanced Machine Learning / 高级机器学习
-- **Multi-model ensemble**: Random Forest, XGBoost, LSTM, ARIMA, Prophet / 多模型集成
-- **Dynamic confidence intervals**: Accurate uncertainty quantification / 动态置信区间
-- **Feature engineering**: Lag features to prevent data leakage / 特征工程防止数据泄露
-- **Stability testing**: Model reliability assessment / 模型稳定性测试
+### 2. Honest Hourly Forecasting / 诚实的小时级预测
+- **Hourly median target**: listings aggregated per hour; no outlier deletion needed / 按小时聚合中位价
+- **Leak-free features**: lags, rolling stats and calendar only; a test proves row t never sees itself / 特征只用过去
+- **Rolling-origin backtest**: every model is scored against naive baselines before use / 滚动起点回测对比基线
+- **Empirical intervals**: widths come from backtest residual quantiles, with reported coverage / 区间来自回测残差
+- **Per-season training**: other seasons are reference curves, never training data / 只在赛季内训练
 
 ### 3. Flexible Configuration / 灵活配置
 - **JSON-based item management**: Easy addition of new items / 基于JSON的物品管理

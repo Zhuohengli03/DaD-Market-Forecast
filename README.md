@@ -176,6 +176,19 @@ Data source: Postgres from `.env`; falls back to the CSV exports in the project 
 Seasons (wipes) are configured in `seasons.json` or on the Settings page. Forecast runs are stored under `runs/`.
 数据源优先 Postgres（`.env`），连不上时退回项目根目录的 CSV。赛季在 `seasons.json` 或设置页配置，预测结果存放在 `runs/`。
 
+#### Pages / 页面
+- **Overview / 概览**: latest hourly median, 24h change, data freshness per item.
+- **Market / 市场**: hourly / 4h / daily series with p25–p75 band, volume, zoom; filterable, paginated listings table.
+- **Forecast / 预测**: pick item, season, horizon and models; watch the live log; read the verdict (beats baseline or not), backtest table, per-horizon error, intervals, reference seasons; run history with later actuals overlaid.
+- **Collect / Scheduler / 采集 / 定时任务**: run collectors and the scheduler with live logs.
+- **Settings / 设置**: seasons (wipes), item config, data source, language.
+
+#### Tests / 测试
+```bash
+/opt/anaconda3/bin/python -m pytest -q          # forecast + backend
+cd frontend && npm test && npm run e2e          # unit + browser smoke (needs the backend's data)
+```
+
 ## 🔧 Configuration / 配置
 
 ### Item Configuration / 物品配置
