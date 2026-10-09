@@ -60,4 +60,4 @@ def make_repository(settings: Settings, log: Callable[[str], None] = print) -> L
             log(f"postgres unavailable ({exc}); falling back to CSV")
     else:
         log("postgres not configured (DB_USER empty); using CSV")
-    return CsvListingRepository(settings.project_root, settings.items_config_path)
+    return CsvListingRepository(settings.csv_dirs, settings.items_config_path)

@@ -121,7 +121,8 @@ def test_postgres_list_items_accepts_tz_aware_datetimes(project_root, monkeypatc
         def fetchone(self):
             return self._answers.pop(0)
 
-    s = Settings(project_root=project_root, db_user="u", db_password="p")
+    s = Settings(project_root=project_root, db_user="u", db_password="p", _env_file=None)
+    s.bootstrap()
     repo = PostgresListingRepository(s)
     monkeypatch.setattr(repo, "_conn", lambda: _FakeConn(_Cur()))
     items = repo.list_items()

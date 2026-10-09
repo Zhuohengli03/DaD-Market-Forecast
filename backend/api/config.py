@@ -1,5 +1,3 @@
-import json
-
 from fastapi import APIRouter, Request
 
 from ..schemas import ItemsConfigIn, ok
@@ -9,13 +7,12 @@ router = APIRouter(tags=["config"])
 
 @router.get("/config/items")
 def get_items_config(request: Request):
-    path = request.app.state.settings.items_config_path
-    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"items": [], "categories": {}}
-    return ok(data)
+    return ok(request.app.state.items.read())
 
 
 @router.put("/config/items")
 def put_items_config(body: ItemsConfigIn, request: Request):
-    path = request.app.state.settings.items_config_path
-    path.write_text(json.dumps(body.model_dump(), ensure_ascii=False, indent=2), encoding="utf-8")
-    return ok(body.model_dump())
+    data = body.model_dump(exclude_none=True)
+    request.app.state.items.write(data)
+    request.app.state.item_stats.invalidate()
+    return ok(data)

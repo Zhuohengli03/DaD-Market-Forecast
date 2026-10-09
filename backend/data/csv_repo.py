@@ -5,14 +5,15 @@ from pathlib import Path
 
 import pandas as pd
 
+from .items import slug
 from .repository import ItemInfo, ListingQuery, validate_item
 
 COLUMNS = ["item_id", "item", "quantity", "price_per_unit", "price", "has_sold", "created_at"]
 
 
 class CsvListingRepository:
-    def __init__(self, csv_dir: Path, items_config_path: Path):
-        self._dir = Path(csv_dir)
+    def __init__(self, csv_dirs: Path | list[Path], items_config_path: Path):
+        self._dirs = [Path(d) for d in (csv_dirs if isinstance(csv_dirs, (list, tuple)) else [csv_dirs])]
         self._config_path = Path(items_config_path)
         self._cache: dict[str, tuple[float, pd.DataFrame]] = {}
 
@@ -23,7 +24,14 @@ class CsvListingRepository:
         if not self._config_path.exists():
             return {}
         cfg = json.loads(self._config_path.read_text(encoding="utf-8"))
-        return {it["name"]: self._dir / it["csv"] for it in cfg.get("items", []) if it.get("enabled", True)}
+        out = {}
+        for it in cfg.get("items", []):
+            if not it.get("enabled", True):
+                continue
+            name = it.get("csv") or f"{slug(it['name'])}.csv"
+            found = [d / name for d in self._dirs if (d / name).exists()]
+            out[it["name"]] = found[0] if found else self._dirs[0] / name
+        return out
 
     def _frame(self, item: str) -> pd.DataFrame:
         files = self._files()
