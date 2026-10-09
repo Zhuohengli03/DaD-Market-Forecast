@@ -2,8 +2,19 @@ import ReactECharts from 'echarts-for-react'
 import type { SeriesPoint } from '../../api/types'
 import { fmtTs } from '../../lib/format'
 
+/** 99th percentile of the hourly medians x 1.4: thin hours with bundle outliers are clipped, not scaled to. */
+export function robustPriceMax(points: SeriesPoint[]): number | undefined {
+  const vals = points.map(p => p.median_price).filter((v): v is number => v !== null && Number.isFinite(v)).sort((a, b) => a - b)
+  if (!vals.length) return undefined
+  const p99 = vals[Math.min(vals.length - 1, Math.floor(vals.length * 0.99))]
+  const p75s = points.map(p => p.p75).filter((v): v is number => v !== null && v <= p99 * 1.4)
+  const cap = Math.max(p99, ...p75s) * 1.4
+  return Math.ceil(cap)
+}
+
 export function buildPriceOption(points: SeriesPoint[], highlightTs?: string | null) {
   const x = points.map(p => p.ts)
+  const yMax = robustPriceMax(points)
   return {
     animation: false,
     tooltip: { trigger: 'axis', axisPointer: { type: 'cross' }, valueFormatter: (v: number) => (v == null ? '–' : Number(v).toFixed(2)) },
@@ -11,7 +22,7 @@ export function buildPriceOption(points: SeriesPoint[], highlightTs?: string | n
     legend: { top: 0, data: ['median', 'p25–p75', 'min', 'max', 'volume', 'listings'], selected: { min: false, max: false } },
     grid: [{ left: 56, right: 56, top: 36, height: '52%' }, { left: 56, right: 56, top: '70%', height: '18%' }],
     xAxis: [{ type: 'category', data: x, gridIndex: 0, axisLabel: { formatter: (v: string) => fmtTs(v) } }, { type: 'category', data: x, gridIndex: 1, axisLabel: { formatter: (v: string) => fmtTs(v) } }],
-    yAxis: [{ type: 'value', scale: true, gridIndex: 0, name: 'price' }, { type: 'value', gridIndex: 1, name: 'vol' }],
+    yAxis: [{ type: 'value', min: 0, max: yMax, gridIndex: 0, name: 'price' }, { type: 'value', gridIndex: 1, name: 'vol' }],
     dataZoom: [{ type: 'inside', xAxisIndex: [0, 1] }, { type: 'slider', xAxisIndex: [0, 1], bottom: 4 }],
     series: [
       { name: 'p25–p75', type: 'line', data: points.map(p => p.p25), lineStyle: { opacity: 0 }, stack: 'band', symbol: 'none', silent: true },
