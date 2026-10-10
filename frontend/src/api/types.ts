@@ -28,7 +28,9 @@ export interface ForecastRun {
 export interface Actual { ts: string; median_price: number }
 export interface SchedulerTask { name: string; item?: string; script_path: string; schedule_type: string; schedule_value: string; enabled: boolean; description: string }
 export interface SchedulerStatus { running: boolean; tasks: SchedulerTask[] }
-export interface ItemConfigEntry { name: string; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; schedule?: string }
+export interface ItemConfigEntry { name: string; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; schedule?: string | ItemSchedule | null }
+export interface ItemSchedule { mode: 'interval' | 'daily'; seconds?: number; times?: string[] }
+export interface ScheduleInput { mode: 'default' | 'interval' | 'daily'; seconds?: number; times?: string[] }
 export interface ItemsConfig { items: ItemConfigEntry[]; categories: Record<string, string>; auto_discovery?: Record<string, unknown> }
 export interface StatusResponse { source: string; python: string; items: { name: string; rows: number; first_ts: string | null; last_ts: string | null }[]; jobs_running: Job[]; scheduler_running: boolean }
 export interface Environment { python_version: string; python_ok: boolean; storage: string; data_dir: string; db_host: string | null; db_database: string | null; db_saved?: { host: string; port: number; database: string; user: string } | null }
@@ -37,11 +39,12 @@ export interface InitItem { item_id: string; name: string; name_zh?: string | nu
 export interface DatabaseInput { host: string; port: number; database: string; user: string; password: string }
 export interface MarketStats { name: string; listings: number; sold: number; min_price_per_unit: number; median_price_per_unit: number; last_seen: string }
 export interface CatalogVariant { id: string; rarity: string | null; gear_score?: number | null; vendor_price?: number | null; num_secondary_attributes?: number | null; icon_url?: string | null; raw: Record<string, unknown> }
-export interface CatalogType { archetype: string; name: string; name_zh?: string | null; category?: string | null; item_type: string | null; slot_type?: string | null; icon_url: string | null; has_stats: boolean; rarities: string[]; listings_total: number | null; variants: CatalogVariant[] }
-export interface CatalogMeta { patch: string | null; synced_at: string | null; items: number; types: number; types_total: number; trade_checked: number; trade_check_complete: boolean; trade_checked_at: string | null; with_stats: number }
+export interface CatalogType { archetype: string; name: string; name_zh?: string | null; category?: string | null; item_type: string | null; slot_type?: string | null; icon_url: string | null; has_stats: boolean; rarities: string[]; listings_total: number | null; first_listed?: string | null; season_listings?: number | null; variants: CatalogVariant[] }
+export interface CatalogMeta { patch: string | null; synced_at: string | null; items: number; types: number; types_total: number; trade_checked: number; trade_check_complete: boolean; trade_checked_at: string | null; with_stats: number; season_start?: string | null }
 export interface CatalogFacets { item_type: string[] }
 export interface EquipmentStat { key: string; kind: 'primary' | 'secondary'; name: string; label: string; label_zh?: string | null; percent: boolean; min: number; max: number; seen: number }
 export interface EquipmentListing { id: string; item_id: string | null; name: string | null; rarity: string | null; quantity: number; price: number; price_per_unit: number; has_sold: boolean; listing_state: string | null; created_at: string; attributes: Record<string, number> }
 export interface EquipmentDay { day: string; listings: number; sold: number; median: number; low: number; high: number; sold_median: number | null }
 export interface EquipmentResult { count: number; listings: EquipmentListing[]; daily: EquipmentDay[]; covered_from: string | null; covered_to: string | null; truncated: boolean; since?: string | null }
-export interface EquipmentQueryBody { archetype: string; rarity: string | null; sold_only: boolean; max_pages: number; filters: { kind: 'primary' | 'secondary'; name: string; min: number | null; max: number | null }[] }
+export type EquipmentSort = 'created_at:desc' | 'created_at:asc' | 'price_per_unit:asc' | 'price_per_unit:desc'
+export interface EquipmentQueryBody { sort: EquipmentSort; archetype: string; rarity: string | null; sold_only: boolean; max_pages: number; filters: { kind: 'primary' | 'secondary'; name: string; min: number | null; max: number | null }[] }

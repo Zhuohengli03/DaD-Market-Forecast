@@ -39,3 +39,12 @@ export function fmtTsUtc(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return iso
   return d.toISOString().slice(0, 16).replace('T', ' ') + 'Z'
 }
+
+/** Calendar date only, e.g. 2024-09-06, in local time. */
+export function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return '–'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '–'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}

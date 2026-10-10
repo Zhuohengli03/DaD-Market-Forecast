@@ -29,3 +29,16 @@ it('lets the user add stat ranges and shows matching listings', () => {
   expect(screen.getByRole('option', { name: '传说' })).toBeInTheDocument()
   expect(screen.getByText('2333.00')).toBeInTheDocument()
 })
+
+it('sends the chosen listing order and explains what price sorting fetches', () => {
+  const mutate = vi.fn()
+  vi.mocked(hooks.useSetup).mockReturnValue({ data: { api_key_configured: true } } as never)
+  vi.mocked(hooks.useCatalog).mockReturnValue({ data: { rows: [], total: 0, facets: { item_type: [] } } } as never)
+  vi.mocked(hooks.useEquipmentStats).mockReturnValue({ data: { rarities: [], stats: [] } } as never)
+  vi.mocked(hooks.useEquipmentQuery).mockReturnValue({ mutate, isPending: false, data: undefined } as never)
+  render(<MemoryRouter initialEntries={['/equipment?type=id.item.arming_sword']}><Equipment /></MemoryRouter>)
+  fireEvent.change(screen.getByLabelText('挂单排序'), { target: { value: 'price_per_unit:asc' } })
+  expect(screen.getByText(/只取最便宜（或最贵）的前 500 条挂单/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: '查询' }))
+  expect(mutate.mock.calls[0][0]).toMatchObject({ sort: 'price_per_unit:asc' })
+})

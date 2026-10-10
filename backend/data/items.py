@@ -59,6 +59,18 @@ class ItemsStore:
         self.write(cfg)
         return entry
 
+    def set_schedule(self, name: str, schedule: dict | None) -> dict:
+        cfg = self.read()
+        for it in cfg["items"]:
+            if it["name"] == name:
+                if schedule is None:
+                    it.pop("schedule", None)
+                else:
+                    it["schedule"] = schedule
+                self.write(cfg)
+                return it
+        raise KeyError(f"item {name!r} is not tracked")
+
     def untrack(self, name: str) -> None:
         cfg = self.read()
         kept = [it for it in cfg["items"] if it["name"] != name]

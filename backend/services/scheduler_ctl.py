@@ -57,7 +57,8 @@ class SchedulerController:
             return self._tasks_cache[1]
         from src.scheduler.task_config import tasks_from_items
         out = [{"name": t["name"], "item": t["item"], "script_path": t["script_path"],
-                "schedule_type": t["schedule_type"], "schedule_value": str(t["schedule_value"]),
+                "schedule_type": t["schedule_type"],
+                "schedule_value": "、".join(t["schedule_value"]) if isinstance(t["schedule_value"], list) else str(t["schedule_value"]),
                 "enabled": t["enabled"], "description": t["description"]}
                for t in tasks_from_items(path, self._settings.project_root, settings_path=sp)]
         self._tasks_cache = (mtime, out)

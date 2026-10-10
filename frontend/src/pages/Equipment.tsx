@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import ReactECharts from 'echarts-for-react'
 import { Plus, X } from 'lucide-react'
 import { useCatalog, useEquipmentQuery, useEquipmentStats, useSetup } from '../api/hooks'
-import type { EquipmentDay } from '../api/types'
+import type { EquipmentDay, EquipmentSort } from '../api/types'
 import { Notice } from '../components/Notice'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -17,6 +17,7 @@ import { itemName, rarityLabel } from '../lib/labels'
 import { buildQuery, formatStat, type FilterRow, type StatLabel } from './equipment/filters'
 
 const DEPTHS = [10, 20, 40]
+const SORTS: EquipmentSort[] = ['created_at:desc', 'created_at:asc', 'price_per_unit:asc', 'price_per_unit:desc']
 
 function DailyChart({ days }: { days: EquipmentDay[] }) {
   const { t } = useTranslation()
@@ -50,6 +51,7 @@ export default function Equipment() {
   const [rows, setRows] = useState<FilterRow[]>([])
   const [soldOnly, setSoldOnly] = useState(false)
   const [depth, setDepth] = useState(10)
+  const [sort, setSort] = useState<EquipmentSort>('created_at:desc')
   const statLabel = (s: { label: string; label_zh?: string | null }) => (zh && s.label_zh ? s.label_zh : s.label)
   const labels = useMemo(() => Object.fromEntries((stats.data?.stats ?? []).map(s => [s.key, { label: zh && s.label_zh ? s.label_zh : s.label, percent: s.percent }])) as Record<string, StatLabel>, [stats.data, zh])
   const selectedName = types.data?.rows.find(r => r.archetype === type)?.name
@@ -98,9 +100,11 @@ export default function Equipment() {
         <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
           <label className="flex items-center gap-1"><input type="checkbox" checked={soldOnly} onChange={e => setSoldOnly(e.target.checked)} />{t('equipment.soldOnly')}</label>
           <label className="flex items-center gap-2">{t('equipment.depth')}<select className={inputCls} value={depth} onChange={e => setDepth(Number(e.target.value))}>{DEPTHS.map(d => <option key={d} value={d}>{t('equipment.depthOption', { n: d * 50, s: Math.ceil(d * 1.1) })}</option>)}</select></label>
-          <Button disabled={!type} loading={query.isPending} onClick={() => query.mutate(buildQuery(type, rarity, rows, soldOnly, depth))}>{t('equipment.run')}</Button>
+          <label className="flex items-center gap-2">{t('equipment.sort')}<select aria-label={t('equipment.sort')} className={inputCls} value={sort} onChange={e => setSort(e.target.value as EquipmentSort)}>{SORTS.map(s => <option key={s} value={s}>{t(`equipment.sorts.${s.replace(':', '_')}`)}</option>)}</select></label>
+          <Button disabled={!type} loading={query.isPending} onClick={() => query.mutate(buildQuery(type, rarity, rows, soldOnly, depth, sort))}>{t('equipment.run')}</Button>
         </div>
         <p className="mt-2 text-xs text-[var(--muted)]">{t('equipment.soldNote')}</p>
+        {sort.startsWith('price') && <p className="mt-1 text-xs text-[var(--muted)]">{t('equipment.priceSortNote', { n: depth * 50 })}</p>}
         {query.isError && <p role="alert" className="mt-2 text-sm text-[var(--bad)]">{(query.error as Error).message}</p>}
       </Card>
       {!type ? <EmptyState title={t('equipment.noType')} /> : res && (res.count === 0 ? <EmptyState title={t('equipment.none')} /> : <>

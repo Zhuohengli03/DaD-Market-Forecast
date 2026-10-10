@@ -169,6 +169,16 @@ class SmartScheduler:
                 )
                 logging.info(f"⏰ 已添加每小时任务: {script_name}")
                 
+            elif schedule_type == "daily_times":
+                for at in schedule_value:
+                    schedule.every().day.at(at).do(
+                        self.run_script_async,
+                        script_path=script_path,
+                        script_name=script_name,
+                        args=args
+                    )
+                logging.info(f"📅 已添加每日任务: {script_name} 在 {'、'.join(schedule_value)}")
+
             elif schedule_type == "seconds":
                 schedule.every(int(schedule_value)).seconds.do(
                     self.run_script_async,

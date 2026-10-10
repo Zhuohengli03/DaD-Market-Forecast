@@ -10,7 +10,7 @@ import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
 import { inputCls } from '../components/ui/Field'
 import { useToast } from '../components/ui/Toast'
-import { fmtTs } from '../lib/format'
+import { fmtDate, fmtTs } from '../lib/format'
 import { useDebounced } from '../lib/useDebounced'
 import { patchLabel, typeLabel } from '../lib/labels'
 import { CatalogTable } from './catalog/CatalogTable'
@@ -45,6 +45,8 @@ export default function Catalog() {
         <Button size="sm" variant="ghost" disabled={!!noKey} loading={job.isPending} onClick={() => run('sync')}>{t('catalog.sync')}</Button>
         <Button size="sm" disabled={!!noKey || !m?.items} loading={job.isPending} onClick={() => run('check')}>{m?.trade_check_complete ? t('catalog.recheck') : t('catalog.check')}</Button></>}>
         <p className="text-xs text-[var(--muted)] mb-2">{t('catalog.onlyTradable')}</p>
+        <p className="text-xs text-[var(--muted)] mb-2">{t('catalog.seasonNote', { date: m?.season_start ? fmtDate(m.season_start) : '–' })}</p>
+        {m?.items && m.trade_check_complete && !m.season_start ? <p className="text-xs text-[var(--warn)] mb-2">{t('catalog.needSeasonCheck')}</p> : null}
         {m?.items && !m.trade_check_complete ? <p className="text-xs text-[var(--warn)] mb-2">{t('catalog.notChecked')} {m.trade_checked > 0 && t('catalog.checking', { done: m.trade_checked, total: m.types_total })}</p> : null}
         <dl className="text-xs grid grid-cols-1 md:grid-cols-3 gap-2 text-[var(--muted)]">
           <div>{t('catalog.patch')}: <b className="text-[var(--ink)]">{patchLabel(m?.patch, t)}</b></div>

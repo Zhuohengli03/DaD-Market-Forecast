@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { X } from 'lucide-react'
-import { useItems, useSetup, useStartCollect, useStatus, useUntrackItem } from '../api/hooks'
+import { Plus, X } from 'lucide-react'
+import { useCollectAll, useItems, useSetup, useStartCollect, useStatus, useUntrackItem } from '../api/hooks'
 import { useJobStream } from '../api/jobStream'
 import { JobList } from '../components/JobList'
 import { ProgressPanel } from '../components/ProgressPanel'
+import { BatchProgress } from '../components/wizard/InitProgress'
+import { AddItemsDialog } from './collect/AddItemsDialog'
 import { Notice } from '../components/Notice'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -16,8 +18,11 @@ export default function Collect() {
   const { t, i18n } = useTranslation()
   const items = useItems(); const status = useStatus(); const setup = useSetup()
   const start = useStartCollect(); const untrack = useUntrackItem(); const toast = useToast()
+  const collectAll = useCollectAll()
   const [jobId, setJobId] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
   const stream = useJobStream(jobId)
+  const batch = Array.isArray(stream.progress?.detail?.items)
   const runningFor = new Set((status.data?.jobs_running ?? []).filter(j => j.kind === 'collect').map(j => j.meta.item))
   const onErr = (e: unknown) => toast.push((e as Error).message, 'error')
   return (
@@ -25,6 +30,13 @@ export default function Collect() {
       <div><h1 className="text-xl font-semibold">{t('collect.title')}</h1><p className="text-sm text-[var(--muted)] mt-1 max-w-3xl">{t('collect.intro')}</p></div>
       {setup.data && !setup.data.api_key_configured && <Notice to="/settings" action={t('common.goSettings')}>{t('onboarding.noKey')}</Notice>}
       {items.isSuccess && !items.data.length && <Notice to="/catalog" action={t('nav.catalog')}>{t('onboarding.noItems')}</Notice>}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={() => setAdding(true)}><Plus size={14} />{t('collect.add')}</Button>
+        <Button variant="ghost" disabled={!items.data?.length} loading={collectAll.isPending || runningFor.has('*')}
+          onClick={() => collectAll.mutate(undefined, { onSuccess: id => { setJobId(id); toast.push(t('collect.started')) }, onError: onErr })}>{t('collect.all', { n: items.data?.length ?? 0 })}</Button>
+        <span className="text-xs text-[var(--muted)]">{t('collect.trackedCount', { n: items.data?.length ?? 0 })}</span>
+      </div>
+      {adding && <AddItemsDialog onClose={() => setAdding(false)} />}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
         {(items.data ?? []).map(i => (
           <Card key={i.name}>
@@ -38,7 +50,8 @@ export default function Collect() {
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
         <Card title={t('collect.recent')}><JobList kinds={['collect']} selected={jobId} onSelect={setJobId} /></Card>
-        <Card>{jobId ? <ProgressPanel kind="collect" status={stream.status} progress={stream.progress} error={stream.error} disconnected={stream.disconnected} /> : <p className="text-sm text-[var(--muted)]">{t('common.pickJob')}</p>}</Card>
+        <Card>{jobId && batch ? <BatchProgress status={stream.status} progress={stream.progress} error={stream.error} />
+          : jobId ? <ProgressPanel kind="collect" status={stream.status} progress={stream.progress} error={stream.error} disconnected={stream.disconnected} /> : <p className="text-sm text-[var(--muted)]">{t('common.pickJob')}</p>}</Card>
       </div>
     </div>
   )

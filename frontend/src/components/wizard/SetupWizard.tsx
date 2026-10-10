@@ -1,24 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle2, AlertCircle } from 'lucide-react'
-import { useCatalog, useCatalogJob, useDatabaseSetup, useInitialize, useItems, useSetup } from '../../api/hooks'
+import { useCatalogJob, useDatabaseSetup, useInitialize, useItems, useSetup } from '../../api/hooks'
 import { useJobStream } from '../../api/jobStream'
 import type { DatabaseInput } from '../../api/types'
-import { itemName, rarityLabel } from '../../lib/labels'
-import { useDebounced } from '../../lib/useDebounced'
 import { ApiKeyForm } from '../ApiKeyForm'
 import { ProgressPanel } from '../ProgressPanel'
 import { Button } from '../ui/Button'
 import { Field, inputCls } from '../ui/Field'
+import { ItemPicker, usePickOptions } from '../ItemPicker'
 import { useToast } from '../ui/Toast'
 import { InitProgress } from './InitProgress'
 import { ScheduleForm } from './ScheduleForm'
 
 const STEP_KEYS = ['env', 'key', 'init', 'schedule'] as const
-// shortcut buttons: what players usually trade first, then everything else by size
-const CATEGORY_ORDER = ['ore', 'ingot', 'powder', 'gem', 'drink', 'herb', 'wood', 'consumable', 'throwable', 'light_source', 'food', 'treasure', 'gold', 'currency']
 const MAX_PAGES = 200
 export const OPEN_WIZARD_EVENT = 'open-setup-wizard'
 
@@ -75,14 +72,13 @@ function KeyStep() {
 }
 
 function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: string) => void }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const setup = useSetup().data!
   const items = useItems(); const catalogJob = useCatalogJob(); const init = useInitialize(); const toast = useToast()
   const [syncJob, setSyncJob] = useState<string | null>(null)
   const sync = useJobStream(syncJob)
   const stream = useJobStream(jobId)
-  const [q, setQ] = useState(''); const query = useDebounced(q, 300)
-  const cat = useCatalog({ has_stats: false, page: 1, page_size: 1000 })
+  const { options } = usePickOptions()
   const [picked, setPicked] = useState<string[] | null>(null)
   const qc = useQueryClient()
   const catalogReady = setup.catalog_items > 0 || sync.status === 'succeeded'
@@ -93,24 +89,8 @@ function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: stri
   useEffect(() => {
     if (!setup.catalog_items && !syncJob && setup.api_key_configured) catalogJob.mutate('sync', { onSuccess: setSyncJob })
   }, [setup.catalog_items, setup.api_key_configured]) // eslint-disable-line react-hooks/exhaustive-deps
-  const options = useMemo(() => (cat.data?.rows ?? []).flatMap(r => r.variants.map(v => ({
-    id: v.id, type: r, category: r.category || 'misc',
-    label: r.variants.length > 1 ? `${itemName(r, i18n.language)}（${rarityLabel(v.rarity, t)}）` : itemName(r, i18n.language),
-  }))), [cat.data, i18n.language, t])
   const tracked = new Set((items.data ?? []).map(i => i.item_id ?? i.name))
   const chosen = picked ?? options.filter(o => tracked.has(o.id) || tracked.has(o.type.name)).map(o => o.id)
-  const toggle = (id: string) => setPicked(chosen.includes(id) ? chosen.filter(x => x !== id) : [...chosen, id])
-  const groups = useMemo(() => {
-    const m = new Map<string, typeof options>()
-    for (const o of options) m.set(o.category, [...(m.get(o.category) ?? []), o])
-    const rank = (c: string) => { const i = CATEGORY_ORDER.indexOf(c); return i < 0 ? CATEGORY_ORDER.length : i }
-    return [...m.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || a[1].length - b[1].length)
-  }, [options])
-  const toggleGroup = (ids: string[]) => {
-    const all = ids.every(id => chosen.includes(id))
-    setPicked(all ? chosen.filter(id => !ids.includes(id)) : [...new Set([...chosen, ...ids])])
-  }
-  const visible = (o: { label: string; type: { name: string } }) => !query || o.label.includes(query) || o.type.name.toLowerCase().includes(query.toLowerCase())
   const upperMin = Math.ceil((chosen.length * MAX_PAGES) / 60)
   if (jobId) return <InitProgress status={stream.status} progress={stream.progress} error={stream.error} />
   if (!catalogReady) return <div className="space-y-2"><p className="text-sm">{t('wizard.init.needCatalog')}</p><ProgressPanel kind="catalog" status={sync.status} progress={sync.progress} error={sync.error} disconnected={sync.disconnected} /></div>
@@ -118,24 +98,7 @@ function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: stri
     <div className="space-y-3 text-sm">
       <p>{t('wizard.init.intro')}</p>
       <p className="text-xs text-[var(--muted)]">{t('wizard.init.choose')}</p>
-      <div className="flex flex-wrap gap-1.5">
-        <Button size="sm" onClick={() => setPicked(options.map(o => o.id))}>{t('wizard.init.all', { n: options.length })}</Button>
-        <Button size="sm" variant="ghost" onClick={() => setPicked([])}>{t('wizard.init.none')}</Button>
-        {groups.map(([c, list]) => (
-          <Button key={c} size="sm" variant="ghost" onClick={() => toggleGroup(list.map(o => o.id))}>{t('wizard.init.allOf', { cat: t(`category.${c}`, { defaultValue: c }), n: list.length })}</Button>))}
-      </div>
-      <input className={`${inputCls} w-full`} placeholder={t('wizard.init.search')} value={q} onChange={e => setQ(e.target.value)} />
-      <div className="max-h-64 overflow-auto border border-[var(--line)] rounded-md p-2 space-y-2">
-        {groups.map(([c, list]) => {
-          const shown = list.filter(visible)
-          if (!shown.length) return null
-          return (
-            <div key={c}>
-              <div className="text-xs font-semibold text-[var(--muted)] mb-1">{t(`category.${c}`, { defaultValue: c })}</div>
-              <div className="grid grid-cols-2 gap-1">{shown.map(o => <label key={o.id} className="flex items-center gap-2"><input type="checkbox" aria-label={o.label} checked={chosen.includes(o.id)} onChange={() => toggle(o.id)} />{o.label}</label>)}</div>
-            </div>)
-        })}
-      </div>
+      <ItemPicker options={options} chosen={chosen} onChange={setPicked} />
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-[var(--muted)]">{t('wizard.init.estimate', { n: chosen.length, time: upperMin >= 120 ? t('wizard.init.hours', { h: Math.ceil(upperMin / 60) }) : t('wizard.init.minutes', { m: upperMin }) })}</span>
         <Button disabled={!chosen.length} loading={init.isPending} onClick={() => init.mutate({ item_ids: chosen, max_pages: MAX_PAGES }, { onSuccess: onStart, onError: e => toast.push((e as Error).message, 'error') })}>{t('wizard.init.start')}</Button>

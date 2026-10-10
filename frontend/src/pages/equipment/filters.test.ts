@@ -6,7 +6,7 @@ it('builds a query from filter rows, skipping empty ones', () => {
     { key: 'secondary_luck', min: '', max: '' },
     { key: 'primary_weapon_damage', min: '', max: '34' },
   ], true, 10)
-  expect(q).toEqual({ archetype: 'id.item.arming_sword', rarity: 'legendary', sold_only: true, max_pages: 10, filters: [
+  expect(q).toEqual({ archetype: 'id.item.arming_sword', rarity: 'legendary', sold_only: true, max_pages: 10, sort: 'created_at:desc', filters: [
     { kind: 'secondary', name: 'armor_penetration', min: 2, max: 5 },
     { kind: 'primary', name: 'weapon_damage', min: null, max: 34 },
   ] })
