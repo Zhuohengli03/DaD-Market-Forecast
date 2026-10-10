@@ -15,7 +15,7 @@ Track and forecast **Dark and Darker** marketplace prices on your own machine, w
 ## English
 
 ### What it does
-- **Item catalog**: syncs every item from DarkerDB with all its parameters, and scans this season's market to show which items are trading and at what price. Track any item with one click.
+- **Item catalog**: syncs every item from DarkerDB with all its parameters, and scans recent listings to show which items are trading and at what price. Track any item with one click.
 - **Price history**: hourly median price with the middle-50% band, volume, zoom, range statistics and a filterable listing table.
 - **Forecast**: predicts the next 24–168 hours from the current season only. Every run first replays history and compares each method with "repeat the last hour". A model is used only when it is clearly better, and the page says so either way.
 - **Collection**: collect on demand or once a day automatically. Data stays on your machine as CSV files in `data/`, or in Postgres if you configure one.
@@ -37,7 +37,7 @@ Open **http://localhost:5001**. On first launch a dialog asks for your DarkerDB 
 
 Then:
 1. **Settings → Seasons**: add the start of the current season (UTC). The market resets every season, so forecasts never mix seasons.
-2. **Item catalog**: press *Sync catalog*, then *Scan this season's market*, and *Track* the items you care about.
+2. **Item catalog**: press *Sync catalog*, then *Scan recent listings* to see what is trading now, and *Track* the items you care about. Four ores are tracked by default; remove them with the × on the Collect page.
 3. **Collect data**: press *Collect now* on an item (or turn on *Scheduled collection*).
 4. **Forecast**: pick an item and a horizon, press *Run forecast*.
 
@@ -50,11 +50,15 @@ Then:
 
 ### Development
 ```bash
-python -m backend                       # API on :5001
-cd frontend && npm run dev              # UI on :5173 with hot reload (proxies /api)
-python -m pytest -q                     # backend and forecast tests
-cd frontend && npm test && npm run e2e  # unit tests and browser tests (synthetic data, no key needed)
+python -m pip install -r requirements-dev.txt   # adds pytest and pytest-cov
+python -m backend                               # API on :5001
+cd frontend && npm run dev                      # UI on :5173 with hot reload (proxies /api)
+python -m pytest -q --cov=src --cov=backend     # backend and forecast tests with coverage
+cd frontend && npm test                         # unit tests
+npx playwright install chromium                 # once, before the first browser test run
+PYTHON=python npm run e2e                       # browser tests on synthetic data, no key needed
 ```
+`PYTHON` must point to the interpreter where you installed the requirements (for example a venv's `python`).
 Command-line tools:
 ```bash
 python -m src.api.collect --item "Iron Ore"            # collect one item
@@ -68,7 +72,7 @@ More: [Quick start details](docs/guides/QUICK_START.md) · [Configuration](docs/
 ## 中文说明
 
 ### 功能
-- **道具库**：从 DarkerDB 同步全部道具及其所有参数；扫描本赛季市场，标出哪些道具正在交易、价格多少。一键追踪。
+- **道具库**：从 DarkerDB 同步全部道具及其所有参数；扫描最近挂单，标出哪些道具正在交易、价格多少。一键追踪。
 - **价格走势**：每小时中位价、中间 50% 价格带、成交量，可缩放、框选统计，挂单明细可筛选。
 - **价格预测**：只用当前赛季的数据预测未来 24 到 168 小时。每次先在历史上回测，和"沿用上一小时价格"比较，只有明显更准才采用模型，并在页面上说明结果。
 - **数据采集**：手动或每天定时采集。数据保存在本机 `data/` 目录的 CSV 里；配置了 Postgres 则存数据库。
@@ -90,7 +94,7 @@ python -m backend
 
 然后：
 1. **设置 → 赛季**：填上当前赛季的开始时间（UTC）。每个赛季市场都会重置，预测不会跨赛季混用数据。
-2. **道具库**：点"同步道具库"，再点"扫描本赛季市场"，给关心的道具点"追踪"。
+2. **道具库**：点"同步道具库"，再点"扫描最近挂单"看看现在在交易什么，给关心的道具点"追踪"。默认已追踪几种矿石，不需要的话在采集页点 × 移除。
 3. **数据采集**：点道具上的"立即采集"，或在"定时采集"里开启每天自动采集。
 4. **价格预测**：选道具和预测时长，点"开始预测"。
 

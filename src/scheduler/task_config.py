@@ -46,5 +46,5 @@ SCHEDULER_CONFIG = {
     "log_file": "scheduler.log",
     "log_level": "INFO",
     "check_interval": 1,
-    "max_concurrent_tasks": 3,
+    "max_concurrent_tasks": 1,  # one DarkerDB key allows 60 requests/min; collectors run one at a time
 }

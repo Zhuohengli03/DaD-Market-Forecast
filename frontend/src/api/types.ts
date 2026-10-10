@@ -1,4 +1,4 @@
-export interface ItemInfo { name: string; file: string; csv: string; category: string; description: string; enabled: boolean; rows: number; first_ts: string | null; last_ts: string | null }
+export interface ItemInfo { name: string; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; rows: number; first_ts: string | null; last_ts: string | null }
 export interface SeriesPoint { ts: string; median_price: number | null; min_price: number | null; max_price: number | null; p25: number | null; p75: number | null; listings: number; sold: number; volume: number }
 export interface SeriesResponse { item: string; resolution: Resolution; start: string | null; end: string | null; points: SeriesPoint[] }
 export type Resolution = '1h' | '4h' | '1d'
@@ -32,5 +32,5 @@ export interface StatusResponse { source: string; python: string; items: { name:
 export interface SetupState { api_key_configured: boolean; api_key_hint: string | null; data_source: string; seasons: number; tracked_items: number; catalog_items: number }
 export interface MarketStats { name: string; listings: number; sold: number; min_price_per_unit: number; median_price_per_unit: number; last_seen: string }
 export interface CatalogRow { id: string; name: string; rarity?: string; item_type?: string; slot_type?: string; armor_type?: string; weapon_type?: string; hand_type?: string; gear_score?: number; vendor_price?: number; archetype?: string; market: MarketStats | null; raw: Record<string, unknown> }
-export interface CatalogMeta { patch: string | null; synced_at: string | null; items: number; market_scanned_at: string | null; market_since: string | null; tradable: number }
+export interface CatalogMeta { patch: string | null; synced_at: string | null; items: number; market_scanned_at: string | null; market_since: string | null; market_covered_from: string | null; market_covered_to: string | null; market_listings_read: number; tradable: number }
 export interface CatalogFacets { rarity: string[]; item_type: string[] }

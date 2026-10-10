@@ -2,32 +2,24 @@
   "items": [
     {
       "name": "Gold Ore",
-      "file": "Gold_Ore_API.py",
-      "csv": "gold_ore.csv",
       "category": "ore",
       "description": "黄金矿石",
       "enabled": true
     },
     {
       "name": "Iron Ore",
-      "file": "Iron_Ore_API.py",
-      "csv": "iron_ore.csv",
       "category": "ore",
       "description": "铁矿石",
       "enabled": true
     },
     {
       "name": "Cobalt Ore",
-      "file": "Cobalt_Ore_API.py",
-      "csv": "cobalt_ore.csv",
       "category": "ore",
       "description": "钴矿石",
       "enabled": true
     },
     {
       "name": "Copper Ore",
-      "file": "Copper_Ore_API.py",
-      "csv": "copper_ore.csv",
       "category": "ore",
       "description": "铜矿石",
       "enabled": true
@@ -38,11 +30,5 @@
     "consumable": "消耗品类",
     "equipment": "装备类",
     "material": "材料类"
-  },
-  "auto_discovery": {
-    "enabled": true,
-    "ore_directory": "src/api",
-    "consumable_directory": "src/api",
-    "naming_pattern": "*_API.py"
   }
 }

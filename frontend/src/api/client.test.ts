@@ -14,6 +14,7 @@ describe('api client', () => {
     const r = await api.get<number[]>('/series/Iron Ore', { season_id: 's2', resolution: '1h', skip: undefined })
     expect(r.data).toEqual([1, 2]); expect(r.meta).toEqual({ total: 2 })
     expect(mockFetch.mock.calls[0][0]).toBe('/api/series/Iron%20Ore?season_id=s2&resolution=1h')
+    expect(mockFetch.mock.calls[0][1].headers['X-Darker-Market']).toBe('1')
   })
   it('throws ApiError with the server message on ok=false', async () => {
     mockFetch.mockResolvedValue(jsonResponse({ ok: false, data: null, error: 'range overlaps season', meta: null }, 422))

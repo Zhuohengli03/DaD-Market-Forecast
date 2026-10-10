@@ -15,12 +15,13 @@ class CsvListingRepository:
     def __init__(self, csv_dirs: Path | list[Path], items_config_path: Path):
         self._dirs = [Path(d) for d in (csv_dirs if isinstance(csv_dirs, (list, tuple)) else [csv_dirs])]
         self._config_path = Path(items_config_path)
-        self._cache: dict[str, tuple[float, pd.DataFrame]] = {}
+        self._cache: dict[str, tuple[tuple, pd.DataFrame]] = {}
 
     def source_name(self) -> str:
         return "csv"
 
-    def _files(self) -> dict[str, Path]:
+    def _files(self) -> dict[str, list[Path]]:
+        """Every existing CSV for each tracked item: data/ and the legacy project-root location are merged."""
         if not self._config_path.exists():
             return {}
         cfg = json.loads(self._config_path.read_text(encoding="utf-8"))
@@ -28,25 +29,24 @@ class CsvListingRepository:
         for it in cfg.get("items", []):
             if not it.get("enabled", True):
                 continue
-            name = it.get("csv") or f"{slug(it['name'])}.csv"
-            found = [d / name for d in self._dirs if (d / name).exists()]
-            out[it["name"]] = found[0] if found else self._dirs[0] / name
+            names = {it.get("csv"), f"{slug(it['name'])}.csv"} - {None}
+            out[it["name"]] = [d / n for d in self._dirs for n in sorted(names) if (d / n).exists()]
         return out
 
     def _frame(self, item: str) -> pd.DataFrame:
-        files = self._files()
-        if item not in files or not files[item].exists():
+        paths = self._files().get(item)
+        if not paths:
             raise KeyError(f"no CSV data for item {item!r}")
-        path = files[item]
-        mtime = path.stat().st_mtime
+        stamp = tuple((str(p), p.stat().st_mtime) for p in paths)
         cached = self._cache.get(item)
-        if cached and cached[0] == mtime:
+        if cached and cached[0] == stamp:
             return cached[1]
-        df = pd.read_csv(path, usecols=lambda c: c in COLUMNS)
+        df = pd.concat([pd.read_csv(p, usecols=lambda c: c in COLUMNS, dtype={"item_id": str}) for p in paths], ignore_index=True)
+        df = df.drop_duplicates(subset=["item_id", "created_at"])
         df["created_at"] = pd.to_datetime(df["created_at"], utc=True, errors="coerce")
         df["has_sold"] = df["has_sold"].astype(str).str.lower().isin(["true", "1", "t"])
         df = df.dropna(subset=["created_at"]).sort_values("created_at", ascending=False).reset_index(drop=True)
-        self._cache[item] = (mtime, df)
+        self._cache[item] = (stamp, df)
         return df
 
     def list_items(self) -> list[ItemInfo]:

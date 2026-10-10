@@ -9,7 +9,7 @@ All settings are environment variables; the app also reads `.env` in the project
 | `DB_HOST` / `DB_PORT` / `DB_DATABASE` / `DB_PASSWORD` | `localhost` / `5432` / `darkerdb` / empty | Postgres connection, used only when `DB_USER` is set. |
 | `HOST` | `127.0.0.1` | Address the web server binds to. `0.0.0.0` exposes it to your network. |
 | `PORT` | `5001` | Web server port. |
-| `DATA_DIR` | `./data` | Where collected CSVs and user state live. |
+| `DARKER_DATA_DIR` | `./data` | Where collected CSVs and user state live. (The older `DATA_DIR` variable is ignored.) |
 
 ## Files the app manages / 程序自己维护的文件
 | Path | Content |

@@ -14,10 +14,13 @@ Logger = Callable[[str], None]
 def sync_catalog(client, store: CatalogStore, log: Logger) -> int:
     patch = None
     try:
-        patch = (client.get("/patches/current").get("body") or {}).get("id")
+        body = client.get("/patches/current").get("body")
+        if isinstance(body, list):
+            body = body[0] if body else None
+        patch = body.get("id") or body.get("version_raw") if isinstance(body, dict) else (str(body) if body else None)
         log(f"current game patch: {patch}")
-    except DarkerDBError as exc:
-        log(f"could not read current patch ({exc}); continuing")
+    except Exception as exc:  # the patch label is informational; never fail the sync for it
+        log(f"could not read current patch ({type(exc).__name__}); continuing")
     rows: list[dict] = []
     for page_no, page in enumerate(client.iter_pages("/items", {"limit": ITEMS_PAGE_LIMIT}), start=1):
         rows.extend(page)
@@ -29,6 +32,8 @@ def sync_catalog(client, store: CatalogStore, log: Logger) -> int:
 
 def scan_market(client, store: CatalogStore, since: str | None, max_pages: int, log: Logger) -> int:
     acc: dict[str, dict] = {}
+    oldest = newest = None
+    read = 0
     params = {"limit": MARKET_MAX_LIMIT, "sort": "created_at:desc"}
     if since:
         params["from"] = since
@@ -45,10 +50,13 @@ def scan_market(client, store: CatalogStore, since: str | None, max_pages: int, 
             a["prices"].append(row["price_per_unit"])
             a["sold"] += int(row["has_sold"])
             a["last_seen"] = max(a["last_seen"], row["created_at"])
+            read += 1
+            oldest = row["created_at"] if oldest is None else min(oldest, row["created_at"])
+            newest = row["created_at"] if newest is None else max(newest, row["created_at"])
         log(f"market page {page_no}/{max_pages}: {len(acc)} distinct items")
     stats = {iid: {"name": a["name"], "listings": len(a["prices"]), "sold": a["sold"],
                    "min_price_per_unit": min(a["prices"]), "median_price_per_unit": statistics.median(a["prices"]),
                    "last_seen": a["last_seen"]} for iid, a in acc.items()}
-    store.save_market(stats, since)
-    log(f"market scan saved: {len(stats)} items seen")
+    store.save_market(stats, since, covered_from=oldest, covered_to=newest, listings_read=read)
+    log(f"market scan saved: {len(stats)} items seen in {read} listings ({oldest} to {newest})")
     return len(stats)

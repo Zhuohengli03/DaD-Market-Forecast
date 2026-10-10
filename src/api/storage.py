@@ -9,8 +9,39 @@ from pathlib import Path
 CSV_COLUMNS = ["item_id", "item", "quantity", "price_per_unit", "price", "has_sold", "created_at", "insert_time"]
 
 
+def item_slug(name: str) -> str:
+    """File/table stem for an item name: lowercase, non-alphanumerics to '_', never starting with a digit."""
+    import re
+    s = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    return s if s and not s[0].isdigit() else f"item_{s}"
+
+
 def record_key(item_id, created_at) -> str:
     return f"{item_id}_{created_at}"
+
+
+class _FileLock:
+    """Cross-process lock via an exclusively created file; portable (no fcntl)."""
+
+    def __init__(self, path: Path, timeout: float = 120.0):
+        self.path, self.timeout = Path(path), timeout
+
+    def __enter__(self):
+        import time
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        deadline = time.monotonic() + self.timeout
+        while True:
+            try:
+                self._fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                return self
+            except FileExistsError:
+                if time.monotonic() > deadline:
+                    raise TimeoutError(f"{self.path} is held by another collector; delete it if no collector is running")
+                time.sleep(0.05)
+
+    def __exit__(self, *exc):
+        os.close(self._fd)
+        os.unlink(self.path)
 
 
 class CsvStorage:
@@ -26,6 +57,10 @@ class CsvStorage:
             return {record_key(r["item_id"], r["created_at"]) for r in csv.DictReader(fh)}
 
     def insert(self, rows: list[dict]) -> int:
+        with _FileLock(self.path.with_suffix(self.path.suffix + ".lock")):
+            return self._insert_locked(rows)
+
+    def _insert_locked(self, rows: list[dict]) -> int:
         known = self.existing_keys()
         fresh = [r for r in rows if record_key(r["id"], r["created_at"]) not in known]
         if not fresh:

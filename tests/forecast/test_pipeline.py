@@ -119,3 +119,20 @@ def test_origin_step_is_respected(frames):
     out6 = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",), backtest_origin_step=6),
                         _loader(frames), [S1, S2])
     assert out["backtest"]["origins"] > out6["backtest"]["origins"]
+
+
+def test_refit_fallback_reports_zero_skill(frames, monkeypatch):
+    import src.forecast.pipeline as pl
+    from src.forecast.select import Selection
+    real = pl.make_model
+
+    def flaky(name):
+        m = real(name)
+        if name == "ridge":
+            orig = m.fit
+            m.fit = lambda s, st: (_ for _ in ()).throw(RuntimeError("x")) if len(s) >= 240 else orig(s, st)
+        return m
+    monkeypatch.setattr(pl, "make_model", flaky)
+    monkeypatch.setattr(pl, "select_model", lambda r, m: Selection("ridge", (("ridge", 1.0),), True, 0.3, r.predictions["ridge"], ""))
+    out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, S2])
+    assert out["selected"]["name"] == "naive" and out["skill_vs_naive"] == 0.0

@@ -15,4 +15,5 @@ def put_items_config(body: ItemsConfigIn, request: Request):
     data = body.model_dump(exclude_none=True)
     request.app.state.items.write(data)
     request.app.state.item_stats.invalidate()
+    request.app.state.scheduler.restart_if_running()
     return ok(data)
