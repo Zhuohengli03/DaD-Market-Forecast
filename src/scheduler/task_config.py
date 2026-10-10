@@ -15,10 +15,22 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TIME = "23:00"
 
 
-def _interval_hours(settings_path: Path | None) -> int | None:
+def _interval_seconds(settings_path: Path | None) -> int | None:
     if settings_path and Path(settings_path).exists():
-        return json.loads(Path(settings_path).read_text(encoding="utf-8")).get("collect_interval_hours")
+        raw = json.loads(Path(settings_path).read_text(encoding="utf-8"))
+        if raw.get("collect_interval_seconds"):
+            return int(raw["collect_interval_seconds"])
+        if raw.get("collect_interval_hours"):
+            return int(raw["collect_interval_hours"]) * 3600
     return None
+
+
+def format_interval(seconds: int) -> str:
+    d, rem = divmod(int(seconds), 86400)
+    h, rem = divmod(rem, 3600)
+    m, s = divmod(rem, 60)
+    parts = [(d, "天"), (h, "时"), (m, "分"), (s, "秒")]
+    return "".join(f"{v}{u}" for v, u in parts if v) or "0秒"
 
 
 def tasks_from_items(items_path: Path, project_root: Path = PROJECT_ROOT, settings_path: Path | None = None) -> list[dict]:
@@ -28,7 +40,7 @@ def tasks_from_items(items_path: Path, project_root: Path = PROJECT_ROOT, settin
     if not items_path.exists():
         return []
     items = json.loads(items_path.read_text(encoding="utf-8")).get("items", [])
-    hours = _interval_hours(settings_path)
+    every = _interval_seconds(settings_path)
     tasks = []
     for it in items:
         if not it.get("enabled", True):
@@ -39,10 +51,10 @@ def tasks_from_items(items_path: Path, project_root: Path = PROJECT_ROOT, settin
             "item": it["name"],
             "script_path": str(Path(project_root) / "src" / "api" / "collect.py"),
             "args": args,
-            "schedule_type": "interval" if hours else "daily",
-            "schedule_value": int(hours) * 60 if hours else it.get("schedule", DEFAULT_TIME),
+            "schedule_type": "seconds" if every else "daily",
+            "schedule_value": every if every else it.get("schedule", DEFAULT_TIME),
             "enabled": True,
-            "description": f"每 {hours} 小时采集 {it['name']}" if hours else f"每天 {it.get('schedule', DEFAULT_TIME)} 采集 {it['name']}",
+            "description": f"每 {format_interval(every)} 采集 {it['name']}" if every else f"每天 {it.get('schedule', DEFAULT_TIME)} 采集 {it['name']}",
         })
     return tasks
 

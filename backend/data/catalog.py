@@ -90,6 +90,7 @@ class CatalogStore:
         first = variants[0]
         return {
             "archetype": key, "name": first.get("name", key), "name_zh": first.get("name_zh"), "item_type": first.get("item_type"),
+            "category": first.get("misc_type") or first.get("utility_type") or first.get("item_type"),
             "slot_type": first.get("slot_type"), "icon_url": next((v.get("icon_url") for v in reversed(variants) if v.get("icon_url")), None),
             "has_stats": has_stats(variants), "rarities": [v.get("rarity") for v in variants],
             "listings_total": totals.get(key),
@@ -116,7 +117,8 @@ class CatalogStore:
                 continue
             rows.append(r)
         rows.sort(key=lambda r: (r["listings_total"] is None, -(r["listings_total"] or 0), r["name"]))
-        facets = {"item_type": sorted({r["item_type"] for r in all_rows if r["item_type"]})}
+        facets = {"item_type": sorted({r["item_type"] for r in all_rows if r["item_type"]}),
+                  "category": sorted({r["category"] for r in all_rows if r["category"]})}
         start = (page - 1) * page_size
         return rows[start:start + page_size], len(rows), facets
 

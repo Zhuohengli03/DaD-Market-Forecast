@@ -21,6 +21,8 @@ _RUN_SLOTS = threading.BoundedSemaphore(SCHEDULER_CONFIG.get("max_concurrent_tas
 class SmartScheduler:
     def __init__(self):
         self.running_tasks = {}
+        self._queued = set()              # task names waiting for or holding a run slot
+        self._queued_lock = threading.Lock()
         self.setup_logging()
         
     def setup_logging(self):
@@ -106,19 +108,25 @@ class SmartScheduler:
             return False
     
     def run_script_async(self, script_path, script_name="Unknown", args=None):
-        """异步运行脚本（避免阻塞）"""
+        """异步运行脚本（避免阻塞）。同一任务上一次还没结束时跳过本次，避免短间隔下任务越积越多。"""
+        with self._queued_lock:
+            if script_name in self._queued:
+                logging.info(f"⏭️ 上一次还没结束，跳过本次: {script_name}")
+                return None
+            self._queued.add(script_name)
+
         def run():
-          with _RUN_SLOTS:
-            logging.info(f"🔄 异步任务开始: {script_name}")
-            logging.info(f"🔄 Async task started: {script_name}")
-            success = self.run_script(script_path, script_name, args)
-            if success:
-                logging.info(f"🎉 异步任务完成: {script_name}")
-                logging.info(f"🎉 Async task completed: {script_name}")
-            else:
-                logging.error(f"💥 异步任务失败: {script_name}")
-                logging.error(f"💥 Async task failed: {script_name}")
-        
+            try:
+                with _RUN_SLOTS:
+                    logging.info(f"🔄 异步任务开始: {script_name}")
+                    if self.run_script(script_path, script_name, args):
+                        logging.info(f"🎉 异步任务完成: {script_name}")
+                    else:
+                        logging.error(f"💥 异步任务失败: {script_name}")
+            finally:
+                with self._queued_lock:
+                    self._queued.discard(script_name)
+
         thread = threading.Thread(target=run, name=f"AsyncTask-{script_name}", daemon=True)
         thread.start()
         logging.info(f"📋 任务已提交到后台执行: {script_name}")
@@ -161,6 +169,15 @@ class SmartScheduler:
                 )
                 logging.info(f"⏰ 已添加每小时任务: {script_name}")
                 
+            elif schedule_type == "seconds":
+                schedule.every(int(schedule_value)).seconds.do(
+                    self.run_script_async,
+                    script_path=script_path,
+                    script_name=script_name,
+                    args=args
+                )
+                logging.info(f"🔄 已添加间隔任务: {script_name} 每 {schedule_value} 秒")
+
             elif schedule_type == "interval":
                 schedule.every(schedule_value).minutes.do(
                     self.run_script_async, 

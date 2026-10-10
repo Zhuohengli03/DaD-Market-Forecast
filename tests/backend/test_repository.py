@@ -45,7 +45,7 @@ def test_csv_fetch_all_range(project_root):
         repo.fetch_all("Ghost", None, None)
 
 
-def test_make_repository_falls_back_to_csv(project_root, monkeypatch):
+def test_make_repository_falls_back_to_builtin_db(project_root, monkeypatch):
     import backend.data.postgres_repo as pg
 
     def boom(*a, **k):
@@ -54,7 +54,7 @@ def test_make_repository_falls_back_to_csv(project_root, monkeypatch):
     s = Settings(project_root=project_root, db_user="u", db_password="p", db_host="127.0.0.1")
     logs = []
     repo = make_repository(s, log=logs.append)
-    assert repo.source_name() == "csv" and any("refused" in l for l in logs)
+    assert repo.source_name() == "sqlite" and any("refused" in l for l in logs)
 
 
 class _FakeCursor:

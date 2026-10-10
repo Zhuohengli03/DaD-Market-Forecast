@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from src.api.darkerdb_client import DarkerDBClient, DarkerDBError
 from ..schemas import ok
 from ..services.envfile import upsert_env
-from ..data.app_settings import INTERVAL_CHOICES
+from ..data.app_settings import DARKERDB_LIVE_RATE_PER_MINUTE, MAX_INTERVAL_SECONDS, MIN_INTERVAL_SECONDS
 from ..data.repository import make_repository
 
 router = APIRouter(tags=["setup"])
@@ -45,7 +45,8 @@ def setup_state(request: Request) -> dict:
     key = st.settings.darker_market_api_key
     prefs = st.app_settings.get()
     return {
-        "initialized": bool(prefs["initialized_at"]), "collect_interval_hours": prefs["collect_interval_hours"],
+        "initialized": bool(prefs["initialized_at"]), "collect_interval_seconds": prefs["collect_interval_seconds"],
+        "rate_limit_per_minute": DARKERDB_LIVE_RATE_PER_MINUTE,
         "auto_collect": prefs["auto_collect"], "environment": environment(st),
         "api_key_configured": bool(key),
         "api_key_hint": key_hint(key),
@@ -83,16 +84,17 @@ def put_api_key(body: ApiKeyIn, request: Request):
 
 
 class ScheduleIn(BaseModel):
-    interval_hours: int
+    interval_seconds: int
     auto_collect: bool
 
 
 @router.put("/setup/schedule")
 def put_schedule(body: ScheduleIn, request: Request):
-    if body.interval_hours not in INTERVAL_CHOICES:
-        raise HTTPException(422, f"采集间隔只能是 {INTERVAL_CHOICES} 小时之一 / interval must be one of {INTERVAL_CHOICES}")
+    if not MIN_INTERVAL_SECONDS <= body.interval_seconds <= MAX_INTERVAL_SECONDS:
+        raise HTTPException(422, f"采集间隔需要在 {MIN_INTERVAL_SECONDS} 秒到 30 天之间 / interval must be between "
+                                 f"{MIN_INTERVAL_SECONDS} seconds and 30 days")
     st = request.app.state
-    st.app_settings.update(collect_interval_hours=body.interval_hours, auto_collect=body.auto_collect)
+    st.app_settings.update(collect_interval_seconds=body.interval_seconds, auto_collect=body.auto_collect)
     if body.auto_collect:
         st.scheduler.restart_if_running()
         if not st.scheduler.running():
@@ -145,7 +147,7 @@ def delete_database(request: Request):
 
 
 class InitIn(BaseModel):
-    item_ids: list[str] = Field(max_length=20)
+    item_ids: list[str] = Field(max_length=3000)
     max_pages: int = Field(default=200, ge=1, le=600)
 
 
