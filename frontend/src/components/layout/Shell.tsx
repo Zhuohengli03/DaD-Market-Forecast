@@ -34,7 +34,7 @@ export function Shell() {
   return (
     <div className="flex h-full">
       <aside className="w-56 shrink-0 bg-[var(--sidebar)] text-gray-200 flex flex-col">
-        <div className="px-4 py-5 border-b border-white/10"><div className="font-semibold text-white">Darker Market</div><div className="text-xs text-gray-400 mt-0.5">{t('app.tagline')}</div><div className="text-xs text-gray-500 mt-1 flex items-center gap-1"><Database size={12} />{status.data ? (status.data.source === 'postgres' ? 'Postgres' : 'CSV') : '…'}</div></div>
+        <div className="px-4 py-5 border-b border-white/10"><div className="font-semibold text-white">Darker Market</div><div className="text-xs text-gray-400 mt-0.5">{t('app.tagline')}</div><div className="text-xs text-gray-500 mt-1 flex items-center gap-1"><Database size={12} />{status.data ? ({ postgres: 'Postgres', sqlite: 'SQLite', csv: 'CSV' } as Record<string, string>)[status.data.source] ?? status.data.source : '…'}</div></div>
         <nav className="flex-1 py-2 flex flex-col">
           {link(HOME)}
           {GROUPS.map(g => (

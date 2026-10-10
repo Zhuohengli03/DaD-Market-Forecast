@@ -11,9 +11,9 @@ vi.mock('../../api/hooks')
 vi.mock('../../api/jobStream')
 beforeEach(() => sessionStorage.clear())
 
-const base = { initialized: false, collect_interval_hours: 6, auto_collect: false, api_key_configured: true, api_key_hint: '…by2r',
+const base = { initialized: false, collect_interval_seconds: 21600, rate_limit_per_minute: 60, auto_collect: false, api_key_configured: true, api_key_hint: '…by2r',
   data_source: 'csv', seasons: 8, tracked_items: 4, catalog_items: 2432,
-  environment: { python_version: '3.13.5', python_ok: true, storage: 'csv', data_dir: '/x/data', db_host: null, db_database: null } }
+  environment: { python_version: '3.13.5', python_ok: true, storage: 'sqlite', data_dir: '/x/data', db_host: null, db_database: null } }
 
 function mount(setup = base) {
   const init = { mutate: vi.fn(), isPending: false }
@@ -24,8 +24,9 @@ function mount(setup = base) {
   vi.mocked(hooks.useCatalogJob).mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
   vi.mocked(hooks.useItems).mockReturnValue({ data: [{ name: 'Iron Ore' }] } as never)
   vi.mocked(hooks.useCatalog).mockReturnValue({ data: { rows: [
-    { archetype: 'id.item.iron_ores', name: 'Iron Ore', name_zh: '铁矿', has_stats: false, rarities: ['common'], listings_total: 5, variants: [{ id: 'id.item.iron_ores_2001', rarity: 'common', raw: {} }] },
-    { archetype: 'id.item.bandage', name: 'Bandage', name_zh: '绷带', has_stats: false, rarities: ['poor', 'common'], listings_total: 9, variants: [{ id: 'id.item.bandage_1001', rarity: 'poor', raw: {} }, { id: 'id.item.bandage_2001', rarity: 'common', raw: {} }] },
+    { archetype: 'id.item.iron_ores', name: 'Iron Ore', name_zh: '铁矿', category: 'ore', has_stats: false, rarities: ['common'], listings_total: 5, variants: [{ id: 'id.item.iron_ores_2001', rarity: 'common', raw: {} }] },
+    { archetype: 'id.item.gold_ores', name: 'Gold Ore', name_zh: '金矿', category: 'ore', has_stats: false, rarities: ['epic'], listings_total: 7, variants: [{ id: 'id.item.gold_ores_5001', rarity: 'epic', raw: {} }] },
+    { archetype: 'id.item.bandage', name: 'Bandage', name_zh: '绷带', category: 'consumable', has_stats: false, rarities: ['poor', 'common'], listings_total: 9, variants: [{ id: 'id.item.bandage_1001', rarity: 'poor', raw: {} }, { id: 'id.item.bandage_2001', rarity: 'common', raw: {} }] },
   ], total: 2, facets: { item_type: [] } } } as never)
   vi.mocked(hooks.useInitialize).mockReturnValue(init as never)
   vi.mocked(hooks.useSaveSchedule).mockReturnValue(schedule as never)
@@ -40,7 +41,8 @@ it('opens on first run with four ordered steps and checks the environment', () =
   expect(dialog).toHaveTextContent('1 环境')
   expect(dialog).toHaveTextContent('4 自动采集')
   expect(screen.getByText(/Python 3.13.5/)).toBeInTheDocument()
-  expect(screen.getByLabelText('本机文件（推荐）')).toBeChecked()
+  expect(screen.getByLabelText('内置数据库（推荐）')).toBeChecked()
+  expect(screen.getByText(/自动创建，不需要安装任何数据库/)).toBeInTheDocument()
 })
 
 it('does not open once initialized', () => {
@@ -76,9 +78,12 @@ it('shows per-item results while initializing', () => {
 it('saves the collection interval and auto-collect on finish', () => {
   const { schedule } = mount({ ...base, initialized: false })
   for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button', { name: i === 2 ? '跳过初始化' : '下一步' }))
-  fireEvent.change(screen.getByLabelText('多久采集一次'), { target: { value: '3' } })
+  fireEvent.change(screen.getByLabelText('天'), { target: { value: '0' } })
+  fireEvent.change(screen.getByLabelText('时'), { target: { value: '0' } })
+  fireEvent.change(screen.getByLabelText('分'), { target: { value: '1' } })
+  fireEvent.change(screen.getByLabelText('秒'), { target: { value: '30' } })
   fireEvent.click(screen.getByRole('button', { name: '完成' }))
-  expect(schedule.mutate.mock.calls[0][0]).toEqual({ interval_hours: 3, auto_collect: true })
+  expect(schedule.mutate.mock.calls[0][0]).toEqual({ interval_seconds: 90, auto_collect: true })
 })
 
 it('continues to the item picker as soon as the catalog download finishes', async () => {
@@ -101,4 +106,20 @@ it('refreshes the rest of the app when initialization finishes', async () => {
   vi.mocked(stream.useJobStream).mockReturnValue({ progress: { stage: 'done', done: 4, total: 4, detail: { items: [] } }, status: 'succeeded', disconnected: false, error: null, resultRef: null })
   render(<QueryClientProvider client={qc}><MemoryRouter><SetupWizard /></MemoryRouter></QueryClientProvider>)
   for (const k of ['setup', 'items', 'seasons', 'runs']) expect(spy).toHaveBeenCalledWith({ queryKey: [k] })
+})
+
+
+it('selects whole categories or everything in one click', () => {
+  const { init } = mount()
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: '清空' }))
+  expect(screen.getByLabelText('铁矿')).not.toBeChecked()
+  fireEvent.click(screen.getByRole('button', { name: '全选矿石（2）' }))
+  expect(screen.getByLabelText('铁矿')).toBeChecked()
+  expect(screen.getByLabelText('金矿')).toBeChecked()
+  expect(screen.getByLabelText('绷带（普通）')).not.toBeChecked()
+  fireEvent.click(screen.getByRole('button', { name: '全选（4）' }))
+  fireEvent.click(screen.getByRole('button', { name: '开始初始化' }))
+  expect(init.mutate.mock.calls[0][0].item_ids).toHaveLength(4)
 })

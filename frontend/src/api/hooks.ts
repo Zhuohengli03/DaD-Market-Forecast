@@ -94,7 +94,7 @@ export function useUntrackItem() {
 
 export function useSaveSchedule() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: (b: { interval_hours: number; auto_collect: boolean }) => api.put<SetupState>('/setup/schedule', b).then(r => r.data), onSuccess: d => { qc.setQueryData(['setup'], d); qc.invalidateQueries({ queryKey: ['scheduler'] }) } })
+  return useMutation({ mutationFn: (b: { interval_seconds: number; auto_collect: boolean }) => api.put<SetupState>('/setup/schedule', b).then(r => r.data), onSuccess: d => { qc.setQueryData(['setup'], d); qc.invalidateQueries({ queryKey: ['scheduler'] }) } })
 }
 export function useDatabaseSetup() {
   const qc = useQueryClient()

@@ -39,7 +39,11 @@ if [ "$(cat .venv/.requirements-hash 2>/dev/null || true)" != "$REQ_HASH" ]; the
 fi
 ok "Python 依赖已就绪"
 
-# 4. 前端，代码有变化时才重新构建
+# 4. 数据库：没有 Postgres 也没关系，自动建好内置数据库（data/market.db）
+"$VPY" -m backend.init_db | sed 's/^/  /'
+ok "数据库已就绪"
+
+# 5. 前端，代码有变化时才重新构建
 if [ ! -d frontend/node_modules ] || [ frontend/package-lock.json -nt frontend/node_modules/.package-lock.json ]; then
   step "安装前端依赖（首次约 1 分钟）"; (cd frontend && npm ci --silent --no-audit --no-fund)
 fi
@@ -49,7 +53,7 @@ if [ "$(cat frontend/dist/.build-hash 2>/dev/null || true)" != "$FE_HASH" ]; the
 fi
 ok "页面已就绪"
 
-# 5. 启动服务，就绪后打开浏览器
+# 6. 启动服务，就绪后打开浏览器
 step "启动 Darker Market：$URL （按 Ctrl+C 停止）"
 ( for _ in $(seq 1 60); do if curl -fs "$URL/api/status" >/dev/null 2>&1; then open_browser; exit 0; fi; sleep 0.5; done ) &
 export PORT
