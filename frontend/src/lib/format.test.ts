@@ -1,4 +1,4 @@
-import { fmtNum, fmtPct, fmtTs, fmtTsUtc } from './format'
+import { fmtNum, fmtPct, fmtRelative, fmtTs, fmtTsUtc } from './format'
 
 it('formats numbers, percents and timestamps', () => {
   expect(fmtNum(12.3456)).toBe('12.35')
@@ -11,4 +11,23 @@ it('formats numbers, percents and timestamps', () => {
 it('fmtTsUtc renders the UTC wall-clock with a Z suffix', () => {
   expect(fmtTsUtc('2025-10-01T00:00:00+00:00')).toBe('2025-10-01 00:00Z')
   expect(fmtTsUtc(null)).toBe('–')
+})
+
+describe('fmtRelative', () => {
+  const ago = (ms: number) => new Date(Date.now() - ms).toISOString()
+  it('says how long ago in Chinese', async () => {
+    const i18n = (await import('../i18n')).default
+    await i18n.changeLanguage('zh')
+    expect(fmtRelative(ago(8 * 6e4))).toBe('8 分钟前')
+    expect(fmtRelative(ago(3 * 3.6e6))).toBe('3 小时前')
+    expect(fmtRelative(ago(3 * 86.4e6))).toBe('3 天前')
+    expect(fmtRelative(ago(10e3))).toBe('刚刚')
+    expect(fmtRelative(null)).toBe('–')
+  })
+  it('and in English', async () => {
+    const i18n = (await import('../i18n')).default
+    await i18n.changeLanguage('en')
+    expect(fmtRelative(ago(8 * 6e4))).toBe('8 min ago')
+    await i18n.changeLanguage('zh')
+  })
 })
