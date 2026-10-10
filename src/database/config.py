@@ -25,7 +25,7 @@ class Config:
     DARKER_MARKET_API_KEY = os.getenv('DARKER_MARKET_API_KEY', '')
     
     # 文件路径配置 / File Path Configuration
-    DATA_DIR = os.getenv('DATA_DIR', '/Users/zhuohengli/Cursor/darkerdb/data')
+    DATA_DIR = os.getenv('DATA_DIR', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'data'))
     
     @classmethod
     def get_db_config(cls):

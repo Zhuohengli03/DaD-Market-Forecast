@@ -1,0 +1,274 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for src/i18n/zh.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/i18n</a> zh.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export default {
+  app: { tagline: '暗黑地牢市场价格追踪与预测' },
+  nav: { dashboard: '概览', market: '价格走势', forecast: '价格预测', catalog: '道具库', collect: '数据采集', scheduler: '定时采集', settings: '设置' },
+  common: { item: '道具', season: '赛季', start: '开始', end: '结束', resolution: '时间粒度', save: '保存', cancel: '取消', delete: '删除', add: '添加', loading: '加载中…', none: '暂无数据', error: '出了点问题', all: '全部', yes: '是', no: '否', download: '下载 CSV', jobs: '任务记录', log: '运行日志', prev: '上一页', next: '下一页', running: '个任务运行中', goSettings: '去设置', hours: '小时' },
+  res: { '1h': '每小时', '4h': '每 4 小时', '1d': '每天' },
+  apiKey: {
+    title: '连接你的 DarkerDB 账号',
+    why: '这个工具的数据来自 DarkerDB。采集价格、同步道具库都需要你自己的 API key，key 只保存在本机项目目录的 .env 文件里，不会上传到任何地方。',
+    steps: '获取方式：登录 {{site}}，创建一个新 key，勾选 darkerdb.live（市场数据）和 darkerdb.data（道具资料）两个权限，然后粘贴到下面。',
+    site: 'darkerdb.com 控制台',
+    label: 'API key', placeholder: '粘贴你的 key', show: '显示', hide: '隐藏',
+    save: '验证并保存', later: '稍后再说', saved: 'API key 已验证并保存',
+    current: '当前 key：{{hint}}', missing: '尚未设置 API key，采集和道具库同步不可用。', change: '更换 key', set: '设置 key',
+  },
+  onboarding: {
+    noSeasons: '还没有设置赛季。价格预测只在同一个赛季内训练，请先在设置里填上当前赛季的开始时间。',
+    noItems: '还没有追踪任何道具。去道具库挑选你关心的道具。',
+    noKey: '还没有设置 DarkerDB API key。',
+  },
+  dashboard: { title: '概览', latest: '最近一小时中位价', change24: '比 24 小时前', lastSeen: '最近一条挂单', rows: '条挂单', runningJobs: '正在运行的任务', noJobs: '没有正在运行的任务', noData: '还没有这个道具的数据，去「数据采集」点一下采集。' },
+  market: {
+    title: '价格走势', intro: '每小时把所有挂单的单价取中位数，浅色带是一半挂单所在的价格区间。拖动下方滑块缩放，用工具栏的框选工具选一段时间查看统计。',
+    listings: '挂单明细', sold: '已售出', minQty: '最少数量', maxQty: '最多数量', price: '单价', total: '总价', qty: '数量', time: '挂单时间',
+    page: '第 {{page}} / {{pages}} 页，共 {{total}} 条', emptyListings: '没有符合条件的挂单', customRange: '自定义时间段',
+    range: '选中 {{hours}} 个时间段：最低 {{low}} · 中位 {{median}} · 最高 {{high}} · {{listings}} 条挂单', clearRange: '清除选择',
+    legend: { median: '中位价', band: '中间 50% 价格', min: '最低价', max: '最高价', volume: '成交量', listings: '挂单数' },
+  },
+  forecast: {
+    title: '价格预测', intro: '用当前赛季的历史价格预测接下来几小时的中位价。每次都会先在历史数据上"考试"，和"直接沿用上一小时价格"这个最简单的方法比一比，只有明显更准时才会采用模型。',
+    horizon: '预测多久', coverage: '区间可信度', coverageHint: '阴影区间有这个概率包含真实价格', models: '参与比较的方法', baselineHint: '基准方法总是参与',
+    advanced: '高级', originStep: '回测间隔', originStepHint: '每隔多少小时做一次回测，越小越慢但更稳',
+    start: '开始预测', history: '历史预测', noRuns: '还没有预测记录',
+    beats: '模型比基准更准', notBeats: '没有找到比基准明显更准的方法，下面显示的是基准预测',
+    skill: '误差比"沿用上一小时"低', selected: '采用', origins: '基于 {{n}} 次回测',
+    stale: '最新数据已经是 {{days}} 天前的了，预测是从那时起算的，请先采集新数据。',
+    backtest: '回测成绩（越低越好）', evalHorizon: '回测预测长度', coverageActual: '区间实际命中率',
+    perHorizon: '预测越远误差越大吗？', importance: '模型最看重的信息',
+    references: '叠加往届赛季同期价格', actuals: '叠加后来的真实价格', warnings: '注意事项',
+    pending: '已开始，日志见下方', failed: '预测失败', disconnected: '日志连接中断，正在改为定时刷新…',
+    model: '方法', mae: '平均误差', maeH1: '1 小时后误差', maeH24: '24 小时后误差', mase: '相对基准', dir: '涨跌判断正确率', rmse: '均方根误差',
+    metricHelp: { mae_mean: '预测价和真实价平均差多少', mase_mean: '小于 1 表示比沿用上一小时更准', direction_acc: '预测涨还是跌，说对的比例（价格不动的时刻不计）', mae_h1: '只看提前 1 小时的预测', mae_h24: '只看提前 24 小时的预测', rmse_mean: '对大误差惩罚更重的误差' },
+    deleteRun: '已删除这次预测', runMissing: '这条预测记录不存在或已被删除', noSeasonForecast: '需要先设置赛季才能预测。',
+  },
+  models: { naive: '沿用上一小时', seasonal_naive_24: '沿用昨天同一时刻', ets: '指数平滑', arima: 'ARIMA 时间序列', ridge: '线性回归', hgb: '梯度提升树', rf: '随机森林', ensemble: '多模型加权' },
+  modelHelp: { naive: '基准：假设价格不变', seasonal_naive_24: '基准：假设和昨天同一时间一样', ets: '平滑趋势和每日周期', arima: '经典统计时间序列模型', ridge: '用过去的价格和成交量做线性预测', hgb: '能捕捉非线性关系的树模型', rf: '多棵决策树取平均' },
+  catalog: {
+    title: '道具库', intro: '从 DarkerDB 同步全部道具和它们的参数。"扫描市场"会翻看本赛季最新的挂单，标出哪些道具正在交易，以及它们的价格。点"追踪"后，这个道具就会出现在采集和预测里。',
+    sync: '同步道具库', scan: '扫描本赛季市场', syncing: '正在同步…',
+    patch: '游戏版本', syncedAt: '上次同步', scannedAt: '上次扫描', since: '扫描起点', tradableCount: '本赛季有挂单的道具',
+    search: '搜索道具名或 ID', rarity: '稀有度', type: '类型', tradable: '交易情况', tradableYes: '本赛季有挂单', tradableNo: '没有挂单',
+    name: '道具', listings: '挂单数', median: '中位单价', low: '最低单价', gearScore: '装备分', vendor: '商人收购价',
+    track: '追踪', tracked: '已追踪', trackedOk: '已开始追踪 {{name}}', params: '全部参数',
+    empty: '道具库是空的。设置好 API key 后点"同步道具库"。', noMatch: '没有符合条件的道具',
+  },
+  collect: { title: '数据采集', intro: '点"立即采集"从 DarkerDB 拉取这个道具的最新挂单。数据存在本机（配置了 Postgres 就存数据库，否则存 data 目录下的 CSV）。', collectNow: '立即采集', recent: '采集记录', started: '已开始采集', untrack: '不再追踪', addFromCatalog: '从道具库添加道具', untracked: '已取消追踪 {{name}}' },
+  scheduler: { title: '定时采集', intro: '开启后，每个追踪的道具会在设定时间自动采集一次。需要保持这个程序在运行。', status: '定时采集', on: '已开启', off: '已关闭', startBtn: '开启', stopBtn: '关闭', task: '道具', schedule: '每天采集时间', runNow: '立即采集' },
+  settings: {
+    title: '设置', apiKey: 'DarkerDB API key', seasons: '赛季', seasonsIntro: '暗黑地牢每个赛季开始会重置市场，不同赛季的价格不能混在一起训练。填上每个赛季的开始时间（UTC），当前赛季的结束时间留空。',
+    seasonName: '名称', seasonStart: '开始 (UTC)', seasonEnd: '结束 (UTC，进行中留空)', note: '备注',
+    items: '追踪的道具', itemsIntro: '可以停用某个道具或修改每天的采集时间。添加新道具请用道具库。', itemName: '名称', itemId: 'DarkerDB ID', category: '分类', description: '描述', enabled: '启用', scheduleTime: '采集时间',
+    dataSource: '数据存储', dataSourcePg: 'Postgres 数据库', dataSourceCsv: '本机 CSV 文件（data 目录）', python: 'Python 解释器', language: '语言', saved: '已保存',
+  },
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-10-10T00:12:49.946Z
+            </div>
+        <script src="../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
+    </body>
+</html>
+    
