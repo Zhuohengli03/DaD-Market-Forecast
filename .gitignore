@@ -47,3 +47,8 @@ frontend/playwright-report/
 # user state (seasons, tracked items, catalog, runs, collected CSVs)
 data/
 seasons.json
+
+# coverage output
+.coverage
+frontend/coverage/
+htmlcov/
