@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Activity, BarChart3, Database, Download, LayoutDashboard, Package, Settings, Clock } from 'lucide-react'
+import { Activity, BarChart3, Database, Download, LayoutDashboard, Package, Settings, Clock, Swords } from 'lucide-react'
 import { useStatus } from '../../api/hooks'
 import { setLang } from '../../i18n'
 import { Badge } from '../ui/Badge'
@@ -10,6 +10,7 @@ const NAV = [
   { to: '/market', key: 'market', icon: BarChart3 },
   { to: '/forecast', key: 'forecast', icon: Activity },
   { to: '/catalog', key: 'catalog', icon: Package },
+  { to: '/equipment', key: 'equipment', icon: Swords },
   { to: '/collect', key: 'collect', icon: Download },
   { to: '/scheduler', key: 'scheduler', icon: Clock },
   { to: '/settings', key: 'settings', icon: Settings },

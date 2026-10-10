@@ -30,13 +30,20 @@ def build_project() -> Path:
     (data / "seasons.json").write_text(json.dumps({"seasons": [
         {"id": "s-e2e", "name": "Season 2", "start": SEASON_START.isoformat(), "end": None, "note": ""}]}))
     (data / "catalog.json").write_text(json.dumps({
-        "patch": "0.0.0-e2e", "synced_at": "2026-10-01T00:00:00+00:00", "market_scanned_at": "2026-10-01T00:00:00+00:00",
-        "market_since": SEASON_START.isoformat(),
-        "items": [{"id": "id.item.test_ore_1001", "name": "Test Ore", "rarity": "common", "item_type": "Misc", "vendor_price": 3},
-                  {"id": "id.item.arming_sword_2001", "name": "Arming Sword", "rarity": "uncommon", "slot_type": "Weapon",
-                   "primary": {"weapon_damage": 30}}],
-        "market": {"id.item.test_ore_1001": {"name": "Test Ore", "listings": 50, "sold": 40, "min_price_per_unit": 15,
-                                             "median_price_per_unit": 21, "last_seen": "2026-01-30T00:00:00Z"}}}))
+        "patch": "Early Access Season #11", "synced_at": "2026-10-10T00:00:00+00:00",
+        "trade_totals": {"id.item.test_ore": 1200, "id.item.arming_sword": 95000, "id.item.gold_coins": 0},
+        "trade_check_complete": True, "trade_checked_at": "2026-10-10T00:20:00+00:00",
+        "items": [
+            {"id": "id.item.test_ore_1001", "archetype": "id.item.test_ore", "name": "Test Ore", "rarity": "common",
+             "item_type": "misc", "num_primary_attributes": 0, "num_secondary_attributes": 0, "vendor_price": 3},
+            {"id": "id.item.bandage_1001", "archetype": "id.item.bandage", "name": "Bandage", "rarity": "poor",
+             "item_type": "utility", "num_secondary_attributes": 0, "duration": 4},
+            {"id": "id.item.arming_sword_2001", "archetype": "id.item.arming_sword", "name": "Arming Sword", "rarity": "common",
+             "item_type": "weapon", "num_secondary_attributes": 0},
+            {"id": "id.item.arming_sword_6001", "archetype": "id.item.arming_sword", "name": "Arming Sword", "rarity": "legendary",
+             "item_type": "weapon", "num_secondary_attributes": 116, "primary_attributes": [{"attribute": "weapon_damage", "min": 32, "max": 32}]},
+            {"id": "id.item.gold_coins", "archetype": "id.item.gold_coins", "name": "Gold Coin", "rarity": "unique",
+             "item_type": "misc", "num_secondary_attributes": 0}]}))
     return root
 
 
