@@ -33,3 +33,18 @@ Every page and message is written for them: plain words first, jargon explained 
 ## Unverified until a valid key exists
 Field names of `/v2/items` and `/v2/market` rows beyond those the docs name. Code reads them defensively
 (`item_id` | `item.id`, `name` | `item.name`) and keeps raw rows so nothing is lost.
+
+## Revision 2026-10-10 (after live API access)
+User clarified: "items" means item **types** (DarkerDB archetypes: every rarity of one name is one type).
+1. Catalog lists types (798), grouped locally from the 2432 synced variants by `archetype`.
+2. Only tradable types are shown, with a note saying so. DarkerDB's `is_tradable` is true for every item, so a
+   background check asks `/v2/market?archetype=<type>&limit=1` once per type (~15 min at 60 req/min, resumable);
+   types with zero listings ever are hidden. Until the check runs, all types show with a notice.
+3. Types without random stats (no variant has `num_secondary_attributes > 0`; ores, consumables, materials) keep
+   tracking, collection, price history and forecasts. Tracking is per rarity variant.
+4. Types with random stats get an **Equipment market** page instead of forecasts: choose rarity, add any number of
+   stat filters (each a min/max range, primary or secondary), optionally only sold listings; the backend queries
+   DarkerDB live (`archetype`, `rarity`, `has_sold`, `primary[x]`, `secondary[x]` = `a:b` / `>=a` / `<=b`) and returns
+   matching listings plus daily price statistics. Stat labels come from `/v2/attributes`.
+5. "Sold" is DarkerDB's inference (listing vanished before expiry); the UI says so.
+6. Season boundaries can be imported from `/v2/patches?kind=season`.

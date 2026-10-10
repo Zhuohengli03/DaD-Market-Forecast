@@ -26,10 +26,17 @@ def list_items(request: Request):
 @router.post("/items/track", status_code=201)
 def track(body: TrackIn, request: Request):
     st = request.app.state
-    raw = next((r for r in st.catalog.read()["items"] if r.get("id") == body.item_id), None)
-    if raw is None:
+    found = st.catalog.variant(body.item_id)
+    if found is None:
         raise HTTPException(404, f"道具库里没有 {body.item_id}，请先同步道具库 / not in the synced catalog")
+    raw, variants = found
+    from ..data.catalog import has_stats
+    if has_stats(variants):
+        raise HTTPException(422, "带随机词条的装备不做追踪和预测，请在「装备行情」里按词条查看 / "
+                                 "items with random stats are not tracked; use the Equipment market page")
     name = str(raw.get("name") or body.item_id)
+    if len(variants) > 1:  # several rarities of one type: the rarity is part of the tracked name
+        name = f"{name} ({raw.get('rarity')})"
     try:
         entry = st.items.track(name, body.item_id, body.category or str(raw.get("item_type", "")),
                                str(raw.get("rarity", "")))

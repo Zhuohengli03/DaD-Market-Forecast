@@ -1,13 +1,12 @@
-"""Pull the DarkerDB item catalog and summarize recent market activity per item."""
+"""Pull the DarkerDB item catalog and find out which item types actually trade."""
 from __future__ import annotations
 
-import statistics
 from typing import Callable
 
-from src.api.darkerdb_client import MARKET_MAX_LIMIT, DarkerDBError, listing_item_ref, normalize_listing
 from ..data.catalog import CatalogStore
 
 ITEMS_PAGE_LIMIT = 200
+SAVE_EVERY = 25
 Logger = Callable[[str], None]
 
 
@@ -27,37 +26,26 @@ def sync_catalog(client, store: CatalogStore, log: Logger) -> int:
         rows.extend(page)
         log(f"items page {page_no}: {len(rows)} items so far")
     store.save_items(rows, patch)
-    log(f"catalog saved: {len(rows)} items")
+    log(f"catalog saved: {len(rows)} items in {len(store.types())} types")
     return len(rows)
 
 
-def scan_market(client, store: CatalogStore, since: str | None, max_pages: int, log: Logger) -> int:
-    acc: dict[str, dict] = {}
-    oldest = newest = None
-    read = 0
-    params = {"limit": MARKET_MAX_LIMIT, "sort": "created_at:desc"}
-    if since:
-        params["from"] = since
-    for page_no, page in enumerate(client.iter_pages("/market", params, max_pages), start=1):
-        for raw in page:
-            iid, name = listing_item_ref(raw)
-            if not iid:
-                continue
-            try:
-                row = normalize_listing(raw, name or iid)
-            except (KeyError, TypeError, ValueError):
-                continue
-            a = acc.setdefault(iid, {"name": row["item"], "prices": [], "sold": 0, "last_seen": row["created_at"]})
-            a["prices"].append(row["price_per_unit"])
-            a["sold"] += int(row["has_sold"])
-            a["last_seen"] = max(a["last_seen"], row["created_at"])
-            read += 1
-            oldest = row["created_at"] if oldest is None else min(oldest, row["created_at"])
-            newest = row["created_at"] if newest is None else max(newest, row["created_at"])
-        log(f"market page {page_no}/{max_pages}: {len(acc)} distinct items")
-    stats = {iid: {"name": a["name"], "listings": len(a["prices"]), "sold": a["sold"],
-                   "min_price_per_unit": min(a["prices"]), "median_price_per_unit": statistics.median(a["prices"]),
-                   "last_seen": a["last_seen"]} for iid, a in acc.items()}
-    store.save_market(stats, since, covered_from=oldest, covered_to=newest, listings_read=read)
-    log(f"market scan saved: {len(stats)} items seen in {read} listings ({oldest} to {newest})")
-    return len(stats)
+def check_tradability(client, store: CatalogStore, log: Logger, force: bool = False) -> int:
+    """Ask the market how many listings each type has ever had. Zero means it cannot be traded.
+
+    DarkerDB's is_tradable flag is true for every item, so this is the reliable signal. One request per
+    type; progress is saved as it goes, so an interrupted check resumes where it stopped.
+    """
+    totals = {} if force else dict(store.read()["trade_totals"])
+    todo = [k for k in store.types() if k not in totals]
+    log(f"{len(todo)} item types to check ({len(totals)} already done)")
+    for i, arch in enumerate(todo, start=1):
+        payload = client.get("/market", {"archetype": arch, "limit": 1})
+        totals[arch] = int((payload.get("pagination") or {}).get("total") or 0)
+        if i % SAVE_EVERY == 0:
+            store.save_trade_totals(totals, complete=False)
+            log(f"checked {i}/{len(todo)}")
+    store.save_trade_totals(totals, complete=True)
+    tradable = sum(1 for v in totals.values() if v > 0)
+    log(f"done: {tradable} of {len(totals)} types have market listings")
+    return tradable
