@@ -9,8 +9,8 @@ import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { useToast } from '../../components/ui/Toast'
-import { fmtDate } from '../../lib/format'
 import { QualityPrices } from './QualityPrices'
+import { firstRecordLabel } from '../../lib/darkerdb'
 import { itemName, paramLabel, paramValue, rarityLabel, typeLabel } from '../../lib/labels'
 
 // in Chinese, list the Chinese name and description before the English ones
@@ -40,7 +40,7 @@ function ListingStats({ row, localSeason }: { row: CatalogType; localSeason: num
   // looked up: the season count is known, and the first listing too (or there never was one)
   const known = row.season_listings != null && (!!row.first_listed || row.listings_total === 0)
   const season = row.season_listings ?? localSeason
-  const first = row.first_listed ? fmtDate(row.first_listed) : known ? t('catalog.noListing') : '–'
+  const first = row.first_listed ? firstRecordLabel(row.first_listed, t) : known ? t('catalog.noListing') : '–'
   return (
     <section aria-label={t('catalog.detail.listings')} className="lg:border-l lg:border-[var(--line)] lg:pl-6 min-w-[300px]">
       <div className="text-sm font-semibold mb-2">{t('catalog.detail.listings')}</div>

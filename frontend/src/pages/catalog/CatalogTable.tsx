@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import type { CatalogType } from '../../api/types'
 import { Badge } from '../../components/ui/Badge'
-import { fmtDate } from '../../lib/format'
+import { firstRecordLabel } from '../../lib/darkerdb'
 import { itemName, rarityLabel, typeLabel } from '../../lib/labels'
 
 /** localSeason: this-season listings collected on this machine for tracked items (item id → count). */
@@ -34,7 +34,7 @@ export function CatalogTable({ rows, tracked, localSeason = {} }: { rows: Catalo
                   return local.length ? <span title={t('catalog.localHint')}>{local.reduce((n, v) => n + localSeason[v.id], 0)}<span className="ml-1 text-[10px] text-[var(--muted)]">{t('catalog.local')}</span></span> : '–'
                 })()}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-[var(--muted)]">{r.listings_total ?? '–'}</td>
-                <td className="px-3 py-1.5 tabular-nums text-[var(--muted)] whitespace-nowrap">{r.first_listed ? fmtDate(r.first_listed) : r.season_listings != null && r.listings_total === 0 ? t('catalog.noListing') : '–'}</td>
+                <td className="px-3 py-1.5 tabular-nums text-[var(--muted)] whitespace-nowrap">{r.first_listed ? firstRecordLabel(r.first_listed, t) : r.season_listings != null && r.listings_total === 0 ? t('catalog.noListing') : '–'}</td>
                 <td className="px-3 py-1.5 text-right">
                   {r.has_stats ? <Link to={`/equipment?type=${r.archetype}`} onClick={e => e.stopPropagation()} className="text-sm font-medium text-[var(--accent)] hover:underline">{t('catalog.viewMarket')}</Link>
                     : single && tracked.has(single.id) ? <Badge tone="ok">{t('catalog.tracked')}</Badge> : null}

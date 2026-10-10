@@ -37,7 +37,7 @@ it('tracks another rarity and fetches season numbers on demand', () => {
   mount(track, history)
   fireEvent.click(screen.getByRole('button', { name: '追踪' }))
   expect(track.mock.calls[0][0]).toBe('id.item.bandage_2001')
-  fireEvent.click(screen.getByRole('button', { name: /查询本赛季挂单和最早日期/ }))
+  fireEvent.click(screen.getByRole('button', { name: /查询本赛季挂单和最早记录/ }))
   expect(history.mock.calls[0][0]).toBe('id.item.bandage')
 })
 
