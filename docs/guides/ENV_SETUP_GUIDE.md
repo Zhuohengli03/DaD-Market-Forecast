@@ -1,112 +1,25 @@
-# 环境变量设置指南 / Environment Variables Setup Guide
+# Configuration reference / 配置说明
 
-## 🔐 安全配置完成
+All settings are environment variables; the app also reads `.env` in the project root. Copy `env.template` to start, or let the first-run dialog create `.env` for you.
 
-你的项目已经配置了环境变量系统来保护敏感信息！
+| Variable | Default | Meaning |
+|---|---|---|
+| `DARKER_MARKET_API_KEY` | empty | DarkerDB v2 key (`darkerdb.live` + `darkerdb.data`). Set through the app's dialog or Settings page. |
+| `DB_USER` | empty | Leave empty to store data as CSV in `data/`. Set it to use Postgres. |
+| `DB_HOST` / `DB_PORT` / `DB_DATABASE` / `DB_PASSWORD` | `localhost` / `5432` / `darkerdb` / empty | Postgres connection, used only when `DB_USER` is set. |
+| `HOST` | `127.0.0.1` | Address the web server binds to. `0.0.0.0` exposes it to your network. |
+| `PORT` | `5001` | Web server port. |
+| `DATA_DIR` | `./data` | Where collected CSVs and user state live. |
 
-## 📋 快速设置
+## Files the app manages / 程序自己维护的文件
+| Path | Content |
+|---|---|
+| `.env` | your API key (mode 600) |
+| `data/items.json` | tracked items and their daily collection time |
+| `data/seasons.json` | season start/end times |
+| `data/catalog.json` | synced DarkerDB catalog and last market scan |
+| `data/<item>.csv` | collected listings (when not using Postgres) |
+| `data/runs/*.json` | saved forecasts |
 
-### 1. 复制环境变量模板
-```bash
-cp env.template .env
-```
-
-### 2. 编辑 .env 文件
-```bash
-# 使用你喜欢的编辑器
-nano .env
-# 或者
-code .env
-```
-
-### 3. 填入你的实际配置
-```env
-# Database Configuration / 数据库配置
-DB_HOST=localhost
-DB_DATABASE=darkerdb
-DB_USER=your_actual_username
-DB_PASSWORD=your_actual_password
-DB_PORT=5432
-
-# API Configuration / API配置
-DARKER_MARKET_API_KEY=your_actual_api_key
-
-# File Paths / 文件路径
-DATA_DIR=/Users/zhuohengli/Cursor/darkerdb/data
-```
-
-## ✅ 验证配置
-
-运行以下命令验证配置是否正确：
-
-```bash
-python -c "from config import config; config.validate_config(); print('✅ 配置验证成功')"
-```
-
-## 🔧 当前配置状态
-
-- ✅ **数据库配置**: 从环境变量加载
-- ✅ **API密钥**: 从环境变量加载  
-- ✅ **文件路径**: 从环境变量加载
-- ✅ **安全保护**: .env文件已添加到.gitignore
-
-## 📁 相关文件
-
-- `env.template` - 环境变量模板（可提交到Git）
-- `.env` - 实际环境变量文件（已忽略，不会提交）
-- `src/database/config.py` - 配置加载模块
-- `.gitignore` - 已更新，保护敏感文件
-
-## 🚀 使用方法
-
-### 在代码中使用
-```python
-from src.database.config import config
-
-# 获取数据库配置
-db_config = config.get_db_config()
-
-# 获取API请求头
-headers = config.get_api_headers()
-
-# 验证配置
-config.validate_config()
-```
-
-### 环境变量优先级
-1. 系统环境变量（最高）
-2. .env文件中的变量
-3. 代码中的默认值（最低）
-
-## ⚠️ 重要提示
-
-- **永远不要**将`.env`文件提交到Git
-- **定期更新**API密钥和密码
-- **使用强密码**和安全的API密钥
-- **在团队中**通过安全渠道分享配置
-
-## 🆘 故障排除
-
-### 如果遇到导入错误
-```bash
-# 确保安装了python-dotenv
-pip install python-dotenv
-
-# 检查是否在正确目录
-pwd
-# 应该显示: /path/to/Darker Market
-
-# 测试配置
-python -c "from src.database.config import config; print('OK')"
-```
-
-### 如果数据库连接失败
-```bash
-# 检查.env文件是否存在
-ls -la .env
-
-# 检查数据库配置
-python -c "from src.database.config import config; print(config.get_db_config())"
-```
-
-现在你的敏感信息已经安全地存储在环境变量中，可以安全地提交代码到GitHub了！🎉
+## Using Postgres / 使用 Postgres
+Create a database, set the `DB_*` variables, and restart. Collectors create one table per item (`iron_ore`, `arming_sword`, …). If Postgres is unreachable, the app falls back to CSV and says so in Settings.
