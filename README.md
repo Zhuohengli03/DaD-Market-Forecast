@@ -15,7 +15,8 @@ Track and forecast **Dark and Darker** marketplace prices on your own machine, w
 ## English
 
 ### What it does
-- **Item catalog**: syncs every item from DarkerDB with all its parameters, and scans recent listings to show which items are trading and at what price. Track any item with one click.
+- **Item catalog**: every tradable item type from DarkerDB (all rarities of one name are one type) with all parameters. Items without random stats (ores, consumables, materials) can be tracked and forecast.
+- **Equipment market**: for weapons, armor and accessories, add any number of stat conditions (e.g. armor penetration 2–5 and headshot bonus ≥ 3) and see matching listings, sales and daily prices, live from DarkerDB.
 - **Price history**: hourly median price with the middle-50% band, volume, zoom, range statistics and a filterable listing table.
 - **Forecast**: predicts the next 24–168 hours from the current season only. Every run first replays history and compares each method with "repeat the last hour". A model is used only when it is clearly better, and the page says so either way.
 - **Collection**: collect on demand or once a day automatically. Data stays on your machine as CSV files in `data/`, or in Postgres if you configure one.
@@ -36,8 +37,8 @@ python -m backend
 Open **http://localhost:5001**. On first launch a dialog asks for your DarkerDB API key; it is verified and saved to `.env` in the project folder (never committed).
 
 Then:
-1. **Settings → Seasons**: add the start of the current season (UTC). The market resets every season, so forecasts never mix seasons.
-2. **Item catalog**: press *Sync catalog*, then *Scan recent listings* to see what is trading now, and *Track* the items you care about. Four ores are tracked by default; remove them with the × on the Collect page.
+1. **Settings → Seasons**: press *Import seasons from DarkerDB*. The market resets every season, so forecasts never mix seasons.
+2. **Item catalog**: press *Sync catalog*, then *Check tradable items* once (about 15 minutes, it hides items that never trade). *Track* stat-free items you care about; four ores are tracked by default. For equipment, use *View market*.
 3. **Collect data**: press *Collect now* on an item (or turn on *Scheduled collection*).
 4. **Forecast**: pick an item and a horizon, press *Run forecast*.
 
@@ -72,7 +73,8 @@ More: [Quick start details](docs/guides/QUICK_START.md) · [Configuration](docs/
 ## 中文说明
 
 ### 功能
-- **道具库**：从 DarkerDB 同步全部道具及其所有参数；扫描最近挂单，标出哪些道具正在交易、价格多少。一键追踪。
+- **道具库**：DarkerDB 上所有可交易的道具类型（同名道具的各稀有度算一种），带全部参数。没有随机词条的道具（矿石、消耗品、材料）可以追踪和预测。
+- **装备行情**：武器、防具、饰品可以添加任意多个词条条件（如破甲 2~5、爆头加成 ≥ 3），实时查看符合条件的挂单、成交和每日价格。
 - **价格走势**：每小时中位价、中间 50% 价格带、成交量，可缩放、框选统计，挂单明细可筛选。
 - **价格预测**：只用当前赛季的数据预测未来 24 到 168 小时。每次先在历史上回测，和"沿用上一小时价格"比较，只有明显更准才采用模型，并在页面上说明结果。
 - **数据采集**：手动或每天定时采集。数据保存在本机 `data/` 目录的 CSV 里；配置了 Postgres 则存数据库。
@@ -93,8 +95,8 @@ python -m backend
 浏览器打开 **http://localhost:5001**。第一次打开会弹窗让你填写 DarkerDB API key，验证通过后保存到项目目录的 `.env`（不会被提交到 git）。
 
 然后：
-1. **设置 → 赛季**：填上当前赛季的开始时间（UTC）。每个赛季市场都会重置，预测不会跨赛季混用数据。
-2. **道具库**：点"同步道具库"，再点"扫描最近挂单"看看现在在交易什么，给关心的道具点"追踪"。默认已追踪几种矿石，不需要的话在采集页点 × 移除。
+1. **设置 → 赛季**：点「从 DarkerDB 导入赛季」。每个赛季市场都会重置，预测不会跨赛季混用数据。
+2. **道具库**：点「同步道具库」，再点一次「检查可交易道具」（约 15 分钟，会隐藏从来没人交易过的道具）。给关心的无词条道具点「追踪」，默认已追踪 4 种矿石。装备点「查看行情」。
 3. **数据采集**：点道具上的"立即采集"，或在"定时采集"里开启每天自动采集。
 4. **价格预测**：选道具和预测时长，点"开始预测"。
 
