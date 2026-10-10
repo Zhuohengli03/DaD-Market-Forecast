@@ -36,7 +36,7 @@ def test_scheduler_status_and_tasks(client, project_root):
         "TASKS=[{'name':'T','script_path':'src/api/Test_Ore_API.py','schedule_type':'daily',"
         "'schedule_value':'23:00','enabled':True,'description':'d'}]\n")
     d = client.get("/api/scheduler").json()["data"]
-    assert d["running"] is False and d["tasks"][0]["name"] == "T"
+    assert d["running"] is False and d["tasks"][0]["item"] == "Test Ore"
     r = client.post("/api/scheduler/run", json={"script_path": "src/api/Test_Ore_API.py"})
     assert r.status_code == 202
     assert _wait(client, r.json()["data"]["job_id"])["status"] == "succeeded"

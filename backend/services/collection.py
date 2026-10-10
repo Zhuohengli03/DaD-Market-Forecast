@@ -1,23 +1,36 @@
 from __future__ import annotations
 
-import json
+from pathlib import Path
 
-from ..data.repository import validate_item
+from ..settings import Settings
 from .jobs import Job
 
 
-def start_collection(state, item: str) -> Job:
-    item = validate_item(item)
-    cfg_path = state.settings.items_config_path
-    cfg = json.loads(cfg_path.read_text(encoding="utf-8")) if cfg_path.exists() else {"items": []}
-    entry = next((it for it in cfg.get("items", []) if it["name"] == item), None)
-    if entry is None:
-        raise KeyError(f"item {item!r} is not configured")
-    script = state.settings.project_root / "src" / "api" / entry["file"]
+def collector_argv(settings: Settings, entry: dict) -> list[str]:
+    """Command that collects one tracked item. Legacy entries may point at a script inside src/api/."""
+    if entry.get("item_id") or not entry.get("file"):
+        argv = [settings.python_executable, "-m", "src.api.collect", "--item", entry["name"]]
+        if entry.get("item_id"):
+            argv += ["--item-id", entry["item_id"]]
+        return argv
+    api_dir = (settings.project_root / "src" / "api").resolve()
+    script = (api_dir / entry["file"]).resolve()
+    if api_dir not in script.parents:
+        raise ValueError(f"collector script must live in src/api: {entry['file']}")
     if not script.exists():
         raise FileNotFoundError(f"collector script missing: {script}")
+    return [settings.python_executable, str(script)]
+
+
+def collector_env(settings: Settings) -> dict[str, str]:
+    return {"DARKER_DATA_DIR": str(settings.data_dir)}
+
+
+def start_collection(state, item: str) -> Job:
+    entry = state.items.get(item)  # KeyError if not tracked
+    argv = collector_argv(state.settings, entry)
     if state.jobs.find_active("collect", item=item):
-        raise RuntimeError(f"collection for {item!r} is already running")
-    job = state.jobs.create("collect", f"collect {item}", meta={"item": item})
-    state.jobs.run_process(job, [state.settings.python_executable, str(script)], state.settings.project_root)
+        raise RuntimeError(f"{item} 正在采集中 / collection for {item!r} is already running")
+    job = state.jobs.create("collect", f"采集 {item} / collect {item}", meta={"item": item})
+    state.jobs.run_process(job, argv, state.settings.project_root, env=collector_env(state.settings))
     return job

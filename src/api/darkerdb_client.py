@@ -46,6 +46,14 @@ def canonical_ts(value) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def listing_item_ref(row: dict) -> tuple[str | None, str | None]:
+    """(item_id, display name) of a market row, whether `item` is a string or a nested object."""
+    item = row.get("item")
+    if isinstance(item, dict):
+        return (item.get("id") or row.get("item_id")), (item.get("name") or row.get("item_name"))
+    return row.get("item_id"), (item or row.get("item_name"))
+
+
 def normalize_listing(row: dict, fallback_item_name: str) -> dict:
     """Map a v2 market row onto the legacy DB record shape used by DarkerMarketDB."""
     item = row.get("item")
@@ -121,20 +129,26 @@ class DarkerDBClient:
             raise DarkerDBError(404, f"no item named {name!r} in /v2/items")
         return str(chosen[0]["id"])
 
-    def iter_market(self, item_id: str, since: str | None = None, limit: int = MARKET_MAX_LIMIT,
-                    sort: str = "created_at:desc", max_pages: int | None = None) -> Iterator[list[dict]]:
-        """Yield pages of raw listing rows, following pagination.next until exhausted."""
-        params: dict = {"item_id": item_id, "limit": min(limit, MARKET_MAX_LIMIT), "sort": sort}
-        if since:
-            params["from"] = since
-        cursor = None
+    def iter_pages(self, path: str, params: dict, max_pages: int | None = None) -> Iterator[list[dict]]:
+        """Yield the `body` of each page, following pagination.next until it is null or max_pages is hit."""
+        params = dict(params)
         pages = 0
         while True:
-            if cursor:
-                params["cursor"] = cursor
-            payload = self.get("/market", params)
-            yield list(payload.get("body") or [])
+            payload = self.get(path, params)
+            body = payload.get("body") or []
+            yield list(body) if isinstance(body, list) else [body]
             pages += 1
             cursor = (payload.get("pagination") or {}).get("next")
             if not cursor or (max_pages is not None and pages >= max_pages):
                 return
+            params["cursor"] = cursor
+
+    def iter_market(self, item_id: str | None, since: str | None = None, limit: int = MARKET_MAX_LIMIT,
+                    sort: str = "created_at:desc", max_pages: int | None = None) -> Iterator[list[dict]]:
+        """Yield pages of raw listing rows (all items when item_id is None)."""
+        params: dict = {"limit": min(limit, MARKET_MAX_LIMIT), "sort": sort}
+        if item_id:
+            params["item_id"] = item_id
+        if since:
+            params["from"] = since
+        return self.iter_pages("/market", params, max_pages)

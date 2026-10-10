@@ -8,7 +8,8 @@ from backend.settings import Settings
 
 def test_validate_item_and_table_name():
     assert table_name("Iron Ore") == "iron_ore"
-    for bad in ("", "x" * 65, "drop; table", "Iron-Ore"):
+    assert table_name("2H Sword") == "item_2h_sword" and table_name("Lich's Hood") == "lich_s_hood"
+    for bad in ("", "x" * 81, "drop; table", "a\nb"):
         with pytest.raises(ValueError):
             validate_item(bad)
 
@@ -106,7 +107,7 @@ def test_postgres_fetch_all_without_sqlalchemy(project_root, monkeypatch):
     df = repo.fetch_all("Gold Ore", pd.Timestamp("2026-01-01T00:00:00Z"), None)
     assert list(df.columns) == ["item_id", "item", "quantity", "price_per_unit", "price", "has_sold", "created_at"]
     assert str(df["created_at"].dt.tz) == "UTC" and len(df) == 1
-    assert "ORDER BY created_at::timestamptz" in cur.executed[-1][0]
+    assert "ORDER BY created_at::timestamptz" in repr(cur.executed[-1][0])
 
 
 def test_postgres_list_items_accepts_tz_aware_datetimes(project_root, monkeypatch):

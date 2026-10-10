@@ -104,3 +104,14 @@ def test_normalize_listing_canonicalizes_created_at():
     base = {"id": "1", "item": "Iron Ore", "quantity": 1, "price": 1, "price_per_unit": 1}
     for raw in ("2026-04-04T14:17:24Z", "2026-04-04T14:17:24+00:00", "2026-04-04T14:17:24.123Z", 1775312244):
         assert normalize_listing({**base, "created_at": raw}, "x")["created_at"] == "2026-04-04T14:17:24Z"
+
+
+def test_iter_pages_generic_and_item_id_extraction():
+    from src.api.darkerdb_client import listing_item_ref
+    s = _Session([_Resp(200, _env([{"id": "a"}], nxt="n")), _Resp(200, _env([{"id": "b"}]))])
+    c = DarkerDBClient("k", session=s, min_interval=0)
+    assert [r["id"] for p in c.iter_pages("/items", {"limit": 200}) for r in p] == ["a", "b"]
+    assert s.calls[1][1] == {"limit": 200, "cursor": "n"}
+    assert listing_item_ref({"item_id": "id.item.x", "item": "X"}) == ("id.item.x", "X")
+    assert listing_item_ref({"item": {"id": "id.item.y", "name": "Y"}}) == ("id.item.y", "Y")
+    assert listing_item_ref({"item": "Z"}) == (None, "Z")

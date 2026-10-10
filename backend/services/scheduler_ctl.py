@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 import subprocess
 from pathlib import Path
 
@@ -13,6 +12,7 @@ class SchedulerController:
         self._settings = settings
         self._jobs = jobs
         self._proc: subprocess.Popen | None = None
+        self._tasks_cache: tuple[float, list[dict]] | None = None
 
     def running(self) -> bool:
         return self._proc is not None and self._proc.poll() is None
@@ -25,6 +25,8 @@ class SchedulerController:
             raise FileNotFoundError(f"missing {script}")
         self._proc = subprocess.Popen([self._settings.python_executable, str(script), "--start"],
                                       cwd=str(self._settings.project_root),
+                                      env={**__import__("os").environ, "DARKER_ITEMS_CONFIG": str(self._settings.items_config_path),
+                                           "DARKER_DATA_DIR": str(self._settings.data_dir)},
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
 
@@ -39,20 +41,17 @@ class SchedulerController:
         return False
 
     def tasks(self) -> list[dict]:
-        path = self._settings.project_root / "src" / "scheduler" / "task_config.py"
-        if not path.exists():
-            return []
-        spec = importlib.util.spec_from_file_location("task_config_dyn", path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        root = str(self._settings.project_root)
-        out = []
-        for t in getattr(mod, "TASKS", []):
-            sp = Path(t["script_path"])
-            rel = str(sp.relative_to(root)) if sp.is_absolute() and str(sp).startswith(root) else str(sp)
-            out.append({"name": t["name"], "script_path": rel, "schedule_type": t["schedule_type"],
-                        "schedule_value": str(t["schedule_value"]), "enabled": t.get("enabled", True),
-                        "description": t.get("description", "")})
+        """One daily collection task per enabled tracked item (same rule as src/scheduler/task_config.py)."""
+        path = self._settings.items_config_path
+        mtime = path.stat().st_mtime if path.exists() else 0.0
+        if self._tasks_cache and self._tasks_cache[0] == mtime:
+            return self._tasks_cache[1]
+        from src.scheduler.task_config import tasks_from_items
+        out = [{"name": t["name"], "item": t["item"], "script_path": t["script_path"],
+                "schedule_type": t["schedule_type"], "schedule_value": str(t["schedule_value"]),
+                "enabled": t["enabled"], "description": t["description"]}
+               for t in tasks_from_items(path, self._settings.project_root)]
+        self._tasks_cache = (mtime, out)
         return out
 
     def resolve_script(self, script_path: str) -> Path:

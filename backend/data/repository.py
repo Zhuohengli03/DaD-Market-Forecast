@@ -8,17 +8,19 @@ import pandas as pd
 
 from ..settings import Settings
 
-_ITEM_RE = re.compile(r"^[A-Za-z0-9 ]{1,64}$")
+_ITEM_RE = re.compile(r"^[\w][\w '’\-():,.&]{0,79}$")
 
 
 def validate_item(name: str) -> str:
     if not _ITEM_RE.match(name or ""):
-        raise ValueError(f"invalid item name {name!r}: letters, digits and spaces only (1-64 chars)")
+        raise ValueError(f"invalid item name {name!r}")
     return name
 
 
 def table_name(item: str) -> str:
-    return validate_item(item).lower().replace(" ", "_")
+    """Postgres table / CSV stem for an item: lowercase slug, never starting with a digit."""
+    s = re.sub(r"[^a-z0-9]+", "_", validate_item(item).lower()).strip("_")
+    return s if s and not s[0].isdigit() else f"item_{s}"
 
 
 @dataclass

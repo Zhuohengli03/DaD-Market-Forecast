@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import psycopg2
 import psycopg2.extras
+from psycopg2 import sql
 
 from ..settings import Settings
 from .repository import ItemInfo, ListingQuery, table_name
@@ -54,7 +55,7 @@ class PostgresListingRepository:
                 if cur.fetchone()[0] is None:
                     out.append(ItemInfo(name, 0, None, None))
                     continue
-                cur.execute(f"SELECT COUNT(*), MIN({_TS}), MAX({_TS}) FROM {tbl}")
+                cur.execute(sql.SQL(f"SELECT COUNT(*), MIN({_TS}), MAX({_TS}) FROM {{}}").format(sql.Identifier(tbl)))
                 n, lo, hi = cur.fetchone()
                 out.append(ItemInfo(name, int(n), _utc_iso(lo), _utc_iso(hi)))
         return out
@@ -78,9 +79,9 @@ class PostgresListingRepository:
         tbl = table_name(item)
         where, params = self._where(q.start, q.end, q.sold, q.min_qty, q.max_qty)
         with self._conn() as c, c.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute(f"SELECT COUNT(*) AS n FROM {tbl}{where}", params)
+            cur.execute(sql.SQL("SELECT COUNT(*) AS n FROM {}" + where).format(sql.Identifier(tbl)), params)
             total = int(cur.fetchone()["n"])
-            cur.execute(f"SELECT {_COLS} FROM {tbl}{where} ORDER BY {_TS} DESC LIMIT %s OFFSET %s",
+            cur.execute(sql.SQL(f"SELECT {_COLS} FROM {{}}{where} ORDER BY {_TS} DESC LIMIT %s OFFSET %s").format(sql.Identifier(tbl)),
                         params + [q.page_size, (q.page - 1) * q.page_size])
             rows = []
             for r in cur.fetchall():
@@ -94,7 +95,7 @@ class PostgresListingRepository:
         tbl = table_name(item)
         where, params = self._where(start, end)
         with self._conn() as c, c.cursor() as cur:
-            cur.execute(f"SELECT {_COLS} FROM {tbl}{where} ORDER BY {_TS}", params)
+            cur.execute(sql.SQL(f"SELECT {_COLS} FROM {{}}{where} ORDER BY {_TS}").format(sql.Identifier(tbl)), params)
             rows = cur.fetchall()
         df = pd.DataFrame(rows, columns=[d[0] for d in cur.description]) if rows else \
             pd.DataFrame(columns=_COLS.split(", "))

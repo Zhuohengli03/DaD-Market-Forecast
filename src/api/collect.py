@@ -68,42 +68,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--since", default=None, help="only listings created at/after this timestamp (ISO or YYYY-MM-DD)")
     p.add_argument("--max-pages", type=int, default=200)
     p.add_argument("--probe", action="store_true", help="print the first raw market row and exit")
-    p.add_argument("--no-csv", action="store_true", help="skip the CSV export after inserting")
+    p.add_argument("--data-dir", default=os.getenv("DARKER_DATA_DIR", str(PROJECT_ROOT / "data")))
     return p.parse_args(argv)
 
 
-def _load_existing(db) -> set[str]:
-    cursor = db.connector.cursor()
-    cursor.execute(f"SELECT item_id, created_at FROM {db.items}")
-    keys = {f"{r[0]}_{r[1]}" for r in cursor.fetchall()}
-    cursor.close()
-    return keys
-
-
-def export_csv(db, table: str, csv_path: Path, log: Logger = print) -> bool:
-    import pandas as pd
-    cursor = db.connector.cursor()
-    cursor.execute(f"SELECT item_id, item, quantity, price_per_unit, price, has_sold, created_at, insert_time "
-                   f"FROM {table} ORDER BY created_at DESC")
-    columns = [d[0] for d in cursor.description]
-    rows = cursor.fetchall()
-    cursor.close()
-    if not rows:
-        log("no rows in the database, CSV not written")
-        return False
-    pd.DataFrame(rows, columns=columns).to_csv(csv_path, index=False, encoding="utf-8")
-    log(f"exported {len(rows)} rows to {csv_path}")
-    return True
+def table_slug(name: str) -> str:
+    import re
+    s = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
+    return s if s and not s[0].isdigit() else f"item_{s}"
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    from src.database.Database_connect import DarkerMarketDB
-    from src.database.config import config
+    from dotenv import load_dotenv
+    load_dotenv(PROJECT_ROOT / ".env")
+    from src.api.storage import open_storage
 
     log = print
+    key = os.getenv("DARKER_MARKET_API_KEY", "")
     try:
-        client = DarkerDBClient(config.DARKER_MARKET_API_KEY)
+        client = DarkerDBClient(key)
         item_id = args.item_id or client.find_item_id(args.item)
         log(f"item {args.item!r} -> {item_id}")
         if args.probe:
@@ -115,33 +99,23 @@ def main(argv: list[str] | None = None) -> int:
     except DarkerDBError as exc:
         log(f"DarkerDB API error: {exc}")
         if exc.code == 401:
-            log("Create a v2 key at https://darkerdb.com/dashboard/api-keys (scopes darkerdb.live + darkerdb.data) "
-                "and put it in .env as DARKER_MARKET_API_KEY")
+            log("Your DarkerDB API key is missing or invalid. Open the web app and enter it in Settings, "
+                "or create one at https://darkerdb.com/dashboard/api-keys (scopes darkerdb.live + darkerdb.data).")
         return 2
 
-    table = args.item.replace(" ", "_").lower()
-    db = DarkerMarketDB(items=table)
-    if not db.connect():
-        log("database connection failed")
-        return 3
+    storage = open_storage(table_slug(args.item), Path(args.data_dir), log)
     try:
-        seen = _load_existing(db)
-        log(f"{len(seen)} existing records loaded for de-duplication")
+        seen = storage.existing_keys()
+        log(f"{len(seen)} listings already stored")
         try:
             rows = collect_pages(client, item_id, args.item, args.since, seen, max_pages=args.max_pages, log=log)
         except DarkerDBError as exc:
             log(f"DarkerDB API error: {exc}")
             return 2
-        if rows:
-            db.add_data(rows)
-            inserted = db.batch_insert_all_data()
-            log(f"inserted {inserted} new rows into {table}")
-        else:
-            log("no new listings")
-        if not args.no_csv:
-            export_csv(db, table, PROJECT_ROOT / f"{table}.csv", log)
+        inserted = storage.insert(rows)
+        log(f"done: {inserted} new listings saved" if inserted else "done: no new listings")
     finally:
-        db.disconnect()
+        storage.close()
     return 0
 
 
