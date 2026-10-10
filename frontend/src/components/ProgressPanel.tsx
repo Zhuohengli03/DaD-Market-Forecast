@@ -31,7 +31,12 @@ function failure(kind: JobKind, p: JobProgress | null, error: string | null, lan
   const code = p?.stage === 'error' ? String(p.detail?.code ?? '') : ''
   if (code === 'auth') return t('progress.error.auth')
   if (code === 'api') return t('progress.error.api')
-  if (error && !/^exit code|Error:|Traceback/.test(error)) return localizeMessage(error.replace(/^\w+Error: /, ''), lang)
+  if (error) {
+    const msg = error.replace(/^\w+(Error|Exception): /, '')
+    if (/^KeyError/.test(error) && /no CSV data|not tracked/.test(error)) return t('progress.error.noData')
+    // our own messages are Chinese or "中文 / English"; anything else is internal detail
+    if (/[\u4e00-\u9fff]/.test(msg)) return localizeMessage(msg, lang)
+  }
   return t(`progress.error.${kind}`)
 }
 
