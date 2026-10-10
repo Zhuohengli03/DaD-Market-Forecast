@@ -28,25 +28,32 @@ function EnvStep() {
   const env = setup.environment
   const db = useDatabaseSetup(); const toast = useToast()
   const [mode, setMode] = useState<'db' | 'pg'>(env.storage === 'postgres' ? 'pg' : 'db')
-  const [form, setForm] = useState<DatabaseInput>({ host: 'localhost', port: 5432, database: 'darkerdb', user: '', password: '' })
+  const saved = env.db_saved
+  const [form, setForm] = useState<DatabaseInput>({ host: saved?.host ?? 'localhost', port: saved?.port ?? 5432, database: saved?.database ?? 'darkerdb', user: saved?.user ?? '', password: '' })
   const [error, setError] = useState<string | null>(null)
   const set = (k: keyof DatabaseInput, v: string) => setForm(f => ({ ...f, [k]: k === 'port' ? Number(v) : v }))
-  const toBuiltIn = () => { setMode('db'); if (env.storage === 'postgres') db.clear.mutate(undefined, { onSuccess: () => toast.push(t('wizard.env.switched')) }) }
+  // choosing an option only changes what is shown; switching storage always needs an explicit confirmation
+  const confirmBuiltIn = () => db.clear.mutate(undefined, { onSuccess: () => toast.push(t('wizard.env.switched')), onError: e => setError((e as Error).message) })
   return (
     <div className="space-y-4 text-sm">
       <div className="flex items-center gap-2">{env.python_ok ? <CheckCircle2 size={16} className="text-[var(--good)]" /> : <AlertCircle size={16} className="text-[var(--bad)]" />}
         {env.python_ok ? t('wizard.env.python', { v: env.python_version }) : t('wizard.env.pythonOld', { v: env.python_version })}</div>
       <fieldset className="space-y-2">
         <legend className="font-medium mb-1">{t('wizard.env.storage')}</legend>
-        <label className="flex gap-2 items-start"><input type="radio" name="storage" aria-label={t('wizard.env.builtin')} checked={mode === 'db'} onChange={toBuiltIn} />
+        <label className="flex gap-2 items-start"><input type="radio" name="storage" aria-label={t('wizard.env.builtin')} checked={mode === 'db'} onChange={() => setMode('db')} />
           <span><span>{t('wizard.env.builtin')}</span><span className="block text-xs text-[var(--muted)]">{t('wizard.env.builtinHint', { path: `${env.data_dir}/market.db` })}</span></span></label>
         <label className="flex gap-2 items-start"><input type="radio" name="storage" aria-label={t('wizard.env.pg')} checked={mode === 'pg'} onChange={() => setMode('pg')} />
           <span><span>{t('wizard.env.pg')}</span><span className="block text-xs text-[var(--muted)]">{env.storage === 'postgres' ? t('wizard.env.pgOk', { host: env.db_host, db: env.db_database }) : t('wizard.env.pgHint')}</span></span></label>
       </fieldset>
+      {mode === 'db' && env.storage === 'postgres' && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 space-y-2">
+          <p>{t('wizard.env.toBuiltinWarn')}</p>
+          <Button size="sm" loading={db.clear.isPending} onClick={confirmBuiltIn}>{t('wizard.env.toBuiltin')}</Button>
+        </div>)}
       {mode === 'pg' && env.storage !== 'postgres' && (
         <div className="grid grid-cols-2 gap-2">
           {(['host', 'port', 'database', 'user', 'password'] as const).map(k => (
-            <Field key={k} label={t(`wizard.env.${k}`)}><input className={inputCls} type={k === 'password' ? 'password' : k === 'port' ? 'number' : 'text'} value={String(form[k])} onChange={e => set(k, e.target.value)} /></Field>))}
+            <Field key={k} label={t(`wizard.env.${k}`)}><input aria-label={t(`wizard.env.${k}`)} className={inputCls} type={k === 'password' ? 'password' : k === 'port' ? 'number' : 'text'} value={String(form[k])} onChange={e => set(k, e.target.value)} /></Field>))}
           <div className="col-span-2 flex items-center gap-3">
             <Button size="sm" loading={db.save.isPending} onClick={() => { setError(null); db.save.mutate(form, { onError: e => setError((e as Error).message) }) }}>{t('wizard.env.test')}</Button>
             {error && <span role="alert" className="text-xs text-[var(--bad)]">{error}</span>}
