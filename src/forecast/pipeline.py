@@ -20,6 +20,7 @@ MIN_HOURS = 72
 HORIZON_RANGE = (24, 168)
 COVERAGE_RANGE = (0.5, 0.99)
 TAIL_HOURS = 168
+STALE_HOURS = 24
 PRICE_FLOOR = 0.0
 
 ListingLoader = Callable[[str, pd.Timestamp, "pd.Timestamp | None"], pd.DataFrame]
@@ -90,6 +91,11 @@ def _fit_selected(selection, series: pd.DataFrame, season_start: pd.Timestamp, h
     return np.sum(preds, axis=0), importance
 
 
+def _naive_selection(result, skill: float, reason: str):
+    from .select import Selection
+    return Selection("naive", (("naive", 1.0),), False, skill, result.predictions["naive"], reason)
+
+
 def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons: list[Season],
                  source: str = "unknown", log: Logger | None = None) -> dict:
     say = log or (lambda _s: None)
@@ -115,7 +121,15 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     selection = select_model(result, metrics)
     say(f"selected {selection.name} (skill vs naive {selection.skill_vs_naive:+.1%})")
 
-    point, importance = _fit_selected(selection, series, season.start, request.horizon_hours)
+    if selection.reason:
+        warnings.append(f"showing the naive forecast: {selection.reason}")
+    try:
+        point, importance = _fit_selected(selection, series, season.start, request.horizon_hours)
+    except Exception as exc:
+        warnings.append(f"{selection.name} failed on the full season ({type(exc).__name__}: {exc}); "
+                        "falling back to the naive forecast")
+        selection = _naive_selection(result, selection.skill_vs_naive, "selected model failed to refit")
+        point, importance = _fit_selected(selection, series, season.start, request.horizon_hours)
     resid = result.actuals - selection.predictions
     lo, hi = quantile_bounds(resid, request.coverage)
     point = np.maximum(point, PRICE_FLOOR)
@@ -137,6 +151,10 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
 
     tail = full_series.iloc[-TAIL_HOURS:]
     now = pd.Timestamp.now(tz="UTC")
+    data_age_hours = float((now - last_ts) / pd.Timedelta(hours=1))
+    if data_age_hours > STALE_HOURS:
+        warnings.append(f"latest listing is {data_age_hours:.0f} hours old; the forecast starts from then, "
+                        "not from now. Collect fresh data first.")
     run_id = f"{now:%Y%m%dT%H%M%S}-{request.item.lower().replace(' ', '_')}-{uuid.uuid4().hex[:6]}"
     return {
         "run_id": run_id,
@@ -165,6 +183,8 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
             "per_horizon": {m.name: [_num(v) for v in m.per_horizon_mae] for m in metrics},
             "failures": result.failures,
         },
+        "data_age_hours": data_age_hours,
+        "baseline_reason": selection.reason or None,
         "beats_baseline": selection.beats_baseline,
         "skill_vs_naive": float(selection.skill_vs_naive),
         "feature_importance": [{"name": n, "value": float(v)} for n, v in importance] if importance else [],

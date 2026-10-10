@@ -95,3 +95,32 @@ def test_job_list_safe_under_concurrent_create():
     finally:
         stop.set(); th.join()
     assert not errors
+
+
+def test_internal_errors_do_not_leak_details(client):
+    def boom():
+        raise RuntimeError("password=hunter2 in SQL")
+    client.app.state.item_stats._fn = boom
+    client.app.state.item_stats.invalidate()
+    r = TestClient(client.app, raise_server_exceptions=False).get("/api/status")
+    assert r.status_code == 500 and "hunter2" not in r.text and "ref" in r.json()["error"]
+
+
+def test_late_subscriber_gets_full_log_and_old_jobs_are_evicted():
+    jm = JobManager(max_jobs=3)
+    job = jm.create("t", "x")
+    for i in range(500):
+        jm.append_log(job, f"l{i}")
+    jm._set_status(job, "succeeded")
+    q = jm.subscribe(job.id)
+    lines = []
+    while True:
+        item = q.get_nowait()
+        if item is None:
+            break
+        if item[0] == "log":
+            lines.append(item[1])
+    assert len(lines) == 500
+    for _ in range(5):
+        j = jm.create("t", "y"); jm._set_status(j, "succeeded")
+    assert len(jm.list()) == 3

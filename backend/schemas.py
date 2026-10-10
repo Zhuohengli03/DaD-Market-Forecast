@@ -28,6 +28,7 @@ class ForecastIn(BaseModel):
     horizon_hours: int = Field(default=72, ge=24, le=168)
     models: list[str] = Field(default_factory=list)
     coverage: float = Field(default=0.9, ge=0.5, le=0.99)
+    backtest_origin_step: int = Field(default=6, ge=1, le=24)
 
 
 class RunTaskIn(BaseModel):
