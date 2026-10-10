@@ -125,3 +125,51 @@ def test_collector_emits_progress_lines_when_asked(tmp_path, monkeypatch, capsys
     lines = [json.loads(l[2:]) for l in capsys.readouterr().out.splitlines() if l.startswith("@@")]
     assert lines[0]["stage"] == "collect" and lines[0]["done"] == 1 and lines[0]["total"] == 5
     assert lines[-1] == {"stage": "done", "new": 2}
+
+
+def _season_file(tmp_path, start="2026-10-09T00:00:00+00:00"):
+    import json
+    (tmp_path / "seasons.json").write_text(json.dumps({"seasons": [
+        {"id": "s10", "name": "第 10 赛季", "start": "2026-07-17T00:00:00+00:00", "end": start},
+        {"id": "s11", "name": "第 11 赛季", "start": start, "end": None}]}))
+
+
+def _fake(seen):
+    class FakeClient:
+        def __init__(self, key):
+            pass
+
+        def find_item_id(self, name):
+            return "id.item.iron_ores_2001"
+
+        def iter_market(self, item_id, since=None, limit=50, sort="created_at:desc", max_pages=None, until=None):
+            seen.update(since=since, until=until, sort=sort)
+            yield []
+    return FakeClient
+
+
+def test_collector_never_backfills_an_older_season(tmp_path, monkeypatch):
+    """Stored data stops in an earlier season: resume from the current season's start, not from that old listing."""
+    import src.api.collect as col
+    from src.api.storage import SqliteStorage
+    SqliteStorage(tmp_path / "market.db", "iron_ore").insert([_row(1)])      # 2026-04-04
+    _season_file(tmp_path)
+    seen = {}
+    monkeypatch.setenv("DARKER_MARKET_API_KEY", "k")
+    monkeypatch.delenv("DB_USER", raising=False)
+    monkeypatch.setattr(col, "DarkerDBClient", _fake(seen))
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
+    col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path)])
+    assert seen["since"] == "2026-10-09T00:00:00+00:00" and seen["until"] is None
+
+
+def test_collector_collects_one_season_between_given_times(tmp_path, monkeypatch):
+    import src.api.collect as col
+    seen = {}
+    monkeypatch.setenv("DARKER_MARKET_API_KEY", "k")
+    monkeypatch.delenv("DB_USER", raising=False)
+    monkeypatch.setattr(col, "DarkerDBClient", _fake(seen))
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
+    col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path), "--since", "2026-07-17T00:00:00+00:00",
+              "--until", "2026-10-09T00:00:00+00:00"])
+    assert seen == {"since": "2026-07-17T00:00:00+00:00", "until": "2026-10-09T00:00:00+00:00", "sort": "created_at:asc"}

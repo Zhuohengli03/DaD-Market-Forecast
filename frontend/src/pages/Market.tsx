@@ -40,7 +40,7 @@ export default function Market() {
       {!sel.items.length && <Notice to="/catalog" action={t('nav.catalog')}>{t('onboarding.noItems')}</Notice>}
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex-1 min-w-[320px]"><SelectorBar /></div>
-        <RefreshData item={sel.item} />
+        <RefreshData item={sel.item} seasonId={sel.season || undefined} />
         <div className="flex flex-col items-end gap-1">
           <Button loading={forecast.isPending} disabled={!points.length || !sel.season} title={!sel.season ? t('market.forecastNeedsSeason') : undefined} onClick={quickForecast}><Activity size={14} />{t('market.forecastNow')}</Button>
           <span className="text-xs text-[var(--muted)]">{t('market.forecastHint')}</span>

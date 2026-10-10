@@ -195,11 +195,14 @@ class DarkerDBClient:
                 params["cursor"] = nxt
 
     def iter_market(self, item_id: str | None, since: str | None = None, limit: int = MARKET_MAX_LIMIT,
-                    sort: str = "created_at:desc", max_pages: int | None = None) -> Iterator[list[dict]]:
-        """Yield pages of raw listing rows (all items when item_id is None)."""
+                    sort: str = "created_at:desc", max_pages: int | None = None,
+                    until: str | None = None) -> Iterator[list[dict]]:
+        """Yield pages of raw listing rows (all items when item_id is None), optionally between since and until."""
         params: dict = {"limit": min(limit, MARKET_MAX_LIMIT), "sort": sort}
         if item_id:
             params["item_id"] = item_id
         if since:
             params["from"] = since
+        if until:
+            params["to"] = until
         return self.iter_pages("/market", params, max_pages)

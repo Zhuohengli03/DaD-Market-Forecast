@@ -20,7 +20,7 @@ function mount(qc = new QueryClient()) {
   vi.mocked(hooks.useSeasons).mockReturnValue({ data: [{ id: 's11', name: '第 11 赛季', start: '2026-10-09T00:00:00Z', end: null }] } as never)
   vi.mocked(hooks.useSeries).mockReturnValue({ data: { points: [{ ts: '2026-10-09T10:00:00+00:00', median_price: 10, p25: 9, p75: 11, min_price: 8, max_price: 12, listings: 3, sold: 1, volume: 4 }] }, isLoading: false } as never)
   vi.mocked(hooks.useStatus).mockReturnValue({ data: { jobs_running: [], collecting: {} } } as never)
-  vi.mocked(hooks.useCollectEstimate).mockReturnValue({ data: { requests: 4, known: true } } as never)
+  vi.mocked(hooks.useCollectEstimate).mockReturnValue({ data: { requests: 4, known: true, since: '2026-10-09T00:00:00+00:00', until: null } } as never)
   render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/market']}><Routes><Route path="*" element={<><Market /><Where /></>} /></Routes></MemoryRouter></QueryClientProvider>)
 }
 
@@ -45,9 +45,9 @@ it('gets the latest data for the shown item and redraws when it is done', () => 
   vi.mocked(hooks.useStartCollect).mockReturnValue({ mutate, isPending: false } as never)
   const qc = new QueryClient(); const spy = vi.spyOn(qc, 'invalidateQueries')
   mount(qc)
-  expect(screen.getByText('预计最多消耗 4 次 DarkerDB 额度')).toBeInTheDocument()
+  expect(screen.getByText('采集 2026-10-09 至 现在，预计最多消耗 4 次 DarkerDB 额度')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: '获取最新数据' }))
-  expect(mutate.mock.calls[0][0]).toBe('Gold Ore')
+  expect(mutate.mock.calls[0][0]).toEqual({ item: 'Gold Ore', seasonId: 's11' })   // the season picked above
   vi.mocked(stream.useJobStream).mockReturnValue({ progress: { stage: 'done', done: null, total: null, detail: { new: 12 } }, status: 'succeeded', error: null, disconnected: false, resultRef: null })
   act(() => mutate.mock.calls[0][1].onSuccess('job7'))
   expect(screen.getByText(/新增 12 条/)).toBeInTheDocument()

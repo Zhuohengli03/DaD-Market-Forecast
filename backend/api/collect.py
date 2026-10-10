@@ -8,9 +8,9 @@ router = APIRouter(tags=["collect"])
 
 
 @router.post("/collect/{item}", status_code=202)
-def collect(item: str, request: Request):
+def collect(item: str, request: Request, season_id: str | None = None):
     try:
-        job = start_collection(request.app.state, item)
+        job = start_collection(request.app.state, item, season_id)
     except ValueError as exc:
         raise HTTPException(422, str(exc))
     except (KeyError, FileNotFoundError) as exc:

@@ -33,7 +33,11 @@ export function useStartForecast() {
 }
 export function useStartCollect() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: (item: string) => api.post<{ job_id: string }>(`/collect/${item}`).then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
+  // a season id collects only that season: from its first day (or the newest listing stored in it) to its end
+  return useMutation({ mutationFn: (arg: string | { item: string; seasonId?: string }) => {
+    const { item, seasonId } = typeof arg === 'string' ? { item: arg, seasonId: undefined } : arg
+    return api.post<{ job_id: string }>(`/collect/${item}`, undefined, seasonId ? { season_id: seasonId } : undefined).then(r => r.data.job_id)
+  }, onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
 }
 export function useSchedulerAction() {
   const qc = useQueryClient()
@@ -151,8 +155,8 @@ export function useUntrackBulk() {
 }
 export const useOverview = () => useQuery({ queryKey: ['overview'], refetchInterval: 60_000,
   queryFn: () => api.get<{ groups: OverviewGroup[] }>('/overview').then(r => r.data.groups) })
-export const useCollectEstimate = (name: string) => useQuery({ queryKey: ['estimate', 'collect', name], enabled: !!name, staleTime: 60_000,
-  queryFn: () => api.get<{ requests: number; known: boolean }>(`/estimate/collect/${name}`).then(r => r.data) })
+export const useCollectEstimate = (name: string, seasonId?: string) => useQuery({ queryKey: ['estimate', 'collect', name, seasonId ?? null], enabled: !!name, staleTime: 60_000,
+  queryFn: () => api.get<{ requests: number; known: boolean; since: string | null; until: string | null }>(`/estimate/collect/${name}`, seasonId ? { season_id: seasonId } : undefined).then(r => r.data) })
 export interface NetworkState { lan: boolean; port: number; running_port: number; running_lan: boolean; restart_required: boolean; lan_urls: string[] }
 export const useNetwork = () => useQuery({ queryKey: ['network'], queryFn: () => api.get<NetworkState>('/setup/network').then(r => r.data) })
 export function useSaveNetwork() {

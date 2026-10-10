@@ -61,17 +61,28 @@ def _to_ts(x) -> pd.Timestamp:
     return ts if ts.tzinfo else ts.tz_localize("UTC")
 
 
-def collect_estimate(st, entry: dict, now=None, max_pages: int = MAX_PAGES, hours: float | None = None) -> dict:
-    """Requests for one collection of a tracked item. `hours`: gap to cover (default: since the newest stored listing)."""
+def collect_estimate(st, entry: dict, now=None, max_pages: int = MAX_PAGES, hours: float | None = None,
+                     since: str | None = None, until: str | None = None) -> dict:
+    """Requests for one collection of a tracked item.
+
+    The window is the season's (see collection.collect_range): from `since` to `until` (or now). `hours` overrides
+    it for scheduled runs. The rate is the item's own recent listing rate, rounded up.
+    """
     cap = max_pages + 1
     stats = _stats(st, entry["name"])
     if stats and stats.rows and stats.last_ts:
         last = _to_ts(stats.last_ts)
-        gap = hours if hours is not None else (_to_ts(now or pd.Timestamp.now(tz="UTC")) - last).total_seconds() / 3600
-        new = _rate_per_hour(st, entry["name"], last) * max(gap, 1) * SAFETY
+        if hours is None:
+            if since is None:
+                from .collection import collect_range
+                since, until = collect_range(st, entry["name"])
+            begin = _to_ts(since) if since else last
+            stop = _to_ts(until) if until else _to_ts(now or pd.Timestamp.now(tz="UTC"))
+            hours = (stop - begin).total_seconds() / 3600
+        new = _rate_per_hour(st, entry["name"], last) * max(hours, 1) * SAFETY
         return {"requests": min(_pages(new), cap), "known": True}
     season = _type_season(st, entry.get("item_id"))
-    if season is not None:
+    if season is not None and until is None:
         return {"requests": min(_pages(season), cap), "known": True}
     return {"requests": cap, "known": False}
 

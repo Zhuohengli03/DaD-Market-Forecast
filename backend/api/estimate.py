@@ -14,13 +14,15 @@ def estimate_collect_all(request: Request):
 
 
 @router.get("/estimate/collect/{name}")
-def estimate_collect(name: str, request: Request):
+def estimate_collect(name: str, request: Request, season_id: str | None = None):
+    from ..services.collection import collect_range
     st = request.app.state
     try:
         entry = st.items.get(name)
-    except KeyError:
-        raise HTTPException(404, f"没有追踪 {name} / {name} is not tracked")
-    return ok(cost.collect_estimate(st, entry))
+        since, until = collect_range(st, name, season_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc).strip("'"))
+    return ok({**cost.collect_estimate(st, entry, since=since, until=until), "since": since, "until": until})
 
 
 @router.get("/estimate/schedule")

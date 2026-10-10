@@ -8,6 +8,7 @@ The per-item scripts in src/api/*_API.py are thin wrappers around main().
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import os
 import sys
@@ -35,7 +36,7 @@ def record_key(row: dict) -> str:
 
 def collect_pages(client, item_id: str, item_name: str, since: str | None, seen: set[str],
                   max_pages: int = 200, max_empty_pages: int = 3, log: Logger = print,
-                  sort: str = "created_at:desc") -> list[dict]:
+                  sort: str = "created_at:desc", until: str | None = None) -> list[dict]:
     """Walk the market cursor, returning normalized rows not already in `seen`.
 
     Stops early after `max_empty_pages` consecutive pages without new rows (listings are
@@ -43,7 +44,8 @@ def collect_pages(client, item_id: str, item_name: str, since: str | None, seen:
     """
     new_rows: list[dict] = []
     empty_streak = 0
-    for page_no, page in enumerate(client.iter_market(item_id, since=since, max_pages=max_pages, sort=sort), start=1):
+    window = {"until": until} if until else {}
+    for page_no, page in enumerate(client.iter_market(item_id, since=since, max_pages=max_pages, sort=sort, **window), start=1):
         added = 0
         for raw in page:
             try:
@@ -69,11 +71,33 @@ def collect_pages(client, item_id: str, item_name: str, since: str | None, seen:
     return new_rows
 
 
+def _ts(value: str) -> datetime:
+    d = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
+
+
+def current_season_start(data_dir: Path) -> str | None:
+    """Start of the latest season in data/seasons.json (set up in the app), or None."""
+    try:
+        seasons = json.loads((data_dir / "seasons.json").read_text(encoding="utf-8")).get("seasons") or []
+    except (OSError, ValueError):
+        return None
+    starts = [s["start"] for s in seasons if s.get("start")]
+    return max(starts, key=_ts) if starts else None
+
+
+def later_of(a: str | None, b: str | None) -> str | None:
+    if not a or not b:
+        return a or b
+    return a if _ts(a) >= _ts(b) else b
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Collect DarkerDB v2 market listings for one item")
     p.add_argument("--item", required=True, help='display name, e.g. "Iron Ore"')
     p.add_argument("--item-id", default=None, help="skip the /items lookup, e.g. id.item.iron_ore_1001")
     p.add_argument("--since", default=None, help="only listings created at/after this timestamp (ISO or YYYY-MM-DD)")
+    p.add_argument("--until", default=None, help="only listings created before this timestamp (to collect one past season)")
     p.add_argument("--max-pages", type=int, default=200)
     p.add_argument("--probe", action="store_true", help="print the first raw market row and exit")
     p.add_argument("--data-dir", default=os.getenv("DARKER_DATA_DIR", str(PROJECT_ROOT / "data")))
@@ -113,13 +137,16 @@ def main(argv: list[str] | None = None) -> int:
         seen = storage.existing_keys()
         # incremental: only ask for listings newer than what is stored. v2 listing ids differ from v1 ids,
         # so re-fetching an already stored period would duplicate it.
-        since = args.since or storage.latest_created_at()
+        # never walk back through an older season: start at the newest stored listing or the current season's
+        # start, whichever is later; an explicit --since (one chosen season) wins
+        since = args.since or later_of(storage.latest_created_at(), current_season_start(Path(args.data_dir)))
         log(f"已存有 {len(seen)} 条挂单，从 {since or '最新'} 开始采集")
         try:
             # resuming: walk oldest-first from the newest stored listing, so stopping at the page budget leaves
             # no gap (the next run continues). First run: take the newest pages.
             sort = "created_at:asc" if since else "created_at:desc"
-            rows = collect_pages(client, item_id, args.item, since, seen, max_pages=args.max_pages, log=log, sort=sort)
+            rows = collect_pages(client, item_id, args.item, since, seen, max_pages=args.max_pages, log=log, sort=sort,
+                                 until=args.until)
         except DarkerDBError as exc:
             log(f"DarkerDB 接口出错：{exc}")
             emit("error", code="auth" if exc.code in (401, 403) else "api", http=exc.code, credits=getattr(client, "credits_used", None))

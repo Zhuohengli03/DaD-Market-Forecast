@@ -124,7 +124,8 @@ def _attach_services(app: FastAPI) -> None:
     st.items = ItemsStore(st.settings.items_config_path)
     st.app_settings = AppSettings(st.settings.app_settings_path)
     from .services.collection import collector_argv
-    st.collector_argv = lambda entry, since: collector_argv(st.settings, entry) + (["--since", since] if since else [])
+    st.collector_argv = lambda entry, since, until=None: (collector_argv(st.settings, entry) + (["--since", since] if since else [])
+                                                          + (["--until", until] if until else []))
     st.catalog = CatalogStore(st.settings.catalog_path)
     st.key_validator = lambda k: default_key_validator(k, quota_file=st.settings.data_dir / "quota.json")
     st.runs = RunStore(st.settings.runs_dir)

@@ -27,15 +27,46 @@ def collector_env(settings: Settings) -> dict[str, str]:
     return {"DARKER_DATA_DIR": str(settings.data_dir), "DARKER_PROGRESS": "1"}
 
 
-def start_collection(state, item: str) -> Job:
+def pick_season(state, season_id: str | None = None) -> dict | None:
+    """The chosen season, or the current one (latest start) when none is given."""
+    import pandas as pd
+    seasons = [s for s in state.seasons.list() if s.get("start")]
+    if season_id:
+        found = next((s for s in seasons if s.get("id") == season_id), None)
+        if found is None:
+            raise KeyError(f"没有这个赛季 / unknown season {season_id}")
+        return found
+    return max(seasons, key=lambda s: pd.Timestamp(s["start"])) if seasons else None
+
+
+def collect_range(state, name: str, season_id: str | None = None) -> tuple[str | None, str | None]:
+    """Where a collection of one item starts and stops, season by season.
+
+    Starts at the newest listing already stored inside the season (so nothing is fetched twice), or at the
+    season's first day when none is stored; stops at the season's end (open-ended for the current season).
+    """
+    import pandas as pd
+    from ..data.repository import ListingQuery
+    season = pick_season(state, season_id)
+    if season is None:
+        return None, None
+    start, end = season["start"], season.get("end")
+    try:
+        rows, _ = state.repo.fetch(name, ListingQuery(start=pd.Timestamp(start), end=pd.Timestamp(end) if end else None, page_size=1))
+    except KeyError:
+        rows = []
+    return (rows[0]["created_at"] if rows else start), end
+
+
+def start_collection(state, item: str, season_id: str | None = None) -> Job:
     from .cost import collect_estimate
-    from .initializer import since_for
     entry = state.items.get(item)  # KeyError if not tracked
-    argv = state.collector_argv(entry, since_for(state, item))
+    since, until = collect_range(state, item, season_id)
+    argv = state.collector_argv(entry, since, until)
     if state.jobs.find_active("collect", item=item):
         raise RuntimeError(f"{item} 正在采集中 / collection for {item!r} is already running")
     job = state.jobs.create("collect", f"采集 {item} / collect {item}", meta={"item": item})
-    state.jobs.set_estimate(job, collect_estimate(state, entry)["requests"])
+    state.jobs.set_estimate(job, collect_estimate(state, entry, since=since, until=until)["requests"])
     state.jobs.run_process(job, argv, state.settings.project_root, env=collector_env(state.settings))
     return job
 

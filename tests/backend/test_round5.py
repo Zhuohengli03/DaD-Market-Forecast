@@ -287,3 +287,29 @@ def test_collect_only_the_chosen_items(client, project_root):
     assert sorted(x["name"] for x in job["progress"]["detail"]["items"]) == ["A Ore", "B Ore"]   # Test Ore not touched
     assert job["label"].startswith("采集 2 个道具")
     assert client.post("/api/collect-all", json={"names": ["Gone"]}, headers=H).status_code == 422
+
+
+def test_collect_range_follows_the_chosen_season(client, settings):
+    """Pick a season: start at its first day (or the newest listing already stored in it) and stop at its end."""
+    from backend.services.collection import collect_range
+    import pandas as pd
+    st = client.app.state
+    seasons = {s["id"]: s for s in st.seasons.list()}
+    s1, s2 = seasons["s1"], seasons["s2"]
+    # fixture data (Test Ore) lies in s2 only
+    assert collect_range(st, "Test Ore", "s1") == (s1["start"], s1["end"])
+    since, until = collect_range(st, "Test Ore", "s2")
+    newest = next(i for i in st.item_stats.get() if i.name == "Test Ore").last_ts
+    assert pd.Timestamp(since) == pd.Timestamp(newest) and until is None
+    # no season given: the current one
+    assert collect_range(st, "Test Ore") == (since, None)
+
+
+def test_collect_endpoint_takes_a_season(client, project_root):
+    seen = {}
+    st = client.app.state
+    st.collector_argv = lambda entry, since, until=None: (seen.update(since=since, until=until), [sys.executable, "-c", "print(1)"])[1]
+    r = client.post("/api/collect/Test Ore", params={"season_id": "s1"}, headers=H)
+    assert r.status_code == 202
+    s1 = next(s for s in st.seasons.list() if s["id"] == "s1")
+    assert seen == {"since": s1["start"], "until": s1["end"]}

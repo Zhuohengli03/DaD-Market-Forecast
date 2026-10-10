@@ -132,13 +132,9 @@ PARALLEL_COLLECTS = 3  # collectors share one key's per-minute limit; more worke
 
 
 def since_for(state, name: str) -> str | None:
-    """Items with nothing stored yet start at the current season instead of walking back through old seasons."""
-    stats = next((i for i in state.item_stats.get() if i.name == name), None)
-    if stats and stats.rows:
-        return None  # the collector resumes from the newest stored listing
-    from .cost import latest_season_start
-    start = latest_season_start(state)
-    return start.isoformat() if start is not None else None
+    """Current season only: resume at the newest listing stored this season, or at the season's first day."""
+    from .collection import collect_range
+    return collect_range(state, name)[0]
 
 
 def run_collect_all(state, job, names: list[str] | None = None) -> str:
