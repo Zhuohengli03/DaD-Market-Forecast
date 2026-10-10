@@ -232,3 +232,13 @@ def test_status_lists_each_item_as_collecting_or_waiting(client, project_root, s
     monkeypatch.setattr(st.scheduler, "stop", lambda: None)
     d = client.get("/api/status").json()["data"]
     assert d["collecting"] == {"A Ore": "collecting", "B Ore": "waiting", "C Ore": "waiting"}
+
+
+def test_untrack_many_at_once_keeps_collected_data(client):
+    st = client.app.state
+    for n in ("A Ore", "B Ore", "C Ore"):
+        st.items.track(n, f"id.item.{n[0].lower()}_ore_1001", "ore")
+    r = client.post("/api/items/untrack-bulk", json={"names": ["A Ore", "B Ore", "Nope"]}, headers=H)
+    assert r.status_code == 200 and r.json()["data"] == {"removed": 2, "missing": 1}
+    assert {i["name"] for i in st.items.list()} == {"Test Ore", "C Ore"}
+    assert client.post("/api/items/untrack-bulk", json={"names": []}, headers=H).status_code == 422

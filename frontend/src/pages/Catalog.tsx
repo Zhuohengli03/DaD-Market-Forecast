@@ -34,8 +34,8 @@ export default function Catalog() {
   const cat = useCatalog({ q: query || undefined, item_type: type || undefined, has_stats: stats === '' ? undefined : stats === 'true', page, page_size: PAGE })
   const tracked = new Set((items.data ?? []).map(i => i.item_id ?? i.name))
   const run = (kind: 'sync' | 'check') => {
-    const unchecked = Math.max(0, (meta.data?.types_total ?? 0) - (meta.data?.trade_checked ?? 0))
-    const cost = kind === 'check' ? unchecked : 30
+    const unchecked = meta.data?.check_cost ?? Math.max(0, (meta.data?.types_total ?? 0) - (meta.data?.trade_checked ?? 0))
+    const cost = kind === 'check' ? unchecked : meta.data?.sync_cost ?? 31
     if (kind === 'check' && unchecked === 0) { toast.push(t('catalog.nothingToCheck')); return }
     if (!window.confirm(t('catalog.confirmCost', { n: cost }))) return
     job.mutate(kind, { onSuccess: setJobId, onError: e => toast.push((e as Error).message, 'error') })

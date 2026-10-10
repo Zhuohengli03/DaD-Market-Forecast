@@ -15,7 +15,7 @@ def _run_collector(jm, job, argv, cwd, env, on_progress) -> int:
     """Run one collector process, forwarding its @@progress lines; returns listings saved."""
     proc = subprocess.Popen(argv, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                             encoding="utf-8", errors="replace", bufsize=1, env=env)
-    saved, error = 0, None
+    saved, error, credits = 0, None, 0
     for line in iter(proc.stdout.readline, ""):
         line = line.rstrip("\n")
         if line.startswith("@@"):
@@ -23,6 +23,9 @@ def _run_collector(jm, job, argv, cwd, env, on_progress) -> int:
                 obj = json.loads(line[2:])
             except ValueError:
                 continue
+            if obj.get("credits") is not None:  # cumulative for this process: add only the increase
+                jm.add_credits(job, int(obj["credits"]) - credits)
+                credits = int(obj["credits"])
             if obj.get("stage") == "collect":
                 on_progress(obj.get("done"), obj.get("new", 0))
             elif obj.get("stage") == "done":
@@ -48,14 +51,18 @@ def run_initialization(state, job, item_ids: list[str], max_pages: int) -> str:
 
     # 1. catalog
     publish("catalog", 0)
-    if not state.catalog.count():
-        from ..api.catalog import client_for_state
-        sync_catalog(client_for_state(state), state.catalog, lambda s: jm.append_log(job, s))
-    # 2. seasons
-    publish("seasons", 1)
-    if not state.seasons.list():
-        from ..api.seasons import import_records_from_darkerdb
-        import_records_from_darkerdb(state)
+    from ..api.catalog import client_for_state
+    client = client_for_state(state) if not (state.catalog.count() and state.seasons.list()) else None
+    try:
+        if not state.catalog.count():
+            sync_catalog(client, state.catalog, lambda s: jm.append_log(job, s))
+        # 2. seasons
+        publish("seasons", 1)
+        if not state.seasons.list():
+            from ..api.seasons import import_records_from_darkerdb
+            import_records_from_darkerdb(state, client=client)
+    finally:
+        jm.add_credits(job, getattr(client, "credits_used", 0))
     seasons = state.seasons.list()
     current = seasons[-1] if seasons else None
     # 3. tracked items
@@ -121,6 +128,16 @@ def run_initialization(state, job, item_ids: list[str], max_pages: int) -> str:
 PARALLEL_COLLECTS = 3  # collectors share one key's per-minute limit; more workers would only queue on it
 
 
+def since_for(state, name: str) -> str | None:
+    """Items with nothing stored yet start at the current season instead of walking back through old seasons."""
+    stats = next((i for i in state.item_stats.get() if i.name == name), None)
+    if stats and stats.rows:
+        return None  # the collector resumes from the newest stored listing
+    from .cost import latest_season_start
+    start = latest_season_start(state)
+    return start.isoformat() if start is not None else None
+
+
 def run_collect_all(state, job) -> str:
     """Collect every enabled tracked item, up to PARALLEL_COLLECTS at a time, with per-item progress."""
     import os
@@ -150,7 +167,7 @@ def run_collect_all(state, job) -> str:
             row["pages"], row["collected"] = page or 0, new
             publish("collect")
         try:
-            row["collected"] = _run_collector(jm, job, state.collector_argv(state.items.get(row["name"]), None),
+            row["collected"] = _run_collector(jm, job, state.collector_argv(state.items.get(row["name"]), since_for(state, row["name"])),
                                               settings.project_root, env, on_page)
             row["status"] = "collected"
         except RuntimeError as exc:

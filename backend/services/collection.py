@@ -28,11 +28,14 @@ def collector_env(settings: Settings) -> dict[str, str]:
 
 
 def start_collection(state, item: str) -> Job:
+    from .cost import collect_estimate
+    from .initializer import since_for
     entry = state.items.get(item)  # KeyError if not tracked
-    argv = collector_argv(state.settings, entry)
+    argv = state.collector_argv(entry, since_for(state, item))
     if state.jobs.find_active("collect", item=item):
         raise RuntimeError(f"{item} 正在采集中 / collection for {item!r} is already running")
     job = state.jobs.create("collect", f"采集 {item} / collect {item}", meta={"item": item})
+    state.jobs.set_estimate(job, collect_estimate(state, entry)["requests"])
     state.jobs.run_process(job, argv, state.settings.project_root, env=collector_env(state.settings))
     return job
 

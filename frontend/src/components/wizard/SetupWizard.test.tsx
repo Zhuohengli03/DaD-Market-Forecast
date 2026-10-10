@@ -8,6 +8,11 @@ import * as stream from '../../api/jobStream'
 import { SetupWizard } from './SetupWizard'
 
 vi.mock('../../api/hooks')
+
+// cost estimates and credits load in the background; tests that care set their own values
+beforeEach(() => {
+  for (const h of ['useScheduleEstimate', 'useItemsEstimate', 'useQuota', 'useCollectAllEstimate'] as const) vi.mocked(hooks[h]).mockReturnValue({ data: undefined } as never)
+})
 vi.mock('../../api/jobStream')
 beforeEach(() => sessionStorage.clear())
 

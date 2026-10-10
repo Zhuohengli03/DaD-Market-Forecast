@@ -33,6 +33,7 @@ class Job:
     result_ref: str | None = None
     meta: dict = field(default_factory=dict)
     progress: dict | None = None
+    cost: dict = field(default_factory=lambda: {"estimate": None, "used": 0})   # DarkerDB credits
     _log: deque = field(default_factory=lambda: deque(maxlen=2000), repr=False)
 
     def log_tail(self, n: int | None = 200) -> list[str]:
@@ -42,7 +43,8 @@ class Job:
     def to_dict(self) -> dict:
         return {"id": self.id, "kind": self.kind, "label": self.label, "status": self.status,
                 "created_at": self.created_at, "finished_at": self.finished_at, "error": self.error,
-                "result_ref": self.result_ref, "meta": self.meta, "progress": self.progress}
+                "result_ref": self.result_ref, "meta": self.meta, "progress": self.progress,
+                "cost": dict(self.cost)}
         # raw log lines stay server-side (troubleshooting); the UI shows structured progress only
 
 
@@ -90,6 +92,15 @@ class JobManager:
     def append_log(self, job: Job, line: str) -> None:
         with self._lock:
             job._log.append(line)
+
+    def set_estimate(self, job: Job, requests: int | None) -> None:
+        with self._lock:
+            job.cost = {**job.cost, "estimate": requests}
+
+    def add_credits(self, job: Job, n: int | None) -> None:
+        if n:
+            with self._lock:
+                job.cost = {**job.cost, "used": job.cost["used"] + int(n)}
 
     def progress(self, job: Job, stage: str, done: int | None = None, total: int | None = None,
                  detail: dict | None = None, **kw) -> None:
@@ -171,6 +182,10 @@ class JobManager:
                     if line.startswith("@@"):  # structured progress from the child process
                         try:
                             obj = json.loads(line[2:])
+                            credits = obj.pop("credits", None)
+                            if credits is not None:  # cumulative for this one process
+                                with self._lock:
+                                    job.cost = {**job.cost, "used": int(credits)}
                             self.progress(job, obj.pop("stage", "running"), obj.pop("done", None),
                                           obj.pop("total", None), detail=obj)
                             continue

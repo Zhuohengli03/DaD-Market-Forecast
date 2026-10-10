@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom'
 import { vi } from 'vitest'
 import '../../i18n'
 import * as hooks from '../../api/hooks'
@@ -14,10 +14,15 @@ const rows = [
   { archetype: 'id.item.arming_sword', name: 'Arming Sword', name_zh: '武装剑', item_type: 'weapon', has_stats: true, icon_url: null, rarities: ['common', 'legendary'], listings_total: 95498, variants: [v('id.item.arming_sword_6001', 'legendary')] },
 ]
 
+function DetailProbe() { return <p>detail:{useParams().archetype}</p> }
+
 function setup(track = vi.fn()) {
   vi.mocked(hooks.useTrackItem).mockReturnValue({ mutate: track, isPending: false } as never)
   vi.mocked(hooks.useTypeHistory).mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
-  render(<MemoryRouter><CatalogTable rows={rows as never} tracked={new Set(['id.item.iron_ores_2001'])} /></MemoryRouter>)
+  render(<MemoryRouter><Routes>
+    <Route path="/" element={<CatalogTable rows={rows as never} tracked={new Set(['id.item.iron_ores_2001'])} />} />
+    <Route path="/catalog/:archetype" element={<DetailProbe />} />
+  </Routes></MemoryRouter>)
   return track
 }
 
@@ -32,13 +37,10 @@ it('shows one row per type with listings, icon and stats badge', () => {
   expect(screen.getByText('已追踪')).toBeInTheDocument()
 })
 
-it('tracks a specific rarity of a stat-free type and shows all parameters', () => {
-  const track = setup()
-  fireEvent.click(screen.getByRole('button', { name: '绷带' }))
-  expect(screen.getByText('duration')).toBeInTheDocument()
-  expect(screen.getAllByText('商人收购价')).toHaveLength(2)   // table header + translated parameter name
-  fireEvent.click(screen.getAllByRole('button', { name: '追踪' })[1])
-  expect(track.mock.calls[0][0]).toBe('id.item.bandage_2001')
+it('opens the item detail page when a row is clicked', () => {
+  setup()
+  fireEvent.click(screen.getByText('粗劣 · 普通'))
+  expect(screen.getByText('detail:id.item.bandage')).toBeInTheDocument()
 })
 
 it('sends equipment to the equipment market instead of tracking', () => {

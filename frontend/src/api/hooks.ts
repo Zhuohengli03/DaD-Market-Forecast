@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, QuotaInfo, RunSummary, ScheduleInput, TypeHistory, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
+import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, CollectAllEstimate, ItemsEstimate, QuotaInfo, RunSummary, ScheduleEstimate, ScheduleInput, TypeHistory, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
 
 export const useStatus = () => useQuery({ queryKey: ['status'], queryFn: () => api.get<StatusResponse>('/status').then(r => r.data), refetchInterval: 5000 })
 export const useItems = () => useQuery({ queryKey: ['items'], queryFn: () => api.get<ItemInfo[]>('/items').then(r => r.data) })
@@ -133,4 +133,18 @@ export function useTypeHistory() {
   const qc = useQueryClient()
   return useMutation({ mutationFn: (archetype: string) => api.post<TypeHistory>(`/catalog/types/${encodeURIComponent(archetype)}/history`).then(r => r.data),
     onSuccess: () => { ['catalog', 'quota'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
+}
+// cost estimates (DarkerDB credits), always rounded up by the server
+export const useCollectAllEstimate = (enabled = true) => useQuery({ queryKey: ['estimate', 'collectAll'], enabled, staleTime: 60_000,
+  queryFn: () => api.get<CollectAllEstimate>('/estimate/collect-all').then(r => r.data) })
+export const useScheduleEstimate = (intervalSeconds?: number) => useQuery({ queryKey: ['estimate', 'schedule', intervalSeconds ?? null], staleTime: 60_000,
+  queryFn: () => api.get<ScheduleEstimate>(`/estimate/schedule${intervalSeconds ? `?interval_seconds=${intervalSeconds}` : ''}`).then(r => r.data) })
+export const useItemsEstimate = (itemIds: string[], maxPages: number) => useQuery({ queryKey: ['estimate', 'items', itemIds, maxPages], enabled: itemIds.length > 0, staleTime: 60_000,
+  queryFn: () => api.post<ItemsEstimate>('/estimate/items', { item_ids: itemIds, max_pages: maxPages }).then(r => r.data) })
+export const useCatalogType = (archetype: string) => useQuery({ queryKey: ['catalog', 'type', archetype], enabled: !!archetype,
+  queryFn: () => api.get<CatalogType>(`/catalog/types/${encodeURIComponent(archetype)}`).then(r => r.data) })
+export function useUntrackBulk() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (names: string[]) => api.post<{ removed: number; missing: number }>('/items/untrack-bulk', { names }).then(r => r.data),
+    onSuccess: () => { ['items', 'itemsConfig', 'setup', 'scheduler', 'status', 'estimate'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
 }

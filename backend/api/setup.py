@@ -179,6 +179,9 @@ def initialize(body: InitIn, request: Request):
         raise HTTPException(422, "请至少选择一个道具 / choose at least one item")
     if st.jobs.find_active("init"):
         raise HTTPException(409, "初始化正在进行中 / initialization already running")
+    from ..services import cost
     job = st.jobs.create("init", "首次初始化 / first-run setup")
+    st.jobs.set_estimate(job, cost.items_estimate(st, body.item_ids, body.max_pages)["requests"]
+                         + (0 if st.catalog.count() else cost.sync_cost(st.catalog)) + (0 if st.seasons.list() else 1))
     st.jobs.run_in_thread(job, lambda j: run_initialization(st, j, body.item_ids, body.max_pages))
     return ok({"job_id": job.id})

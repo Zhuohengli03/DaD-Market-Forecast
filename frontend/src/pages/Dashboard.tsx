@@ -8,6 +8,7 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { Sparkline } from '../components/charts/Sparkline'
 import { GettingStarted } from './GettingStarted'
 import { RunningTasks } from '../components/RunningTasks'
+import { NoDataCard } from './dashboard/NoDataCard'
 import { fmtNum, fmtPct, fmtRelative, fmtTs } from '../lib/format'
 import { change24h } from '../lib/market'
 import { itemName } from '../lib/labels'
@@ -41,12 +42,18 @@ export default function Dashboard() {
   const { t } = useTranslation()
   const items = useItems()
   const status = useStatus()
+  const states = status.data?.collecting ?? {}
+  // items with no listings yet (e.g. an interrupted first collection) have nothing to chart: list them together
+  const withData = (items.data ?? []).filter(i => i.rows > 0)
+  const empty = (items.data ?? []).filter(i => !i.rows)
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">{t('dashboard.title')}</h1>
       <GettingStarted />
-      {items.isLoading ? <p>{t('common.loading')}</p> : !items.data?.length ? <EmptyState title={t('common.none')} /> :
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{items.data.map(i => <ItemCard key={i.name} item={i} state={status.data?.collecting?.[i.name]} />)}</div>}
+      {items.isLoading ? <p>{t('common.loading')}</p> : !items.data?.length ? <EmptyState title={t('common.none')} /> : <>
+        {withData.length > 0 && <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{withData.map(i => <ItemCard key={i.name} item={i} state={states[i.name]} />)}</div>}
+        {empty.length > 0 && <NoDataCard items={empty} states={states} />}
+      </>}
       <Card title={t('dashboard.runningJobs')}>
         <RunningTasks />
       </Card>

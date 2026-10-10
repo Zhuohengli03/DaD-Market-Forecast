@@ -10,6 +10,7 @@ import Collect from './pages/Collect'
 import Scheduler from './pages/Scheduler'
 import Settings from './pages/Settings'
 import Catalog from './pages/Catalog'
+import ItemDetail from './pages/catalog/ItemDetail'
 import Equipment from './pages/Equipment'
 import { SetupWizard } from './components/wizard/SetupWizard'
 
@@ -27,6 +28,7 @@ export default function App() {
               <Route path="/market" element={<Market />} />
               <Route path="/forecast" element={<Forecast />} />
               <Route path="/catalog" element={<Catalog />} />
+              <Route path="/catalog/:archetype" element={<ItemDetail />} />
               <Route path="/equipment" element={<Equipment />} />
               <Route path="/collect" element={<Collect />} />
               <Route path="/scheduler" element={<Scheduler />} />

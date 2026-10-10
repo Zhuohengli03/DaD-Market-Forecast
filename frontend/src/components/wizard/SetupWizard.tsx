@@ -3,7 +3,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle2, AlertCircle } from 'lucide-react'
-import { useCatalogJob, useDatabaseSetup, useInitialize, useItems, useSetup } from '../../api/hooks'
+import { useCatalogJob, useDatabaseSetup, useInitialize, useItems, useItemsEstimate, useQuota, useSetup } from '../../api/hooks'
+import { useDebounced } from '../../lib/useDebounced'
+import { fmtCount } from '../../lib/quota'
 import { useJobStream } from '../../api/jobStream'
 import type { DatabaseInput } from '../../api/types'
 import { ApiKeyForm } from '../ApiKeyForm'
@@ -92,6 +94,9 @@ function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: stri
   const tracked = new Set((items.data ?? []).map(i => i.item_id ?? i.name))
   const chosen = picked ?? options.filter(o => tracked.has(o.id) || tracked.has(o.type.name)).map(o => o.id)
   const upperMin = Math.ceil((chosen.length * MAX_PAGES) / 60)
+  const estimate = useItemsEstimate(useDebounced(chosen, 400), MAX_PAGES); const quota = useQuota()
+  const cost = estimate.data?.requests ?? chosen.length * (MAX_PAGES + 1)
+  const left = quota.data?.credits_remaining
   if (jobId) return <InitProgress status={stream.status} progress={stream.progress} error={stream.error} />
   if (!catalogReady) return <div className="space-y-2"><p className="text-sm">{t('wizard.init.needCatalog')}</p><ProgressPanel kind="catalog" status={sync.status} progress={sync.progress} error={sync.error} disconnected={sync.disconnected} /></div>
   return (
@@ -100,8 +105,8 @@ function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: stri
       <p className="text-xs text-[var(--muted)]">{t('wizard.init.choose')}</p>
       <ItemPicker options={options} chosen={chosen} onChange={setPicked} />
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-[var(--muted)]">{t('wizard.init.cost', { n: chosen.length })} {t('wizard.init.estimate', { n: chosen.length, time: upperMin >= 120 ? t('wizard.init.hours', { h: Math.ceil(upperMin / 60) }) : t('wizard.init.minutes', { m: upperMin }) })}</span>
-        <Button disabled={!chosen.length} loading={init.isPending} onClick={() => init.mutate({ item_ids: chosen, max_pages: MAX_PAGES }, { onSuccess: onStart, onError: e => toast.push((e as Error).message, 'error') })}>{t('wizard.init.start')}</Button>
+        <span className="text-xs text-[var(--muted)]"><span className={left != null && cost > left ? 'text-[var(--bad)] font-medium' : ''}>{t('wizard.init.cost', { n: fmtCount(cost), left: fmtCount(left) })}</span>{estimate.data?.unknown ? t('wizard.init.unknown', { n: estimate.data.unknown, max: MAX_PAGES + 1 }) : ''} {t('wizard.init.estimate', { n: chosen.length, time: upperMin >= 120 ? t('wizard.init.hours', { h: Math.ceil(upperMin / 60) }) : t('wizard.init.minutes', { m: upperMin }) })}</span>
+        <Button disabled={!chosen.length} loading={init.isPending} onClick={() => (left == null || cost <= left || window.confirm(t('wizard.init.confirmOver', { n: fmtCount(cost), left: fmtCount(left) }))) && init.mutate({ item_ids: chosen, max_pages: MAX_PAGES }, { onSuccess: onStart, onError: e => toast.push((e as Error).message, 'error') })}>{t('wizard.init.start')}</Button>
       </div>
     </div>
   )

@@ -46,3 +46,13 @@ def test_scheduler_reports_collecting_and_waiting_tasks(tmp_path, monkeypatch):
     assert sorted(state.values()) == ["collecting", "waiting"]
     a.join(timeout=5); b.join(timeout=5)
     assert json.loads((tmp_path / "scheduler_state.json").read_text())["tasks"] == {}
+
+
+def test_new_scheduler_clears_stale_state(tmp_path, monkeypatch):
+    import json
+    import core_scheduler
+    monkeypatch.setenv("DARKER_DATA_DIR", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "scheduler_state.json").write_text(json.dumps({"tasks": {"Collect A": "collecting"}}))
+    core_scheduler.SmartScheduler()
+    assert json.loads((tmp_path / "scheduler_state.json").read_text())["tasks"] == {}

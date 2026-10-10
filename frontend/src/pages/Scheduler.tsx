@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useItems, useItemsConfig, useScheduler, useSchedulerAction, useSetup, useStartCollect } from '../api/hooks'
+import { useItems, useItemsConfig, useScheduleEstimate, useScheduler, useSchedulerAction, useSetup, useStartCollect } from '../api/hooks'
 import { useJobStream } from '../api/jobStream'
 import { JobList } from '../components/JobList'
 import { ProgressPanel } from '../components/ProgressPanel'
@@ -16,6 +16,7 @@ export default function Scheduler() {
   const { t, i18n } = useTranslation()
   const cfg = useItemsConfig(); const items = useItems(); const setup = useSetup()
   const [editing, setEditing] = useState<string | null>(null)
+  const estimate = useScheduleEstimate()
   const defaultSeconds = setup.data?.collect_interval_seconds ?? 3600
   const sc = useScheduler(); const act = useSchedulerAction(); const collect = useStartCollect(); const toast = useToast()
   const [jobId, setJobId] = useState<string | null>(null)
@@ -32,7 +33,7 @@ export default function Scheduler() {
       <Card>
         <p className="text-xs text-[var(--muted)] mb-2">{t('scheduler.perItemHint', { v: fmtInterval(defaultSeconds, t) })}</p>
         {(() => {
-          const perMonth = (sc.data?.tasks ?? []).reduce((n, tk) => n + taskRunsPerMonth(tk.schedule_type, tk.schedule_value), 0)
+          const perMonth = Math.max(estimate.data?.per_month ?? 0, (sc.data?.tasks ?? []).reduce((n, tk) => n + taskRunsPerMonth(tk.schedule_type, tk.schedule_value), 0))
           const quota = setup.data?.monthly_quota ?? 10000
           return <p className={`text-xs mb-2 ${perMonth > quota ? 'text-[var(--bad)] font-medium' : 'text-[var(--muted)]'}`}>{t('scheduler.month', { n: fmtCount(perMonth), quota: fmtCount(quota) })}{perMonth > quota ? ` ${t('scheduler.monthOver')}` : ''}</p>
         })()}
@@ -46,7 +47,8 @@ export default function Scheduler() {
             return (
               <Fragment key={tk.name}>
                 <tr className="border-t border-[var(--line)]"><td className="py-1.5">{info ? itemName(info, i18n.language) : name}</td>
-                  <td>{when}{!custom && <span className="ml-2 text-xs text-[var(--muted)]">{t('scheduler.isDefault')}</span>}</td>
+                  <td>{when}{!custom && <span className="ml-2 text-xs text-[var(--muted)]">{t('scheduler.isDefault')}</span>}
+                    {estimate.data?.per_item[name] && <div className="text-xs text-[var(--muted)]">{t('scheduler.itemCost', { run: estimate.data.per_item[name].per_run, month: fmtCount(estimate.data.per_item[name].per_run * estimate.data.per_item[name].runs) })}</div>}</td>
                   <td className="text-right whitespace-nowrap">
                     <Button size="sm" variant="ghost" onClick={() => setEditing(e => (e === name ? null : name))}>{t('scheduler.edit')}</Button>
                     <Button size="sm" variant="ghost" onClick={() => collect.mutate(name, { onSuccess: setJobId, onError: onErr })}>{t('scheduler.runNow')}</Button></td></tr>

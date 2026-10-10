@@ -46,8 +46,9 @@ def _equipment_type(request: Request, archetype: str) -> list[dict]:
 @router.get("/equipment/{archetype}/stats")
 def equipment_stats(archetype: str, request: Request):
     variants = _equipment_type(request, archetype)
-    stats = stats_for_type(_client(request), archetype)
-    return ok({"stats": stats, "rarities": [v.get("rarity") for v in variants]})
+    client = _client(request)
+    stats = stats_for_type(client, archetype)
+    return ok({"stats": stats, "rarities": [v.get("rarity") for v in variants], "credits_used": getattr(client, "credits_used", 0)})
 
 
 @router.post("/equipment/query")
@@ -57,5 +58,6 @@ def equipment_query(body: EquipmentQuery, request: Request):
     since = body.since or (seasons[-1]["start"] if seasons else None)
     params = build_market_params(body.archetype, body.rarity, [f.model_dump() for f in body.filters], body.sold_only, since,
                                  body.sort)
-    result = query_market(_client(request), params, body.max_pages)
-    return ok({**result, "since": since, "params": params})
+    client = _client(request)
+    result = query_market(client, params, body.max_pages)
+    return ok({**result, "since": since, "params": params, "credits_used": getattr(client, "credits_used", 0)})

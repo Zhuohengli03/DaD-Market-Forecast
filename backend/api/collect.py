@@ -27,6 +27,8 @@ def collect_all(request: Request):
         raise HTTPException(422, "还没有追踪任何道具 / no tracked items")
     if st.jobs.find_active("collect"):
         raise HTTPException(409, "已有采集正在进行 / a collection is already running")
+    from ..services.cost import collect_all_estimate
     job = st.jobs.create("collect", "采集全部道具 / collect all items", meta={"item": "*"})
+    st.jobs.set_estimate(job, collect_all_estimate(st)["requests"])
     st.jobs.run_in_thread(job, lambda j: run_collect_all(st, j))
     return ok({"job_id": job.id})

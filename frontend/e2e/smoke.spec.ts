@@ -33,9 +33,10 @@ test('first run opens the setup wizard in order and can be postponed', async ({ 
 test('catalog lists tradable types, tracks stat-free items and routes equipment to the market page', async ({ page }) => {
   await page.goto('/catalog')
   await expect(page.getByText('只显示能在交易行买卖的道具。')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Gold Coin' })).toHaveCount(0)       // never listed, hidden
+  await expect(page.getByRole('link', { name: 'Gold Coin' })).toHaveCount(0)         // never listed, hidden
   await expect(page.getByRole('link', { name: '查看行情' })).toHaveAttribute('href', '/equipment?type=id.item.arming_sword')
-  await page.getByRole('button', { name: 'Bandage' }).click()
+  await page.getByRole('link', { name: 'Bandage' }).click()                          // a row opens the item page
+  await expect(page).toHaveURL(/\/catalog\/id\.item\.bandage$/)
   await expect(page.getByText('duration')).toBeVisible()
   await page.getByRole('button', { name: '追踪' }).click()
   await expect(page.getByText('已开始追踪 Bandage')).toBeVisible()

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, X } from 'lucide-react'
-import { useCollectAll, useItems, useQuota, useSetup, useStartCollect, useStatus, useUntrackItem } from '../api/hooks'
+import { Minus, Plus, X } from 'lucide-react'
+import { useCollectAll, useCollectAllEstimate, useItems, useQuota, useSetup, useStartCollect, useStatus, useUntrackItem } from '../api/hooks'
 import { Badge } from '../components/ui/Badge'
 import { fmtCount } from '../lib/quota'
 import { useJobStream } from '../api/jobStream'
@@ -9,6 +9,7 @@ import { JobList } from '../components/JobList'
 import { ProgressPanel } from '../components/ProgressPanel'
 import { BatchProgress } from '../components/wizard/InitProgress'
 import { AddItemsDialog } from './collect/AddItemsDialog'
+import { RemoveItemsDialog } from './collect/RemoveItemsDialog'
 import { Notice } from '../components/Notice'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -20,9 +21,11 @@ export default function Collect() {
   const { t, i18n } = useTranslation()
   const items = useItems(); const status = useStatus(); const setup = useSetup()
   const start = useStartCollect(); const untrack = useUntrackItem(); const toast = useToast()
-  const collectAll = useCollectAll(); const quota = useQuota()
+  const collectAll = useCollectAll(); const quota = useQuota(); const estimate = useCollectAllEstimate(!!items.data?.length)
+  const est = estimate.data
   const [jobId, setJobId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const stream = useJobStream(jobId)
   const batch = Array.isArray(stream.progress?.detail?.items)
   const runningFor = new Set((status.data?.jobs_running ?? []).filter(j => j.kind === 'collect').map(j => j.meta.item))
@@ -34,21 +37,23 @@ export default function Collect() {
       {items.isSuccess && !items.data.length && <Notice to="/catalog" action={t('nav.catalog')}>{t('onboarding.noItems')}</Notice>}
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={() => setAdding(true)}><Plus size={14} />{t('collect.add')}</Button>
+        <Button variant="ghost" disabled={!items.data?.length} onClick={() => setRemoving(true)}><Minus size={14} />{t('collect.remove')}</Button>
         <Button variant="ghost" disabled={!items.data?.length} loading={collectAll.isPending || runningFor.has('*')}
           onClick={() => {
-            const n = items.data?.length ?? 0; const left = quota.data?.credits_remaining
-            if (left != null && n > left && !window.confirm(t('collect.confirmOver', { n, left }))) return
+            const n = est?.requests ?? items.data?.length ?? 0; const left = quota.data?.credits_remaining
+            if (!window.confirm(left != null && n > left ? t('collect.confirmOver', { n: fmtCount(n), left: fmtCount(left) }) : t('collect.confirmAll', { n: fmtCount(n), left: fmtCount(left) }))) return
             collectAll.mutate(undefined, { onSuccess: id => { setJobId(id); toast.push(t('collect.started')) }, onError: onErr })
           }}>{t('collect.all', { n: items.data?.length ?? 0 })}</Button>
-        <span className="text-xs text-[var(--muted)]">{t('collect.trackedCount', { n: items.data?.length ?? 0 })} · {t('collect.cost', { n: items.data?.length ?? 0, left: fmtCount(quota.data?.credits_remaining) })}</span>
+        <span className="text-xs text-[var(--muted)]">{t('collect.trackedCount', { n: items.data?.length ?? 0 })} · {est ? t('collect.cost', { n: fmtCount(est.requests), left: fmtCount(quota.data?.credits_remaining) }) : t('cost.estimating')}{est?.unknown ? ` ${t('collect.unknownItems', { n: est.unknown })}` : ''}</span>
       </div>
       {adding && <AddItemsDialog onClose={() => setAdding(false)} />}
+      {removing && <RemoveItemsDialog onClose={() => setRemoving(false)} />}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
         {(items.data ?? []).map(i => (
           <Card key={i.name}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex gap-3">
-                {i.icon_url ? <img src={i.icon_url} alt="" width={40} height={40} loading="lazy" className="shrink-0 rounded bg-gray-50" onError={e => { (e.target as HTMLImageElement).style.visibility = 'hidden' }} /> : <div className="w-10 h-10 shrink-0 rounded bg-gray-100" />}
+                {i.icon_url ? <img src={i.icon_url} alt="" loading="lazy" className="w-10 h-10 object-contain shrink-0 rounded bg-gray-50" onError={e => { (e.target as HTMLImageElement).style.visibility = 'hidden' }} /> : <div className="w-10 h-10 shrink-0 rounded bg-gray-100" />}
                 <div><div className="font-semibold">{itemName(i, i18n.language)}</div>
                   <div className="text-xs text-[var(--muted)]">{t('collect.seasonRows', { n: i.season_rows ?? 0 })} · {t('collect.allRows', { n: i.rows })}</div>
                   <div className="text-xs text-[var(--muted)] mb-3">{t('collect.lastAt', { when: fmtRelative(i.last_ts) })}{status.data?.collecting?.[i.name] && <span className="ml-2"><Badge tone={status.data.collecting[i.name] === 'collecting' ? 'warn' : 'muted'}>{t(`running.state.${status.data.collecting[i.name]}`)}</Badge></span>}</div></div>
@@ -56,6 +61,7 @@ export default function Collect() {
               <button type="button" title={t('collect.untrack')} aria-label={`${t('collect.untrack')} ${i.name}`} className="text-[var(--muted)] hover:text-[var(--bad)]"
                 onClick={() => untrack.mutate(i.name, { onSuccess: () => toast.push(t('collect.untracked', { name: i.name })), onError: onErr })}><X size={16} /></button>
             </div>
+            {est?.per_item[i.name] != null && <div className="text-xs text-[var(--muted)] mb-1">{t('collect.itemCost', { n: est.per_item[i.name] })}</div>}
             <Button size="sm" loading={runningFor.has(i.name) || !!status.data?.collecting?.[i.name]} onClick={() => start.mutate(i.name, { onSuccess: id => { setJobId(id); toast.push(t('collect.started')) }, onError: onErr })}>{t('collect.collectNow')}</Button>
           </Card>))}
       </div>

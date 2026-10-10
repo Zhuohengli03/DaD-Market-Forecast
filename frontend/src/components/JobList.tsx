@@ -4,6 +4,7 @@ import type { Job } from '../api/types'
 import { Badge } from './ui/Badge'
 import { EmptyState } from './ui/EmptyState'
 import { describe } from './ProgressPanel'
+import { CostNote } from './CostNote'
 import { fmtTs } from '../lib/format'
 import { localizeMessage } from '../lib/labels'
 
@@ -16,7 +17,8 @@ export function JobList({ kinds, selected, onSelect }: { kinds: Job['kind'][]; s
   return <ul className="divide-y divide-[var(--line)]">{jobs.map(j => (
     <li key={j.id}><button type="button" onClick={() => onSelect(j.id)} className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex justify-between items-center gap-2 ${selected === j.id ? 'bg-blue-50' : ''}`}>
       <span><div>{localizeMessage(j.label, i18n.language)}</div>
-        <div className="text-xs text-[var(--muted)]">{fmtTs(j.created_at)}{j.status === 'succeeded' && j.progress ? ` · ${describe(j.kind, j.progress, t)}` : ''}</div></span>
+        <div className="text-xs text-[var(--muted)]">{fmtTs(j.created_at)}{j.status === 'succeeded' && j.progress ? ` · ${describe(j.kind, j.progress, t)}` : ''}</div>
+        <div className="text-xs text-[var(--muted)]"><CostNote cost={j.cost} running={j.status === 'running' || j.status === 'queued'} /></div></span>
       <Badge tone={tone(j.status)}>{t(`progress.status.${j.status}`)}</Badge>
     </button></li>))}</ul>
 }

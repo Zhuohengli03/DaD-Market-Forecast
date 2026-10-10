@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle } from 'lucide-react'
-import { useSaveSchedule } from '../../api/hooks'
+import { useSaveSchedule, useScheduleEstimate } from '../../api/hooks'
+import { useDebounced } from '../../lib/useDebounced'
 import { Button } from '../ui/Button'
 import { inputCls } from '../ui/Field'
 import { useToast } from '../ui/Toast'
@@ -32,7 +33,10 @@ export function ScheduleForm({ initialSeconds, initialAuto, trackedItems, rateLi
   const tooShort = total < MIN_SECONDS
   const perMin = requestsPerMinute(total, Math.max(trackedItems, 1))
   const over = auto && !tooShort && perMin > rateLimit
-  const perMonth = monthlyRequests(total, Math.max(trackedItems, 1))
+  // the server knows each item's listing rate and own schedule; until it answers, assume one page per run
+  const estimate = useScheduleEstimate(useDebounced(tooShort ? undefined : total, 400))
+  const est = estimate.data
+  const perMonth = Math.max(est?.per_month ?? 0, monthlyRequests(total, Math.max(trackedItems, 1)))
   const overMonth = auto && !tooShort && perMonth > monthlyQuota
   const [ack, setAck] = useState(false)
   return (
@@ -55,7 +59,7 @@ export function ScheduleForm({ initialSeconds, initialAuto, trackedItems, rateLi
         <p className="flex gap-2"><AlertTriangle size={16} className={over ? 'text-[var(--bad)]' : 'text-[var(--warn)]'} />{t('wizard.schedule.quota')}</p>
         {!tooShort && <p className="mt-1 text-xs">{t('wizard.schedule.estimate', { items: trackedItems, perMin, perDay: Math.ceil((trackedItems * 86400) / total) })}</p>}
         {over && <p className="mt-1 text-xs font-medium text-[var(--bad)]">{t('wizard.schedule.over', { limit: rateLimit })}</p>}
-        {!tooShort && <p className="mt-1 text-xs">{t('wizard.schedule.month', { n: fmtCount(perMonth), quota: fmtCount(monthlyQuota) })}</p>}
+        {!tooShort && <p className="mt-1 text-xs">{t('wizard.schedule.month', { n: fmtCount(perMonth), quota: fmtCount(monthlyQuota) })}{est?.unknown ? ` ${t('wizard.schedule.unknown', { n: est.unknown })}` : ''}</p>}
         {overMonth && <>
           <p className="mt-1 text-xs font-medium text-[var(--bad)]">{t('wizard.schedule.overMonth', { days: Math.max(1, Math.floor((monthlyQuota / perMonth) * 30)) })}</p>
           <label className="mt-1 flex items-center gap-2 text-xs"><input type="checkbox" checked={ack} onChange={e => setAck(e.target.checked)} />{t('wizard.schedule.ack')}</label>
