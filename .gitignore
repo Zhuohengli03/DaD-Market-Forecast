@@ -53,3 +53,6 @@ frontend/playwright-report/
 .coverage
 frontend/coverage/
 htmlcov/
+
+# one-click start environment
+.venv/

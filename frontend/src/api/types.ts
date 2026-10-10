@@ -7,7 +7,7 @@ export interface Season { id: string; name: string; start: string; end: string |
 export interface SeasonInput { name: string; start: string; end: string | null; note: string }
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 export interface JobProgress { stage: string; done: number | null; total: number | null; detail: Record<string, unknown> }
-export type JobKind = 'forecast' | 'collect' | 'task' | 'catalog'
+export type JobKind = 'forecast' | 'collect' | 'task' | 'catalog' | 'init'
 export interface Job { id: string; kind: JobKind; label: string; status: JobStatus; created_at: string; finished_at: string | null; error: string | null; result_ref: string | null; meta: Record<string, string>; progress: JobProgress | null }
 export interface ForecastInput { item: string; season_id: string; horizon_hours: number; models: string[]; coverage: number; backtest_origin_step?: number }
 export interface RunSummary { run_id: string; created_at: string; source: string; beats_baseline: boolean; skill_vs_naive: number; item: string; season_id: string; season_name: string; horizon_hours: number; selected: string; warnings: number }
@@ -31,7 +31,10 @@ export interface SchedulerStatus { running: boolean; tasks: SchedulerTask[] }
 export interface ItemConfigEntry { name: string; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; schedule?: string }
 export interface ItemsConfig { items: ItemConfigEntry[]; categories: Record<string, string>; auto_discovery?: Record<string, unknown> }
 export interface StatusResponse { source: string; python: string; items: { name: string; rows: number; first_ts: string | null; last_ts: string | null }[]; jobs_running: Job[]; scheduler_running: boolean }
-export interface SetupState { api_key_configured: boolean; api_key_hint: string | null; data_source: string; seasons: number; tracked_items: number; catalog_items: number }
+export interface Environment { python_version: string; python_ok: boolean; storage: string; data_dir: string; db_host: string | null; db_database: string | null }
+export interface SetupState { initialized: boolean; collect_interval_hours: number; auto_collect: boolean; environment: Environment; api_key_configured: boolean; api_key_hint: string | null; data_source: string; seasons: number; tracked_items: number; catalog_items: number }
+export interface InitItem { item_id: string; name: string; name_zh?: string | null; status: 'waiting' | 'collecting' | 'collected' | 'collect_failed' | 'forecasting' | 'done'; pages: number; collected: number; forecast: 'ok' | 'not_enough_data' | 'failed' | null; run_id: string | null; hours: number | null; error?: string }
+export interface DatabaseInput { host: string; port: number; database: string; user: string; password: string }
 export interface MarketStats { name: string; listings: number; sold: number; min_price_per_unit: number; median_price_per_unit: number; last_seen: string }
 export interface CatalogVariant { id: string; rarity: string | null; gear_score?: number | null; vendor_price?: number | null; num_secondary_attributes?: number | null; icon_url?: string | null; raw: Record<string, unknown> }
 export interface CatalogType { archetype: string; name: string; name_zh?: string | null; item_type: string | null; slot_type?: string | null; icon_url: string | null; has_stats: boolean; rarities: string[]; listings_total: number | null; variants: CatalogVariant[] }

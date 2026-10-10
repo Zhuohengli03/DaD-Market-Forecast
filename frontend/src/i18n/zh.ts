@@ -3,6 +3,17 @@ export default {
   nav: { group: { getData: '① 获取数据', analyse: '② 查看与分析' }, dashboard: '概览', market: '价格走势', forecast: '价格预测', catalog: '道具库', equipment: '装备行情', collect: '数据采集', scheduler: '定时采集', settings: '设置' },
   common: { item: '道具', season: '赛季', start: '开始', end: '结束', resolution: '时间粒度', save: '保存', cancel: '取消', delete: '删除', add: '添加', loading: '加载中…', none: '暂无数据', error: '出了点问题', all: '全部', yes: '是', no: '否', download: '下载 CSV', jobs: '任务记录', pickJob: '点左侧的一条记录查看结果', prev: '上一页', next: '下一页', running: '个任务运行中', goSettings: '去设置', hours: '小时' },
   res: { '1h': '每小时', '4h': '每 4 小时', '1d': '每天' },
+  wizard: {
+    title: '欢迎使用 Darker Market', intro: '第一次使用需要完成下面四步，大约 5~15 分钟。',
+    steps: { env: '环境', key: 'API key', init: '初始化', schedule: '自动采集' },
+    next: '下一步', back: '上一步', later: '稍后再说', finish: '完成', skipInit: '跳过初始化',
+    env: { python: 'Python {{v}}', pythonOld: 'Python {{v}}（需要 3.10 或更高版本）', storage: '数据存在哪里', file: '本机文件（推荐）', fileHint: '不需要安装任何数据库，数据保存在 {{dir}}', pg: 'Postgres 数据库', pgHint: '已经有 Postgres 的话可以用它存数据', host: '地址', port: '端口', database: '数据库名', user: '用户名', password: '密码', test: '测试并使用', pgOk: '已连接 Postgres：{{host}} / {{db}}', switched: '已改为存在本机文件' },
+    key: { done: '已设置 API key（{{hint}}）', change: '更换' },
+    init: { intro: '选择要追踪的道具。初始化会同步道具库、导入赛季，并为每个道具采集本赛季的挂单，再尝试做第一次预测。', search: '搜索道具', estimate: '已选 {{n}} 个，预计最多 {{min}} 分钟', start: '开始初始化', needCatalog: '正在下载道具资料，请稍候…', choose: '只列出没有随机词条的道具；装备请在「装备行情」里查看。' },
+    progress: { steps: { catalog: '道具库', seasons: '赛季', collect: '采集数据', forecast: '首次预测', done: '完成' }, waiting: '等待中', collecting: '正在采集：已看 {{pages}} 页，新增 {{n}} 条', collected: '采集到 {{n}} 条挂单', forecasting: '正在预测…', collectFailed: '采集失败', collectFailedAuth: '采集失败：API key 被拒绝', forecastOk: '预测完成', view: '查看预测', notEnough: '数据还不够预测（已有 {{hours}} 小时，需要 72 小时），自动采集几天后再试', notEnoughNoHours: '数据还不够预测，自动采集几天后再试', forecastFailed: '这次预测没有成功，之后可以在「价格预测」里重试', allDone: '初始化完成' },
+    schedule: { intro: '开启自动采集后，程序运行期间会按下面的间隔为每个追踪的道具采集新挂单，数据越多预测越准。', interval: '多久采集一次', every: '每 {{h}} 小时', auto: '开启自动采集', hint: '下次用一键脚本启动时，自动采集会自动恢复。' },
+    reopen: '重新运行设置向导',
+  },
   apiKey: {
     title: '连接你的 DarkerDB 账号',
     why: '这个工具的数据来自 DarkerDB。采集价格、同步道具库都需要你自己的 API key，key 只保存在本机项目目录的 .env 文件里，不会上传到任何地方。',
@@ -91,7 +102,7 @@ export default {
   collect: { title: '数据采集', intro: '点"立即采集"从 DarkerDB 拉取这个道具的最新挂单。数据存在本机（配置了 Postgres 就存数据库，否则存 data 目录下的 CSV）。', collectNow: '立即采集', recent: '采集记录', started: '已开始采集', untrack: '不再追踪', addFromCatalog: '从道具库添加道具', untracked: '已取消追踪 {{name}}' },
   scheduler: { title: '定时采集', intro: '开启后，每个追踪的道具会在设定时间自动采集一次，多个道具会排队依次采集（共用一个 key 的请求额度）。修改追踪道具或时间后会自动生效。需要保持这个程序在运行。', status: '定时采集', on: '已开启', off: '已关闭', startBtn: '开启', stopBtn: '关闭', task: '道具', schedule: '每天采集时间', runNow: '立即采集' },
   settings: {
-    title: '设置', apiKey: 'DarkerDB API key', seasons: '赛季', seasonsIntro: '暗黑地牢每个赛季开始会重置市场，不同赛季的价格不能混在一起训练。最简单的做法是点「从 DarkerDB 导入赛季」；也可以手动填写开始时间（UTC），当前赛季的结束时间留空。',
+    title: '设置', interval: '数据获取间隔', apiKey: 'DarkerDB API key', seasons: '赛季', seasonsIntro: '暗黑地牢每个赛季开始会重置市场，不同赛季的价格不能混在一起训练。最简单的做法是点「从 DarkerDB 导入赛季」；也可以手动填写开始时间（UTC），当前赛季的结束时间留空。',
     importSeasons: '从 DarkerDB 导入赛季', importConfirm: '用 DarkerDB 公布的赛季时间替换下面的全部赛季？', imported: '已导入 {{n}} 个赛季', seasonName: '名称', seasonStart: '开始 (UTC)', seasonEnd: '结束 (UTC，进行中留空)', note: '备注',
     items: '追踪的道具', itemsIntro: '可以停用某个道具或修改每天的采集时间。添加新道具请用道具库。', itemName: '名称', itemId: 'DarkerDB ID', category: '分类', description: '描述', enabled: '启用', scheduleTime: '采集时间',
     dataSource: '数据存储', dataSourcePg: 'Postgres 数据库', dataSourceCsv: '本机 CSV 文件（data 目录）', python: 'Python 解释器', language: '语言', saved: '已保存',

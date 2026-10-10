@@ -11,7 +11,7 @@ import Scheduler from './pages/Scheduler'
 import Settings from './pages/Settings'
 import Catalog from './pages/Catalog'
 import Equipment from './pages/Equipment'
-import { ApiKeyDialog } from './components/ApiKeyDialog'
+import { SetupWizard } from './components/wizard/SetupWizard'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 10_000 } } })
 
@@ -20,7 +20,7 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <ToastProvider>
         <BrowserRouter>
-          <ApiKeyDialog />
+          <SetupWizard />
           <Routes>
             <Route element={<Shell />}>
               <Route index element={<Dashboard />} />

@@ -29,6 +29,7 @@ def build_project() -> Path:
         "categories": {}}))
     (data / "seasons.json").write_text(json.dumps({"seasons": [
         {"id": "s-e2e", "name": "Season 2", "start": SEASON_START.isoformat(), "end": None, "note": ""}]}))
+    (data / "settings.json").write_text(json.dumps({"initialized_at": "2026-10-10T00:00:00+00:00", "collect_interval_hours": 6, "auto_collect": False}))
     (data / "catalog.json").write_text(json.dumps({
         "patch": "Early Access Season #11", "synced_at": "2026-10-10T00:00:00+00:00",
         "trade_totals": {"id.item.test_ore": 1200, "id.item.arming_sword": 95000, "id.item.gold_coins": 0},
