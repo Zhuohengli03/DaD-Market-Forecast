@@ -272,3 +272,18 @@ def test_type_named_after_what_all_its_rarities_share(settings):
     ruby = store.type_row("id.item.ruby")
     assert ruby["name"] == "Ruby" and ruby["name_zh"] == "红宝石"
     assert store.type_row("id.item.potion")["name_zh"] == "保护药水"
+
+
+def test_collect_only_the_chosen_items(client, project_root):
+    st = client.app.state
+    for n in ("A Ore", "B Ore"):
+        st.items.track(n, f"id.item.{n[0].lower()}_ore_1001", "ore")
+    script = project_root / "fake.py"
+    script.write_text('import json\nprint("@@" + json.dumps({"stage": "done", "new": 1}), flush=True)\n')
+    st.collector_argv = lambda entry, since: [sys.executable, str(script)]
+    r = client.post("/api/collect-all", json={"names": ["A Ore", "B Ore", "Gone"]}, headers=H)
+    assert r.status_code == 202
+    job = _wait(client, r.json()["data"]["job_id"])
+    assert sorted(x["name"] for x in job["progress"]["detail"]["items"]) == ["A Ore", "B Ore"]   # Test Ore not touched
+    assert job["label"].startswith("采集 2 个道具")
+    assert client.post("/api/collect-all", json={"names": ["Gone"]}, headers=H).status_code == 422

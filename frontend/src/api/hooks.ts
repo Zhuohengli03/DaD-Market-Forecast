@@ -121,7 +121,8 @@ export function useTrackBulk() {
 }
 export function useCollectAll() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: () => api.post<{ job_id: string }>('/collect-all').then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
+  // names: collect only these tracked items (e.g. the ones without data); omitted = all of them
+  return useMutation({ mutationFn: (names?: string[]) => api.post<{ job_id: string }>('/collect-all', names ? { names } : undefined).then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
 }
 export const useQuota = () => useQuery({ queryKey: ['quota'], queryFn: () => api.get<QuotaInfo>('/quota').then(r => r.data), refetchInterval: 15000 })
 export function useSaveQuota() {
