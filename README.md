@@ -11,6 +11,11 @@ Track and forecast **Dark and Darker** marketplace prices on your own machine, w
 
 [中文说明](#中文说明) · [English](#english)
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/market-snake-dark.svg" />
+  <img alt="A price chart drawn in Dark and Darker rarity colours, eaten by a gold snake" src="docs/assets/market-snake.svg" />
+</picture>
+
 ---
 
 ## English
