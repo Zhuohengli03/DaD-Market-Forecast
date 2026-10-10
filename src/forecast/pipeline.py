@@ -163,7 +163,8 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     tail = full_series.iloc[-TAIL_HOURS:]
     now = pd.Timestamp.now(tz="UTC")
     data_age_hours = float((now - last_ts) / pd.Timedelta(hours=1))
-    if data_age_hours > STALE_HOURS:
+    season_ended = season.end is not None and season.end <= now
+    if data_age_hours > STALE_HOURS and not season_ended:   # a finished season has no newer listings to collect
         warnings.append(f"最新的挂单是 {data_age_hours:.0f} 小时前的，预测从那时起算，不是从现在。请先采集新数据。")
     run_id = f"{now:%Y%m%dT%H%M%S}-{_slug(request.item)}-{uuid.uuid4().hex[:6]}"
     step("done", beats_baseline=selection.beats_baseline, selected=selection.name)
@@ -173,7 +174,7 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
         "request": {**asdict(request), "models": list(model_names)},
         "source": source,
         "season": {"id": season.id, "name": season.name, "start": season.start.isoformat(),
-                   "end": season.end.isoformat() if season.end is not None else None},
+                   "end": season.end.isoformat() if season.end is not None else None, "ended": season_ended},
         "series_tail": [
             {"ts": ts.isoformat(), "median_price": _num(r.median_price), "p25": _num(r.p25),
              "p75": _num(r.p75), "volume": int(r.volume), "listings": int(r.listings)}

@@ -11,7 +11,7 @@ import { RunningTasks } from '../components/RunningTasks'
 import { NoDataCard } from './dashboard/NoDataCard'
 import { fmtNum, fmtPct, fmtRelative, fmtTs } from '../lib/format'
 import { change24h } from '../lib/market'
-import { itemName } from '../lib/labels'
+import { itemName, itemNote } from '../lib/labels'
 
 function ItemCard({ item, state }: { item: ItemInfo; state?: 'collecting' | 'waiting' }) {
   const { t, i18n } = useTranslation()
@@ -26,13 +26,15 @@ function ItemCard({ item, state }: { item: ItemInfo; state?: 'collecting' | 'wai
   return (
     <Link to={`/market?item=${encodeURIComponent(item.name)}`} className="block">
       <Card className="hover:shadow-md transition">
-        <div className="flex items-start justify-between"><div><div className="font-semibold">{itemName(item, i18n.language)}</div><div className="text-xs text-[var(--muted)]">{item.description}</div></div><div className="flex flex-col items-end gap-1"><Badge tone={item.rows ? 'muted' : 'warn'}>{item.rows} {t('dashboard.rows')}</Badge>{state && <Badge tone={state === 'collecting' ? 'warn' : 'muted'}>{t(`running.state.${state}`)}</Badge>}</div></div>
+        <div className="flex items-start justify-between"><div><div className="font-semibold">{itemName(item, i18n.language)}</div><div className="text-xs text-[var(--muted)]">{itemNote(item.description)}</div></div><div className="flex flex-col items-end gap-1"><Badge tone={item.rows ? 'muted' : 'warn'}>{t('dashboard.rowsTotal', { n: item.rows })}</Badge>{state && <Badge tone={state === 'collecting' ? 'warn' : 'muted'}>{t(`running.state.${state}`)}</Badge>}</div></div>
         <div className="mt-3 flex items-end justify-between">
-          <div><div className="text-xs text-[var(--muted)]">{t('dashboard.latest')}</div><div className="text-2xl font-semibold">{fmtNum(latest)}</div></div>
-          <div className="text-right"><div className="text-xs text-[var(--muted)]">{t('dashboard.change24')}</div><div className={`font-medium ${change === null ? '' : change >= 0 ? 'text-[var(--good)]' : 'text-[var(--bad)]'}`}>{fmtPct(change)}</div></div>
+          <div><div className="text-xs text-[var(--muted)]" title={t('dashboard.latestHint')}>{t('dashboard.latestPrice')}</div><div className="text-2xl font-semibold">{fmtNum(latest)}</div></div>
+          <div className="text-right"><div className="text-xs text-[var(--muted)]">{t('dashboard.change24')}</div>
+            {change === null ? <div className="text-xs text-[var(--muted)] mt-1">{pts.length ? t('dashboard.under24h') : '–'}</div>
+              : <div className={`font-medium ${change >= 0 ? 'text-[var(--good)]' : 'text-[var(--bad)]'}`}>{fmtPct(change)}</div>}</div>
         </div>
         <div className="mt-2">{pts.length ? <Sparkline values={prices} /> : <p className="text-xs text-[var(--muted)] h-10">{t('dashboard.noData')}</p>}</div>
-        <div className="text-xs text-[var(--muted)] mt-2">{t('dashboard.lastSeen')}: {fmtTs(item.last_ts)} ({fmtRelative(item.last_ts)})</div>
+        <div className="text-xs text-[var(--muted)] mt-2">{t('dashboard.sparkHint')} · {t('dashboard.lastSeen')}: {fmtTs(item.last_ts)}（{fmtRelative(item.last_ts)}）</div>
       </Card>
     </Link>
   )

@@ -24,14 +24,15 @@ function DailyChart({ days }: { days: EquipmentDay[] }) {
   const x = days.map(d => d.day)
   const option = {
     animation: false, tooltip: { trigger: 'axis', valueFormatter: (v: number) => (v == null ? '–' : Number(v).toFixed(0)) },
-    legend: { top: 0, data: [t('equipment.median'), t('equipment.soldMedian')] }, grid: { left: 56, right: 56, top: 32, bottom: 32 },
-    xAxis: { type: 'category', data: x }, yAxis: [{ type: 'value', scale: true }, { type: 'value', name: t('equipment.count'), splitLine: { show: false } }],
+    legend: { top: 0, data: [t('equipment.median'), t('equipment.soldMedian'), { name: t('equipment.range'), icon: 'roundRect' }, { name: t('equipment.count'), icon: 'roundRect' }] },
+    grid: { left: 56, right: 56, top: 36, bottom: 32 },
+    xAxis: { type: 'category', data: x }, yAxis: [{ type: 'value', min: 0, name: t('chart.unitPrice') }, { type: 'value', name: t('equipment.count'), splitLine: { show: false } }],
     series: [
-      { name: 'low', type: 'line', data: days.map(d => d.low), lineStyle: { opacity: 0 }, stack: 'r', symbol: 'none', silent: true },
-      { name: t('equipment.range'), type: 'line', data: days.map(d => d.high - d.low), lineStyle: { opacity: 0 }, stack: 'r', areaStyle: { color: '#2563eb', opacity: 0.08 }, symbol: 'none', silent: true },
-      { name: t('equipment.median'), type: 'line', data: days.map(d => d.median), lineStyle: { color: '#2563eb', width: 2 } },
-      { name: t('equipment.soldMedian'), type: 'line', data: days.map(d => d.sold_median), lineStyle: { color: '#16a34a', width: 2 }, connectNulls: true },
-      { name: t('equipment.count'), type: 'bar', yAxisIndex: 1, data: days.map(d => d.listings), itemStyle: { color: '#e5e7eb' } },
+      { name: t('equipment.range'), type: 'line', color: '#bfdbfe', data: days.map(d => d.low), lineStyle: { opacity: 0 }, stack: 'r', symbol: 'none', silent: true, tooltip: { show: false } },
+      { name: t('equipment.range'), type: 'line', color: '#bfdbfe', data: days.map(d => d.high - d.low), lineStyle: { opacity: 0 }, stack: 'r', areaStyle: { color: '#2563eb', opacity: 0.08 }, symbol: 'none', silent: true, tooltip: { show: false } },
+      { name: t('equipment.median'), type: 'line', color: '#2563eb', data: days.map(d => d.median), lineStyle: { width: 2 } },
+      { name: t('equipment.soldMedian'), type: 'line', color: '#16a34a', data: days.map(d => d.sold_median), lineStyle: { width: 2 }, connectNulls: true },
+      { name: t('equipment.count'), type: 'bar', color: '#e5e7eb', yAxisIndex: 1, data: days.map(d => d.listings) },
     ],
   }
   return <ReactECharts option={option} notMerge style={{ height: 300, width: '100%' }} />
@@ -99,7 +100,7 @@ export default function Equipment() {
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
           <label className="flex items-center gap-1"><input type="checkbox" checked={soldOnly} onChange={e => setSoldOnly(e.target.checked)} />{t('equipment.soldOnly')}</label>
-          <label className="flex items-center gap-2">{t('equipment.depth')}<select className={inputCls} value={depth} onChange={e => setDepth(Number(e.target.value))}>{DEPTHS.map(d => <option key={d} value={d}>{t('equipment.depthOption', { n: d * 50, s: Math.ceil(d * 1.1) })}</option>)}</select></label>
+          <label className="flex items-center gap-2">{t('equipment.depth')}<select className={inputCls} value={depth} onChange={e => setDepth(Number(e.target.value))}>{DEPTHS.map(d => <option key={d} value={d}>{t('equipment.depthOption', { n: d * 50, p: d })}</option>)}</select></label>
           <label className="flex items-center gap-2">{t('equipment.sort')}<select aria-label={t('equipment.sort')} className={inputCls} value={sort} onChange={e => setSort(e.target.value as EquipmentSort)}>{SORTS.map(s => <option key={s} value={s}>{t(`equipment.sorts.${s.replace(':', '_')}`)}</option>)}</select></label>
           <Button disabled={!type} loading={query.isPending} onClick={() => query.mutate(buildQuery(type, rarity, rows, soldOnly, depth, sort))}>{t('equipment.run')}</Button>
         </div>

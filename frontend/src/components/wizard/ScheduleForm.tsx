@@ -57,7 +57,7 @@ export function ScheduleForm({ initialSeconds, initialAuto, trackedItems, rateLi
       <label className="flex items-center gap-2"><input type="checkbox" checked={auto} onChange={e => setAuto(e.target.checked)} />{t('wizard.schedule.auto')}</label>
       <div className={`rounded-md border px-3 py-2 ${over ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}>
         <p className="flex gap-2"><AlertTriangle size={16} className={over ? 'text-[var(--bad)]' : 'text-[var(--warn)]'} />{t('wizard.schedule.quota')}</p>
-        {!tooShort && <p className="mt-1 text-xs">{t('wizard.schedule.estimate', { items: trackedItems, perMin, perDay: Math.ceil((trackedItems * 86400) / total) })}</p>}
+        {!tooShort && <p className="mt-1 text-xs">{t('wizard.schedule.estimate', { items: trackedItems, perMin, perDay: fmtCount(Math.ceil(perMonth / 30)) })}</p>}
         {over && <p className="mt-1 text-xs font-medium text-[var(--bad)]">{t('wizard.schedule.over', { limit: rateLimit })}</p>}
         {!tooShort && <p className="mt-1 text-xs">{t('wizard.schedule.month', { n: fmtCount(perMonth), quota: fmtCount(monthlyQuota) })}{est?.unknown ? ` ${t('wizard.schedule.unknown', { n: est.unknown })}` : ''}</p>}
         {overMonth && <>

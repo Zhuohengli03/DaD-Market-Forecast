@@ -113,6 +113,13 @@ def test_stale_data_is_flagged(frames):
     assert any("小时前" in w for w in out["warnings"])
 
 
+def test_finished_season_is_not_called_stale(frames):
+    ended = Season("s2", "Season 2", SEASON_START, pd.Timestamp("2026-03-01T00:00:00Z"))
+    out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, ended])
+    assert out["season"]["ended"] is True
+    assert not any("小时前" in w for w in out["warnings"])   # a past season has no newer listings to collect
+
+
 def test_origin_step_is_respected(frames):
     out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",), backtest_origin_step=3),
                        _loader(frames), [S1, S2])

@@ -11,6 +11,9 @@ from .catalog_sync import sync_catalog
 QUICK_MODELS = ("ets", "hgb")  # keeps the first forecast to well under a minute per item
 
 
+from ..data.catalog import variant_name_zh  # noqa: E402
+
+
 def _run_collector(jm, job, argv, cwd, env, on_progress) -> int:
     """Run one collector process, forwarding its @@progress lines; returns listings saved."""
     proc = subprocess.Popen(argv, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
@@ -76,7 +79,7 @@ def run_initialization(state, job, item_ids: list[str], max_pages: int) -> str:
             state.items.track(name, iid, str(raw.get("item_type", "")))
         except ValueError:
             pass  # already tracked
-        rows.append({"item_id": iid, "name": name, "name_zh": raw.get("name_zh"), "status": "waiting",
+        rows.append({"item_id": iid, "name": name, "name_zh": variant_name_zh(raw, variants), "status": "waiting",
                      "pages": 0, "collected": 0, "forecast": None, "run_id": None, "hours": None})
     state.item_stats.invalidate()
     # 4. first collection of the current season, one item at a time (they share one API key's rate limit)
@@ -148,9 +151,9 @@ def run_collect_all(state, job) -> str:
     rows = [{"item_id": it.get("item_id") or it["name"], "name": it["name"], "name_zh": None, "status": "waiting",
              "pages": 0, "collected": 0, "forecast": None, "run_id": None, "hours": None}
             for it in state.items.list(enabled_only=True)]
-    names_zh = {v["id"]: v["name_zh"] for variants in state.catalog.types().values() for v in variants if v.get("name_zh")}
     for r in rows:
-        r["name_zh"] = names_zh.get(r["item_id"])
+        found = state.catalog.variant(r["item_id"])
+        r["name_zh"] = variant_name_zh(*found) if found else None
     env = {**os.environ, **collector_env(settings), "PYTHONUNBUFFERED": "1"}
     lock = threading.Lock()
 

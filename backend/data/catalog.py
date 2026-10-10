@@ -6,6 +6,8 @@ the rest can be tracked, collected and forecast.
 """
 from __future__ import annotations
 
+import re
+
 import json
 from collections import OrderedDict
 from datetime import datetime, timezone
@@ -29,6 +31,28 @@ def type_key(raw: dict) -> str:
 def has_stats(variants: list[dict]) -> bool:
     return any((v.get("num_secondary_attributes") or 0) > 0 for v in variants)
 
+
+_GRADE = re.compile(r"\s*[（(][^（）()]*[)）]\s*$")
+RARITY_ZH = {"poor": "粗劣", "common": "普通", "uncommon": "优秀", "rare": "稀有", "epic": "史诗",
+             "legendary": "传说", "unique": "独特", "artifact": "神器"}
+
+
+def shared_name(names: list[str]) -> str:
+    """Name for a whole type: gems are "Ruby (Cracked)", "Ruby (Flawed)"…, so the type is "Ruby"."""
+    if len(set(names)) <= 1:
+        return names[0]
+    bases = {_GRADE.sub("", n) for n in names}
+    return bases.pop() if len(bases) == 1 else names[0]
+
+
+def variant_name_zh(raw: dict, variants: list[dict]) -> str | None:
+    """Chinese name of one variant; add the rarity when every rarity shares one name (potions, not gems)."""
+    zh = raw.get("name_zh")
+    if not zh:
+        return None
+    same = len({v.get("name") for v in variants}) == 1 and len(variants) > 1
+    r = RARITY_ZH.get(str(raw.get("rarity") or ""))
+    return f"{zh}（{r}）" if same and r else zh
 
 class CatalogStore:
     _DEFAULTS = (("items", []), ("patch", None), ("synced_at", None), ("trade_totals", {}), ("trade_info", {}),
@@ -101,9 +125,11 @@ class CatalogStore:
 
     def _type_row(self, key: str, variants: list[dict], totals: dict, info: dict | None = None) -> dict:
         first = variants[0]
+        names = [v.get("name") or key for v in variants]
+        names_zh = [v.get("name_zh") for v in variants if v.get("name_zh")]
         ti = (info or {}).get(key) or {}
         return {
-            "archetype": key, "name": first.get("name", key), "name_zh": first.get("name_zh"), "item_type": first.get("item_type"),
+            "archetype": key, "name": shared_name(names), "name_zh": shared_name(names_zh) if names_zh else None, "item_type": first.get("item_type"),
             "category": first.get("misc_type") or first.get("utility_type") or first.get("item_type"),
             "slot_type": first.get("slot_type"), "icon_url": next((v.get("icon_url") for v in reversed(variants) if v.get("icon_url")), None),
             "has_stats": has_stats(variants), "rarities": [v.get("rarity") for v in variants],

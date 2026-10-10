@@ -14,7 +14,7 @@ const bandage = { archetype: 'id.item.bandage', name: 'Bandage', name_zh: 'ç»·å¸
 
 function mount(track = vi.fn(), history = vi.fn()) {
   vi.mocked(hooks.useCatalogType).mockReturnValue({ data: bandage, isLoading: false } as never)
-  vi.mocked(hooks.useItems).mockReturnValue({ data: [{ name: 'Bandage (poor)', item_id: 'id.item.bandage_1001', season_rows: 42 }] } as never)
+  vi.mocked(hooks.useItems).mockReturnValue({ data: [{ name: 'Bandage (poor)', item_id: 'id.item.bandage_1001', rows: 50, season_rows: 42 }] } as never)
   vi.mocked(hooks.useTrackItem).mockReturnValue({ mutate: track, isPending: false } as never)
   vi.mocked(hooks.useTypeHistory).mockReturnValue({ mutate: history, isPending: false } as never)
   render(<MemoryRouter initialEntries={['/catalog/id.item.bandage']}><Routes><Route path="/catalog/:archetype" element={<ItemDetail />} /></Routes></MemoryRouter>)
