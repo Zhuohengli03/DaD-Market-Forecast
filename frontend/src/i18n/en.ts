@@ -1,6 +1,6 @@
 export default {
   app: { tagline: 'Dark and Darker market price tracker and forecaster' },
-  nav: { dashboard: 'Overview', market: 'Price history', forecast: 'Forecast', catalog: 'Item catalog', equipment: 'Equipment market', collect: 'Collect data', scheduler: 'Scheduled collection', settings: 'Settings' },
+  nav: { group: { getData: '① Get data', analyse: '② View and analyse' }, dashboard: 'Overview', market: 'Price history', forecast: 'Forecast', catalog: 'Item catalog', equipment: 'Equipment market', collect: 'Collect data', scheduler: 'Scheduled collection', settings: 'Settings' },
   common: { item: 'Item', season: 'Season', start: 'Start', end: 'End', resolution: 'Granularity', save: 'Save', cancel: 'Cancel', delete: 'Delete', add: 'Add', loading: 'Loading…', none: 'No data yet', error: 'Something went wrong', all: 'All', yes: 'Yes', no: 'No', download: 'Download CSV', jobs: 'Job history', pickJob: 'Pick an entry on the left to see its result', prev: 'Previous page', next: 'Next page', running: 'running', goSettings: 'Open settings', hours: 'hours' },
   res: { '1h': 'Hourly', '4h': 'Every 4h', '1d': 'Daily' },
   apiKey: {
@@ -16,6 +16,14 @@ export default {
     noSeasons: 'No seasons yet. Forecasts only train inside one season: open Settings and press “Import seasons from DarkerDB”.',
     noItems: 'You are not tracking any items yet. Pick some from the item catalog.',
     noKey: 'No DarkerDB API key yet.',
+  },
+  start: {
+    title: 'Getting started', intro: 'Finish these steps in order to see price history and forecasts.',
+    key: 'Enter your DarkerDB API key', keyGo: 'Enter key',
+    seasons: 'Import seasons', seasonsGo: 'Import seasons',
+    items: 'Choose items to track', itemsGo: 'Open catalog',
+    data: 'Collect data', dataGo: 'Collect',
+    done: 'Done',
   },
   dashboard: { title: 'Overview', latest: 'Latest hourly median', change24: 'vs 24h ago', lastSeen: 'Latest listing', rows: 'listings', runningJobs: 'Running jobs', noJobs: 'Nothing running', noData: 'No data for this item yet. Collect it on the Collect data page.' },
   market: {

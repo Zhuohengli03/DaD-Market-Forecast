@@ -6,6 +6,7 @@ import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { EmptyState } from '../components/ui/EmptyState'
 import { Sparkline } from '../components/charts/Sparkline'
+import { GettingStarted } from './GettingStarted'
 import { fmtNum, fmtPct, fmtRelative, fmtTs } from '../lib/format'
 import { change24h } from '../lib/market'
 import { itemName, localizeMessage } from '../lib/labels'
@@ -42,6 +43,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">{t('dashboard.title')}</h1>
+      <GettingStarted />
       {items.isLoading ? <p>{t('common.loading')}</p> : !items.data?.length ? <EmptyState title={t('common.none')} /> :
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{items.data.map(i => <ItemCard key={i.name} item={i} />)}</div>}
       <Card title={t('dashboard.runningJobs')}>

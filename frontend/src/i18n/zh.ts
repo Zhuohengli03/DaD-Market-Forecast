@@ -1,6 +1,6 @@
 export default {
   app: { tagline: '暗黑地牢市场价格追踪与预测' },
-  nav: { dashboard: '概览', market: '价格走势', forecast: '价格预测', catalog: '道具库', equipment: '装备行情', collect: '数据采集', scheduler: '定时采集', settings: '设置' },
+  nav: { group: { getData: '① 获取数据', analyse: '② 查看与分析' }, dashboard: '概览', market: '价格走势', forecast: '价格预测', catalog: '道具库', equipment: '装备行情', collect: '数据采集', scheduler: '定时采集', settings: '设置' },
   common: { item: '道具', season: '赛季', start: '开始', end: '结束', resolution: '时间粒度', save: '保存', cancel: '取消', delete: '删除', add: '添加', loading: '加载中…', none: '暂无数据', error: '出了点问题', all: '全部', yes: '是', no: '否', download: '下载 CSV', jobs: '任务记录', pickJob: '点左侧的一条记录查看结果', prev: '上一页', next: '下一页', running: '个任务运行中', goSettings: '去设置', hours: '小时' },
   res: { '1h': '每小时', '4h': '每 4 小时', '1d': '每天' },
   apiKey: {
@@ -16,6 +16,14 @@ export default {
     noSeasons: '还没有设置赛季。价格预测只在同一个赛季内训练，请先到设置里点「从 DarkerDB 导入赛季」。',
     noItems: '还没有追踪任何道具。去道具库挑选你关心的道具。',
     noKey: '还没有设置 DarkerDB API key。',
+  },
+  start: {
+    title: '开始使用', intro: '按顺序完成下面几步，就能看到价格走势和预测。',
+    key: '填写 DarkerDB API key', keyGo: '去填写',
+    seasons: '导入赛季', seasonsGo: '去导入赛季',
+    items: '选择要追踪的道具', itemsGo: '去道具库',
+    data: '采集数据', dataGo: '去采集',
+    done: '已完成',
   },
   dashboard: { title: '概览', latest: '最近一小时中位价', change24: '比 24 小时前', lastSeen: '最近一条挂单', rows: '条挂单', runningJobs: '正在运行的任务', noJobs: '没有正在运行的任务', noData: '还没有这个道具的数据，去「数据采集」点一下采集。' },
   market: {
