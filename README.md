@@ -24,7 +24,7 @@ Track and forecast **Dark and Darker** marketplace prices on your own machine, w
 ### Requirements
 - Python 3.10+ and Node.js 20+
 - A free DarkerDB account and API key ([create one here](https://darkerdb.com/dashboard/api-keys), scopes `darkerdb.live` and `darkerdb.data`)
-- No database needed
+- No database to install: a built-in SQLite database (`data/market.db`) is created automatically; Postgres is optional
 
 ### Quick start
 ```bash
@@ -35,10 +35,10 @@ cd darker-market
 The script checks Python 3.10+ and Node.js 20+, creates a private Python environment (`.venv`), installs everything, builds the pages, starts the app and opens **http://localhost:5001**. The first run takes a few minutes; later runs start in seconds and only reinstall what changed.
 
 A setup wizard then walks you through four steps:
-1. **Environment**: checks Python and lets you keep data in local files (recommended) or a Postgres database.
+1. **Environment**: checks Python and lets you keep data in the built-in database (recommended, created automatically) or a Postgres database.
 2. **API key**: paste your DarkerDB key; it is verified and saved to `.env` (never committed).
 3. **Initialize**: pick items to track; the app syncs the item catalog, imports seasons, collects this season's listings and tries a first forecast, showing progress for each item.
-4. **Auto-collect**: choose how often to collect (every 1–24 hours). Collection resumes automatically every time you start the app.
+4. **Auto-collect**: choose how often to collect, in days/hours/minutes/seconds (minimum 30 seconds). Set it according to your DarkerDB API plan: requests over your quota fail. Collection resumes automatically every time you start the app.
 
 Change the interval later in **Settings**, or run the wizard again from there.
 
@@ -82,7 +82,7 @@ More: [Quick start details](docs/guides/QUICK_START.md) · [Configuration](docs/
 ### 需要准备
 - Python 3.10+ 和 Node.js 20+
 - DarkerDB 账号和 API key（[在这里创建](https://darkerdb.com/dashboard/api-keys)，勾选 `darkerdb.live` 和 `darkerdb.data`）
-- 不需要安装数据库
+- 不需要安装数据库：自动创建内置的 SQLite 数据库（`data/market.db`），Postgres 可选
 
 ### 快速开始
 ```bash
@@ -93,10 +93,10 @@ cd darker-market
 脚本会检查 Python 3.10+ 和 Node.js 20+，建立独立的 Python 环境（`.venv`）、安装依赖、构建页面、启动程序并打开 **http://localhost:5001**。第一次需要几分钟，之后几秒就能启动，只有内容变化时才重新安装或构建。
 
 打开页面后，设置向导会带你完成四步：
-1. **环境**：检查 Python，选择数据存在本机文件（推荐）还是 Postgres 数据库。
+1. **环境**：检查 Python，选择数据存在内置数据库（推荐，自动创建）还是 Postgres。
 2. **API key**：粘贴你的 DarkerDB key，验证通过后保存到 `.env`（不会被提交到 git）。
 3. **初始化**：选择要追踪的道具，程序会同步道具库、导入赛季、采集本赛季的挂单并尝试第一次预测，每个道具单独显示进度。
-4. **自动采集**：选择多久采集一次（每 1~24 小时）。之后每次启动程序都会自动恢复采集。
+4. **自动采集**：按天/时/分/秒设置多久采集一次（最少 30 秒）。请按你的 DarkerDB API 订阅方案设置，超出额度的请求会失败。之后每次启动程序都会自动恢复采集。
 
 之后可以在「设置」里修改采集间隔，或重新运行设置向导。
 

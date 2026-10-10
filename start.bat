@@ -19,6 +19,9 @@ if not exist .venv\Scripts\python.exe (
 echo 检查 Python 依赖（首次约 1~3 分钟）
 .venv\Scripts\python.exe -m pip install --quiet --disable-pip-version-check -r requirements.txt || (pause & exit /b 1)
 
+echo 准备数据库（没有 Postgres 时自动建好内置数据库 data\market.db）
+.venv\Scripts\python.exe -m backend.init_db || (pause & exit /b 1)
+
 if not exist frontend\node_modules (
   echo 安装前端依赖（首次约 1 分钟）
   pushd frontend & call npm ci --silent --no-audit --no-fund & popd

@@ -14,14 +14,14 @@ test('run a forecast and see a verdict', async ({ page }) => {
 
 test('first run opens the setup wizard in order and can be postponed', async ({ page }) => {
   await page.route('**/api/setup', route => route.fulfill({ json: { ok: true, error: null, meta: null, data: {
-    initialized: false, collect_interval_hours: 6, auto_collect: false, api_key_configured: false, api_key_hint: null,
+    initialized: false, collect_interval_seconds: 21600, rate_limit_per_minute: 60, auto_collect: false, api_key_configured: false, api_key_hint: null,
     data_source: 'csv', seasons: 1, tracked_items: 1, catalog_items: 5,
-    environment: { python_version: '3.13.5', python_ok: true, storage: 'csv', data_dir: '/tmp/data', db_host: null, db_database: null } } } }))
+    environment: { python_version: '3.13.5', python_ok: true, storage: 'sqlite', data_dir: '/tmp/data', db_host: null, db_database: null } } } }))
   await page.goto('/')
   const dialog = page.getByRole('dialog')
   await expect(dialog).toContainText('欢迎使用 Darker Market')
   await expect(dialog).toContainText('1 环境')
-  await expect(dialog.getByLabel('本机文件（推荐）')).toBeChecked()
+  await expect(dialog.getByLabel('内置数据库（推荐）')).toBeChecked()
   await dialog.getByRole('button', { name: '下一步' }).click()
   await expect(dialog.getByRole('link', { name: /darkerdb\.com/ })).toHaveAttribute('href', 'https://darkerdb.com/dashboard/api-keys')
   await expect(dialog.getByRole('button', { name: '下一步' })).toBeDisabled()        // key required before initialization

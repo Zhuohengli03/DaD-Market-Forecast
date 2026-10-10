@@ -25,19 +25,19 @@ function EnvStep() {
   const setup = useSetup().data!
   const env = setup.environment
   const db = useDatabaseSetup(); const toast = useToast()
-  const [mode, setMode] = useState<'file' | 'pg'>(env.storage === 'postgres' ? 'pg' : 'file')
+  const [mode, setMode] = useState<'db' | 'pg'>(env.storage === 'postgres' ? 'pg' : 'db')
   const [form, setForm] = useState<DatabaseInput>({ host: 'localhost', port: 5432, database: 'darkerdb', user: '', password: '' })
   const [error, setError] = useState<string | null>(null)
   const set = (k: keyof DatabaseInput, v: string) => setForm(f => ({ ...f, [k]: k === 'port' ? Number(v) : v }))
-  const toFile = () => { setMode('file'); if (env.storage === 'postgres') db.clear.mutate(undefined, { onSuccess: () => toast.push(t('wizard.env.switched')) }) }
+  const toBuiltIn = () => { setMode('db'); if (env.storage === 'postgres') db.clear.mutate(undefined, { onSuccess: () => toast.push(t('wizard.env.switched')) }) }
   return (
     <div className="space-y-4 text-sm">
       <div className="flex items-center gap-2">{env.python_ok ? <CheckCircle2 size={16} className="text-[var(--good)]" /> : <AlertCircle size={16} className="text-[var(--bad)]" />}
         {env.python_ok ? t('wizard.env.python', { v: env.python_version }) : t('wizard.env.pythonOld', { v: env.python_version })}</div>
       <fieldset className="space-y-2">
         <legend className="font-medium mb-1">{t('wizard.env.storage')}</legend>
-        <label className="flex gap-2 items-start"><input type="radio" name="storage" aria-label={t('wizard.env.file')} checked={mode === 'file'} onChange={toFile} />
-          <span><span>{t('wizard.env.file')}</span><span className="block text-xs text-[var(--muted)]">{t('wizard.env.fileHint', { dir: env.data_dir })}</span></span></label>
+        <label className="flex gap-2 items-start"><input type="radio" name="storage" aria-label={t('wizard.env.builtin')} checked={mode === 'db'} onChange={toBuiltIn} />
+          <span><span>{t('wizard.env.builtin')}</span><span className="block text-xs text-[var(--muted)]">{t('wizard.env.builtinHint', { path: `${env.data_dir}/market.db` })}</span></span></label>
         <label className="flex gap-2 items-start"><input type="radio" name="storage" aria-label={t('wizard.env.pg')} checked={mode === 'pg'} onChange={() => setMode('pg')} />
           <span><span>{t('wizard.env.pg')}</span><span className="block text-xs text-[var(--muted)]">{env.storage === 'postgres' ? t('wizard.env.pgOk', { host: env.db_host, db: env.db_database }) : t('wizard.env.pgHint')}</span></span></label>
       </fieldset>
@@ -73,7 +73,7 @@ function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: stri
   const sync = useJobStream(syncJob)
   const stream = useJobStream(jobId)
   const [q, setQ] = useState(''); const query = useDebounced(q, 300)
-  const cat = useCatalog({ q: query || undefined, has_stats: false, page: 1, page_size: 40 })
+  const cat = useCatalog({ has_stats: false, page: 1, page_size: 1000 })
   const [picked, setPicked] = useState<string[] | null>(null)
   const qc = useQueryClient()
   const catalogReady = setup.catalog_items > 0 || sync.status === 'succeeded'
@@ -85,23 +85,49 @@ function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: stri
     if (!setup.catalog_items && !syncJob && setup.api_key_configured) catalogJob.mutate('sync', { onSuccess: setSyncJob })
   }, [setup.catalog_items, setup.api_key_configured]) // eslint-disable-line react-hooks/exhaustive-deps
   const options = useMemo(() => (cat.data?.rows ?? []).flatMap(r => r.variants.map(v => ({
-    id: v.id, type: r, label: r.variants.length > 1 ? `${itemName(r, i18n.language)}（${rarityLabel(v.rarity, t)}）` : itemName(r, i18n.language),
+    id: v.id, type: r, category: r.category || 'misc',
+    label: r.variants.length > 1 ? `${itemName(r, i18n.language)}（${rarityLabel(v.rarity, t)}）` : itemName(r, i18n.language),
   }))), [cat.data, i18n.language, t])
   const tracked = new Set((items.data ?? []).map(i => i.item_id ?? i.name))
   const chosen = picked ?? options.filter(o => tracked.has(o.id) || tracked.has(o.type.name)).map(o => o.id)
   const toggle = (id: string) => setPicked(chosen.includes(id) ? chosen.filter(x => x !== id) : [...chosen, id])
+  const groups = useMemo(() => {
+    const m = new Map<string, typeof options>()
+    for (const o of options) m.set(o.category, [...(m.get(o.category) ?? []), o])
+    return [...m.entries()].sort((a, b) => a[1].length - b[1].length)
+  }, [options])
+  const toggleGroup = (ids: string[]) => {
+    const all = ids.every(id => chosen.includes(id))
+    setPicked(all ? chosen.filter(id => !ids.includes(id)) : [...new Set([...chosen, ...ids])])
+  }
+  const visible = (o: { label: string; type: { name: string } }) => !query || o.label.includes(query) || o.type.name.toLowerCase().includes(query.toLowerCase())
+  const upperMin = Math.ceil((chosen.length * MAX_PAGES) / 60)
   if (jobId) return <InitProgress status={stream.status} progress={stream.progress} error={stream.error} />
   if (!catalogReady) return <div className="space-y-2"><p className="text-sm">{t('wizard.init.needCatalog')}</p><ProgressPanel kind="catalog" status={sync.status} progress={sync.progress} error={sync.error} disconnected={sync.disconnected} /></div>
   return (
     <div className="space-y-3 text-sm">
       <p>{t('wizard.init.intro')}</p>
       <p className="text-xs text-[var(--muted)]">{t('wizard.init.choose')}</p>
-      <input className={`${inputCls} w-full`} placeholder={t('wizard.init.search')} value={q} onChange={e => setQ(e.target.value)} />
-      <div className="max-h-56 overflow-auto border border-[var(--line)] rounded-md p-2 grid grid-cols-2 gap-1">
-        {options.map(o => <label key={o.id} className="flex items-center gap-2"><input type="checkbox" aria-label={o.label} checked={chosen.includes(o.id)} onChange={() => toggle(o.id)} />{o.label}</label>)}
+      <div className="flex flex-wrap gap-1.5">
+        <Button size="sm" onClick={() => setPicked(options.map(o => o.id))}>{t('wizard.init.all', { n: options.length })}</Button>
+        <Button size="sm" variant="ghost" onClick={() => setPicked([])}>{t('wizard.init.none')}</Button>
+        {groups.map(([c, list]) => (
+          <Button key={c} size="sm" variant="ghost" onClick={() => toggleGroup(list.map(o => o.id))}>{t('wizard.init.allOf', { cat: t(`category.${c}`, { defaultValue: c }), n: list.length })}</Button>))}
       </div>
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-[var(--muted)]">{t('wizard.init.estimate', { n: chosen.length, min: Math.ceil(chosen.length * MAX_PAGES * 1.1 / 60) + 1 })}</span>
+      <input className={`${inputCls} w-full`} placeholder={t('wizard.init.search')} value={q} onChange={e => setQ(e.target.value)} />
+      <div className="max-h-64 overflow-auto border border-[var(--line)] rounded-md p-2 space-y-2">
+        {groups.map(([c, list]) => {
+          const shown = list.filter(visible)
+          if (!shown.length) return null
+          return (
+            <div key={c}>
+              <div className="text-xs font-semibold text-[var(--muted)] mb-1">{t(`category.${c}`, { defaultValue: c })}</div>
+              <div className="grid grid-cols-2 gap-1">{shown.map(o => <label key={o.id} className="flex items-center gap-2"><input type="checkbox" aria-label={o.label} checked={chosen.includes(o.id)} onChange={() => toggle(o.id)} />{o.label}</label>)}</div>
+            </div>)
+        })}
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-[var(--muted)]">{t('wizard.init.estimate', { n: chosen.length, time: upperMin >= 120 ? t('wizard.init.hours', { h: Math.ceil(upperMin / 60) }) : t('wizard.init.minutes', { m: upperMin }) })}</span>
         <Button disabled={!chosen.length} loading={init.isPending} onClick={() => init.mutate({ item_ids: chosen, max_pages: MAX_PAGES }, { onSuccess: onStart, onError: e => toast.push((e as Error).message, 'error') })}>{t('wizard.init.start')}</Button>
       </div>
     </div>
@@ -146,7 +172,7 @@ export function SetupWizard() {
           {step === 0 && <EnvStep />}
           {step === 1 && <KeyStep />}
           {step === 2 && <InitStep jobId={initJob} onStart={setInitJob} />}
-          {step === 3 && <ScheduleForm initialHours={s.collect_interval_hours} initialAuto={true} submitLabel={t('wizard.finish')} onSaved={close} />}
+          {step === 3 && <ScheduleForm initialSeconds={s.collect_interval_seconds} initialAuto={true} trackedItems={s.tracked_items} rateLimit={s.rate_limit_per_minute} submitLabel={t('wizard.finish')} onSaved={close} />}
         </div>
         <div className="flex justify-between items-center border-t border-[var(--line)] pt-4">
           <div className="flex gap-2">
