@@ -242,3 +242,33 @@ def test_untrack_many_at_once_keeps_collected_data(client):
     assert r.status_code == 200 and r.json()["data"] == {"removed": 2, "missing": 1}
     assert {i["name"] for i in st.items.list()} == {"Test Ore", "C Ore"}
     assert client.post("/api/items/untrack-bulk", json={"names": []}, headers=H).status_code == 422
+
+
+GEMS_AND_POTIONS = [
+    {"id": "id.item.ruby_1001", "archetype": "id.item.ruby", "name": "Ruby (Cracked)", "name_zh": "红宝石（裂开）", "rarity": "poor", "item_type": "misc"},
+    {"id": "id.item.ruby_2001", "archetype": "id.item.ruby", "name": "Ruby (Flawed)", "name_zh": "红宝石（瑕疵）", "rarity": "common", "item_type": "misc"},
+    {"id": "id.item.potion_1001", "archetype": "id.item.potion", "name": "Potion of Protection", "name_zh": "保护药水", "rarity": "poor", "item_type": "utility"},
+    {"id": "id.item.potion_2001", "archetype": "id.item.potion", "name": "Potion of Protection", "name_zh": "保护药水", "rarity": "common", "item_type": "utility"},
+]
+
+
+def test_tracked_names_are_fully_chinese(client, settings):
+    from backend.data.catalog import CatalogStore
+    settings.bootstrap()
+    CatalogStore(settings.catalog_path).save_items(GEMS_AND_POTIONS, "S11")
+    st = client.app.state
+    st.items.track("Ruby (Cracked) (poor)", "id.item.ruby_1001", "misc")
+    st.items.track("Potion of Protection (common)", "id.item.potion_2001", "utility")
+    rows = {r["name"]: r for r in client.get("/api/items").json()["data"]}
+    assert rows["Ruby (Cracked) (poor)"]["name_zh"] == "红宝石（裂开）"           # the grade already names the rarity
+    assert rows["Potion of Protection (common)"]["name_zh"] == "保护药水（普通）"
+
+
+def test_type_named_after_what_all_its_rarities_share(settings):
+    from backend.data.catalog import CatalogStore
+    settings.bootstrap()
+    store = CatalogStore(settings.catalog_path)
+    store.save_items(GEMS_AND_POTIONS, "S11")
+    ruby = store.type_row("id.item.ruby")
+    assert ruby["name"] == "Ruby" and ruby["name_zh"] == "红宝石"
+    assert store.type_row("id.item.potion")["name_zh"] == "保护药水"

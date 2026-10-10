@@ -21,7 +21,7 @@ export interface ModelMetric { name: string; mae_h1: number | null; mae_h24: num
 export interface ForecastRun {
   run_id: string; created_at: string; source: string
   request: { item: string; season_id: string; horizon_hours: number; models: string[]; coverage: number }
-  season: { id: string; name: string; start: string; end: string | null }
+  season: { id: string; name: string; start: string; end: string | null; ended?: boolean }
   series_tail: { ts: string; median_price: number | null; p25: number | null; p75: number | null; volume: number; listings: number }[]
   forecast: { ts: string; h: number; pred: number; lower: number; upper: number }[]
   selected: { name: string; members: { name: string; weight: number }[] }

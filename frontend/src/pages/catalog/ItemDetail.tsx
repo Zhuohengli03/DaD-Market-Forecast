@@ -56,14 +56,15 @@ function ListingStats({ row, localSeason }: { row: CatalogType; localSeason: num
 function VariantTable({ row, tracked, shown, onShow }: { row: CatalogType; tracked: Set<string>; shown: string; onShow: (id: string) => void }) {
   const { t } = useTranslation()
   const track = useTrackItem(); const toast = useToast()
+  const gs = row.variants.some(v => v.gear_score != null), vp = row.variants.some(v => v.vendor_price != null)
   const trackBtn = (v: CatalogVariant) => tracked.has(v.id) ? <Badge tone="ok">{t('catalog.tracked')}</Badge> :
     <Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); track.mutate(v.id, { onSuccess: d => toast.push(t('catalog.trackedOk', { name: d.name })), onError: err => toast.push((err as Error).message, 'error') }) }}>{t('catalog.track')}</Button>
   return (
-    <table className="w-full text-sm"><thead className="text-left text-[var(--muted)]"><tr><th className="py-1">{t('catalog.rarity')}</th><th>{t('catalog.gearScore')}</th><th>{t('catalog.vendor')}</th><th></th></tr></thead>
+    <table className="w-full text-sm"><thead className="text-left text-[var(--muted)]"><tr><th className="py-1">{t('catalog.rarity')}</th>{gs && <th>{t('catalog.gearScore')}</th>}{vp && <th>{t('catalog.vendor')}</th>}<th></th></tr></thead>
       <tbody>{row.variants.map(v => (
         <tr key={v.id} className={`border-t border-[var(--line)] cursor-pointer ${v.id === shown ? 'bg-blue-50' : 'hover:bg-gray-50'}`} onClick={() => onShow(v.id)}>
           <td className="py-1.5">{v.rarity ? rarityLabel(v.rarity, t) : v.id}</td>
-          <td className="tabular-nums">{v.gear_score ?? ''}</td><td className="tabular-nums">{v.vendor_price ?? ''}</td>
+          {gs && <td className="tabular-nums">{v.gear_score ?? ''}</td>}{vp && <td className="tabular-nums">{v.vendor_price ?? ''}</td>}
           <td className="text-right">{!row.has_stats && trackBtn(v)}</td>
         </tr>))}</tbody></table>
   )
@@ -81,7 +82,8 @@ export default function ItemDetail() {
   const tracked = new Set((items.data ?? []).map(i => i.item_id ?? i.name))
   const ids = new Set(row.variants.map(v => v.id))
   const mine = (items.data ?? []).filter(i => i.item_id && ids.has(i.item_id))
-  const localSeason = mine.some(i => i.season_rows != null) ? mine.reduce((n, i) => n + (i.season_rows ?? 0), 0) : null
+  const collected = mine.filter(i => i.rows > 0)
+  const localSeason = collected.some(i => i.season_rows != null) ? collected.reduce((n, i) => n + (i.season_rows ?? 0), 0) : null
   const shown = picked ?? row.variants.at(-1)?.id ?? ''   // highest rarity shows the most parameters
   const current = row.variants.find(v => v.id === shown) ?? row.variants[0]
   const zh = i18n.language.startsWith('zh')
@@ -94,11 +96,10 @@ export default function ItemDetail() {
           <div className="flex-1 min-w-0 space-y-1">
             <h1 className="text-xl font-semibold">{itemName(row, i18n.language)}{zh && row.name_zh && <span className="ml-2 text-sm font-normal text-[var(--muted)]">{row.name}</span>}</h1>
             <div className="flex flex-wrap gap-2 text-xs">
-              <Badge>{typeLabel(row.item_type, t)}</Badge>
-              {row.category && <Badge tone="muted">{t(`category.${row.category}`, { defaultValue: row.category })}</Badge>}
+              <Badge>{row.category && row.category !== row.item_type ? t(`category.${row.category}`, { defaultValue: typeLabel(row.item_type, t) }) : typeLabel(row.item_type, t)}</Badge>
               {row.has_stats ? <Badge tone="warn">{t('catalog.withStats')}</Badge> : <Badge tone="muted">{t('catalog.noStats')}</Badge>}
             </div>
-            <div className="text-xs text-[var(--muted)]">{row.rarities.map(x => rarityLabel(x, t)).join(' · ')}</div>
+            <div className="text-xs text-[var(--muted)]">{t('catalog.rarity')}：{row.rarities.map(x => rarityLabel(x, t)).join(' · ')}</div>
             <div className="text-xs text-[var(--muted)] font-mono">{row.archetype}</div>
           </div>
           <div className="flex flex-col gap-2">

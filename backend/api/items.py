@@ -10,6 +10,7 @@ from ..schemas import ok
 
 import logging
 logger = logging.getLogger(__name__)
+from ..data.catalog import variant_name_zh  # noqa: E402
 router = APIRouter(tags=["items"])
 
 
@@ -36,9 +37,9 @@ def list_items(request: Request):
     for it in st.items.list():
         s = stats.get(it["name"])
         plain = it["name"].split(" (")[0]
-        base = zh.get(it.get("item_id")) or zh.get(plain)
-        suffix = it["name"][len(plain):] if base and " (" in it["name"] else ""
-        out.append({**it, "name_zh": f"{base}{suffix}" if base else None, "rows": s.rows if s else 0, "first_ts": s.first_ts if s else None,
+        found = st.catalog.variant(it["item_id"]) if it.get("item_id") else None
+        name_zh = variant_name_zh(*found) if found else zh.get(plain)
+        out.append({**it, "name_zh": name_zh, "rows": s.rows if s else 0, "first_ts": s.first_ts if s else None,
                     "last_ts": s.last_ts if s else None, "icon_url": icons.get(it.get("item_id")) or icons.get(plain),
                     "season_rows": _season_rows(st, it["name"], season) if s and s.rows else 0})
     return ok(out)

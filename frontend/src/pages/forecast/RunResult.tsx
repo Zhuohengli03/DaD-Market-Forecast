@@ -10,8 +10,8 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { useToast } from '../../components/ui/Toast'
 import { download, toCsv } from '../../lib/format'
 import { BacktestTable } from './BacktestTable'
-import { RunStatusBanner } from './RunStatusBanner'
-import { localizeWarning } from '../../lib/labels'
+import { isPastSeason, RunStatusBanner } from './RunStatusBanner'
+import { localizeWarning, modelLabel } from '../../lib/labels'
 
 export function RunResult({ runId, onDeleted }: { runId: string; onDeleted: () => void }) {
   const { t, i18n } = useTranslation()
@@ -25,6 +25,8 @@ export function RunResult({ runId, onDeleted }: { runId: string; onDeleted: () =
   if (run.isError) return <EmptyState title={t('forecast.runMissing')} hint={(run.error as Error | null)?.message} />
   if (run.isLoading || !run.data) return <p className="text-sm">{t('common.loading')}</p>
   const r = run.data
+  // older runs of finished seasons still carry a "collect fresh data" warning that does not apply
+  const warnings = r.warnings.map(w => localizeWarning(w, i18n.language)).filter(w => !(isPastSeason(r) && /最新的挂单是|latest listing is/.test(w)))
   const exportCsv = () => download(`${r.run_id}.csv`, toCsv(r.forecast.map(f => ({ ts: f.ts, h: f.h, pred: f.pred, lower: f.lower, upper: f.upper }))))
   return (
     <div className="space-y-4">
@@ -37,11 +39,11 @@ export function RunResult({ runId, onDeleted }: { runId: string; onDeleted: () =
       </>}>
         <ForecastChart run={r} showRefs={showRefs} actuals={showActuals ? actuals.data : undefined} />
       </Card>
-      {r.warnings.length > 0 && <Card title={t('forecast.warnings')}><ul className="text-sm list-disc pl-5 text-[var(--warn)]">{r.warnings.map((w, i) => <li key={i}>{localizeWarning(w, i18n.language)}</li>)}</ul></Card>}
+      {warnings.length > 0 && <Card title={t('forecast.warnings')}><ul className="text-sm list-disc pl-5 text-[var(--warn)]">{warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></Card>}
+      <Card title={t('forecast.backtest')}><BacktestTable run={r} /></Card>
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <Card title={t('forecast.backtest')}><BacktestTable run={r} /></Card>
-        <Card title={t('forecast.perHorizon')}><HorizonErrorChart run={r} /></Card>
-        {r.feature_importance.length > 0 && <Card title={t('forecast.importance')}><ImportanceChart items={r.feature_importance} /></Card>}
+        <Card title={t('forecast.perHorizon')}><p className="text-xs text-[var(--muted)] mb-2">{t('forecast.perHorizonHint')}</p><HorizonErrorChart run={r} /></Card>
+        {r.feature_importance.length > 0 && <Card title={t('forecast.importance')}><p className="text-xs text-[var(--muted)] mb-2">{t('forecast.importanceHint', { model: modelLabel(r.selected.name, t) })}</p><ImportanceChart items={r.feature_importance} /></Card>}
       </div>
     </div>
   )

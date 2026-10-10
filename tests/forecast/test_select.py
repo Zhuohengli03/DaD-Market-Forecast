@@ -62,3 +62,9 @@ def test_too_few_origins_is_not_claimed():
     r = _result({"naive": naive, "good": good}, actual)
     sel = select_model(r, summarize(r))
     assert sel.name == "naive" and not sel.beats_baseline and "回测" in sel.reason
+
+
+def test_reason_names_the_method_in_chinese():
+    from src.forecast.select import method_name_zh
+    assert method_name_zh("ridge") == "线性回归" and method_name_zh("ensemble") == "多模型加权"
+    assert method_name_zh("mystery") == "mystery"

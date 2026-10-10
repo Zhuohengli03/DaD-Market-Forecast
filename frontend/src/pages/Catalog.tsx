@@ -69,7 +69,7 @@ export default function Catalog() {
         <Button variant="ghost" size="sm" aria-label={t('common.next')} disabled={page >= pages} onClick={() => setPage(p => p + 1)}>›</Button>
       </div>
       {!m?.items ? <EmptyState title={t('catalog.empty')} /> : !cat.data?.rows.length ? <EmptyState title={t('catalog.noMatch')} /> :
-        <CatalogTable rows={cat.data.rows} tracked={tracked} localSeason={Object.fromEntries((items.data ?? []).filter(i => i.item_id && i.season_rows != null).map(i => [i.item_id!, i.season_rows!]))} />}
+        <CatalogTable rows={cat.data.rows} tracked={tracked} localSeason={Object.fromEntries((items.data ?? []).filter(i => i.item_id && i.rows > 0 && i.season_rows != null).map(i => [i.item_id!, i.season_rows!]))} />}
     </div>
   )
 }
