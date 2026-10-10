@@ -1,6 +1,6 @@
 export interface QuotaInfo { credits_remaining: number | null; rate_limit: number | null; updated_at: string | null; monthly_quota: number }
 export interface TypeHistory { total: number | null; first: string | null; season: number | null; season_start: string | null; credits_used?: number }
-export interface ItemInfo { icon_url?: string | null; season_rows?: number | null; name: string; name_zh?: string | null; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; rows: number; first_ts: string | null; last_ts: string | null }
+export interface ItemInfo { scheduled?: boolean; schedule?: ItemConfigEntry['schedule']; icon_url?: string | null; season_rows?: number | null; name: string; name_zh?: string | null; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; rows: number; first_ts: string | null; last_ts: string | null }
 export interface SeriesPoint { ts: string; median_price: number | null; min_price: number | null; max_price: number | null; p25: number | null; p75: number | null; listings: number; sold: number; volume: number }
 export interface SeriesResponse { item: string; resolution: Resolution; start: string | null; end: string | null; points: SeriesPoint[] }
 export type Resolution = '1h' | '4h' | '1d'

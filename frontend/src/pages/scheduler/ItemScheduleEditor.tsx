@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Plus, X } from 'lucide-react'
-import { useSetItemSchedule } from '../../api/hooks'
+import { useSetItemSchedule, useSetScheduleBulk } from '../../api/hooks'
 import type { ItemConfigEntry, ScheduleInput } from '../../api/types'
 import { MIN_SECONDS, splitSeconds } from '../../components/wizard/ScheduleForm'
 import { Button } from '../../components/ui/Button'
@@ -27,6 +27,14 @@ export function toInput(schedule: ItemConfigEntry['schedule']): ScheduleInput {
   return { mode: 'default' }
 }
 
+/** "每 6时" / "每天 08:00、20:00" for an item's own schedule, or the default interval. */
+export function scheduleText(schedule: ItemConfigEntry['schedule'], defaultSeconds: number, t: TFunction): string {
+  const s = toInput(schedule)
+  if (s.mode === 'interval' && s.seconds) return t('scheduler.everyText', { v: fmtInterval(s.seconds, t) })
+  if (s.mode === 'daily' && s.times?.length) return t('scheduler.dailyText', { v: s.times.join('、') })
+  return t('scheduler.everyText', { v: fmtInterval(defaultSeconds, t) })
+}
+
 /** Returns an error key, or null when the schedule can be saved. */
 export function validate(s: ScheduleInput): string | null {
   if (s.mode === 'interval') return !s.seconds || s.seconds < MIN_SECONDS ? 'tooShort' : s.seconds > MAX_SECONDS ? 'tooLong' : null
@@ -34,11 +42,12 @@ export function validate(s: ScheduleInput): string | null {
   return null
 }
 
-interface Props { name: string; schedule: ItemConfigEntry['schedule']; defaultSeconds: number; onDone: () => void }
+/** `names`: apply the same schedule to several items at once (e.g. every quality of one type). */
+interface Props { name: string; names?: string[]; schedule: ItemConfigEntry['schedule']; defaultSeconds: number; onDone: () => void }
 
-export function ItemScheduleEditor({ name, schedule, defaultSeconds, onDone }: Props) {
+export function ItemScheduleEditor({ name, names, schedule, defaultSeconds, onDone }: Props) {
   const { t } = useTranslation()
-  const save = useSetItemSchedule(); const toast = useToast()
+  const save = useSetItemSchedule(); const bulk = useSetScheduleBulk(); const toast = useToast()
   const start = toInput(schedule)
   const [mode, setMode] = useState<ScheduleInput['mode']>(start.mode)
   const [parts, setParts] = useState(splitSeconds(start.seconds ?? defaultSeconds))
@@ -46,7 +55,8 @@ export function ItemScheduleEditor({ name, schedule, defaultSeconds, onDone }: P
   const seconds = UNITS.reduce((sum, [k, mul]) => sum + (parts[k] || 0) * mul, 0)
   const input: ScheduleInput = mode === 'interval' ? { mode, seconds } : mode === 'daily' ? { mode, times: [...new Set(times)].sort() } : { mode }
   const error = validate(input)
-  const submit = () => save.mutate({ name, ...input }, { onSuccess: () => { toast.push(t('scheduler.saved')); onDone() }, onError: e => toast.push((e as Error).message, 'error') })
+  const done = { onSuccess: () => { toast.push(t('scheduler.saved')); onDone() }, onError: (e: unknown) => toast.push((e as Error).message, 'error') }
+  const submit = () => (names && names.length > 1 ? bulk.mutate({ names, ...input }, done) : save.mutate({ name, ...input }, done))
   return (
     <div className="space-y-3 text-sm">
       <div className="flex flex-wrap gap-4">
@@ -75,7 +85,7 @@ export function ItemScheduleEditor({ name, schedule, defaultSeconds, onDone }: P
         </div>)}
       {error && <p role="alert" className="text-xs text-[var(--bad)]">{t(`scheduler.err.${error}`)}</p>}
       <div className="flex gap-2">
-        <Button size="sm" disabled={!!error} loading={save.isPending} onClick={submit}>{t('common.save')}</Button>
+        <Button size="sm" disabled={!!error} loading={save.isPending || bulk.isPending} onClick={submit}>{t('common.save')}</Button>
         <Button size="sm" variant="ghost" onClick={onDone}>{t('common.cancel')}</Button>
       </div>
     </div>

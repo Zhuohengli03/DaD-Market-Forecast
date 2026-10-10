@@ -143,6 +143,47 @@ def set_item_schedule(name: str, body: ScheduleIn, request: Request):
     return ok(entry)
 
 
+def _schedule_value(body: "ScheduleIn") -> dict | None:
+    return None if body.mode == "default" else (
+        {"mode": "interval", "seconds": body.seconds} if body.mode == "interval"
+        else {"mode": "daily", "times": sorted(set(body.times or []))})
+
+
+class ScheduledIn(BaseModel):
+    names: list[str] = Field(min_length=1, max_length=5000)
+    scheduled: bool
+
+
+@router.put("/items/scheduled")
+def set_scheduled(body: ScheduledIn, request: Request):
+    """Tick or untick items for scheduled collection; unticked items stay tracked and can be collected by hand."""
+    st = request.app.state
+    names = list(dict.fromkeys(body.names))
+    n = st.items.update_many(names, lambda it: it.__setitem__("scheduled", body.scheduled))
+    st.scheduler.restart_if_running()
+    return ok({"changed": n, "missing": len(names) - n})
+
+
+class BulkScheduleIn(ScheduleIn):
+    names: list[str] = Field(min_length=1, max_length=5000)
+
+
+@router.put("/items/schedule-bulk")
+def set_schedule_bulk(body: BulkScheduleIn, request: Request):
+    """One schedule for several items, e.g. every quality of one item type."""
+    st = request.app.state
+    sched = _schedule_value(body)
+
+    def change(it):
+        if sched is None:
+            it.pop("schedule", None)
+        else:
+            it["schedule"] = sched
+    n = st.items.update_many(list(dict.fromkeys(body.names)), change)
+    st.scheduler.restart_if_running()
+    return ok({"changed": n})
+
+
 class BulkTrackIn(BaseModel):
     item_ids: list[str] = Field(max_length=3000)
 

@@ -62,7 +62,7 @@ def tasks_from_items(items_path: Path, project_root: Path = PROJECT_ROOT, settin
     every = _interval_seconds(settings_path)
     tasks = []
     for it in items:
-        if not it.get("enabled", True):
+        if not it.get("enabled", True) or it.get("scheduled") is False:   # unticked on the schedule page
             continue
         kind, value = item_schedule(it, every)
         args = ["--item", it["name"]] + (["--item-id", it["item_id"]] if it.get("item_id") else [])

@@ -6,6 +6,7 @@ import * as hooks from '../../api/hooks'
 import { fmtInterval, ItemScheduleEditor, toInput, validate } from './ItemScheduleEditor'
 
 vi.mock('../../api/hooks')
+beforeEach(() => { vi.mocked(hooks.useSetScheduleBulk).mockReturnValue({ mutate: vi.fn(), isPending: false } as never) })
 
 it('formats intervals and reads stored schedules', () => {
   expect(fmtInterval(93784, i18n.t)).toBe('1天2时3分4秒')
@@ -35,4 +36,15 @@ it('blocks a custom interval under 30 seconds', () => {
   fireEvent.change(screen.getByLabelText('秒'), { target: { value: '10' } })
   expect(screen.getByRole('alert')).toHaveTextContent('间隔最少 30 秒')
   expect(screen.getByRole('button', { name: '保存' })).toBeDisabled()
+})
+
+
+it('applies one schedule to every quality of a type', () => {
+  const bulk = vi.fn()
+  vi.mocked(hooks.useSetItemSchedule).mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
+  vi.mocked(hooks.useSetScheduleBulk).mockReturnValue({ mutate: bulk, isPending: false } as never)
+  render(<ItemScheduleEditor name="Ruby (Cracked) (poor)" names={['Ruby (Cracked) (poor)', 'Ruby (Flawed) (common)']} schedule={null} defaultSeconds={3600} onDone={() => {}} />)
+  fireEvent.click(screen.getByLabelText('每天固定时间'))
+  fireEvent.click(screen.getByRole('button', { name: '保存' }))
+  expect(bulk.mock.calls[0][0]).toEqual({ names: ['Ruby (Cracked) (poor)', 'Ruby (Flawed) (common)'], mode: 'daily', times: ['08:00', '20:00'] })
 })

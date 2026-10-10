@@ -110,6 +110,8 @@ def schedule_estimate(st, default_seconds: int) -> dict:
     """Requests a month for scheduled collection, item by item, honouring per-item schedules."""
     per_item, unknown = {}, 0
     for it in st.items.list(enabled_only=True):
+        if it.get("scheduled") is False:
+            continue
         kind, value = item_schedule(it, default_seconds)
         if kind == "seconds":
             runs, gap_h = math.ceil(MONTH_SECONDS / int(value)), int(value) / 3600

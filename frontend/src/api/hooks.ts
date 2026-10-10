@@ -164,3 +164,13 @@ export function useSaveNetwork() {
   return useMutation({ mutationFn: (b: { lan: boolean; port: number }) => api.put<NetworkState>('/setup/network', b).then(r => r.data), onSuccess: d => qc.setQueryData(['network'], d) })
 }
 export const useRestart = () => useMutation({ mutationFn: () => api.post<{ restarting: boolean }>('/setup/restart').then(r => r.data) })
+export function useSetScheduled() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (b: { names: string[]; scheduled: boolean }) => api.put<{ changed: number }>('/items/scheduled', b).then(r => r.data),
+    onSuccess: () => { ['items', 'itemsConfig', 'scheduler', 'estimate'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
+}
+export function useSetScheduleBulk() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (b: ScheduleInput & { names: string[] }) => api.put<{ changed: number }>('/items/schedule-bulk', b).then(r => r.data),
+    onSuccess: () => { ['items', 'itemsConfig', 'scheduler', 'estimate'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
+}

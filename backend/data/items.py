@@ -71,6 +71,18 @@ class ItemsStore:
                 return it
         raise KeyError(f"item {name!r} is not tracked")
 
+    def update_many(self, names: list[str], change) -> int:
+        """Apply `change(entry)` to every tracked item named in `names`, in one write; returns how many matched."""
+        cfg = self.read()
+        wanted, n = set(names), 0
+        for it in cfg["items"]:
+            if it["name"] in wanted:
+                change(it)
+                n += 1
+        if n:
+            self.write(cfg)
+        return n
+
     def untrack_many(self, names: list[str]) -> int:
         """Stop tracking several items in one write; returns how many were removed. Collected data is kept."""
         cfg = self.read()
