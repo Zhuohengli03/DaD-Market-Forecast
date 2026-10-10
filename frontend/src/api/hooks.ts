@@ -153,3 +153,10 @@ export const useOverview = () => useQuery({ queryKey: ['overview'], refetchInter
   queryFn: () => api.get<{ groups: OverviewGroup[] }>('/overview').then(r => r.data.groups) })
 export const useCollectEstimate = (name: string) => useQuery({ queryKey: ['estimate', 'collect', name], enabled: !!name, staleTime: 60_000,
   queryFn: () => api.get<{ requests: number; known: boolean }>(`/estimate/collect/${name}`).then(r => r.data) })
+export interface NetworkState { lan: boolean; port: number; running_port: number; running_lan: boolean; restart_required: boolean; lan_urls: string[] }
+export const useNetwork = () => useQuery({ queryKey: ['network'], queryFn: () => api.get<NetworkState>('/setup/network').then(r => r.data) })
+export function useSaveNetwork() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (b: { lan: boolean; port: number }) => api.put<NetworkState>('/setup/network', b).then(r => r.data), onSuccess: d => qc.setQueryData(['network'], d) })
+}
+export const useRestart = () => useMutation({ mutationFn: () => api.post<{ restarting: boolean }>('/setup/restart').then(r => r.data) })

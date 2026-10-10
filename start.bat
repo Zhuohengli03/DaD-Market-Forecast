@@ -3,6 +3,8 @@ rem Darker Market 一键启动（Windows）：双击运行，或在命令行执�
 chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
+rem 端口在程序的「设置 → 网络」里修改，保存在 .env
+if "%PORT%"=="" if exist .env for /f "tokens=1,* delims==" %%a in ('findstr /b /c:"PORT=" .env') do set "PORT=%%b"
 if "%PORT%"=="" set PORT=5001
 set URL=http://localhost:%PORT%
 

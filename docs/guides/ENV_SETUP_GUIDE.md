@@ -1,5 +1,8 @@
 # Configuration reference / 配置说明
 
+> 日常使用不需要看这份文档：API key、数据库、采集间隔、额度、网络和端口都在程序的「设置」里配置。这里列出的是开发和排错时才用到的底层配置项。
+> You don't need this for normal use: the API key, database, collection interval, credits, network and port are all set in the app's Settings. These are the underlying settings, for development and troubleshooting.
+
 All settings are environment variables; the app also reads `.env` in the project root. Copy `env.template` to start, or let the first-run dialog create `.env` for you.
 
 | Variable | Default | Meaning |

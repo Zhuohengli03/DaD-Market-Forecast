@@ -2,9 +2,11 @@
 # Darker Market 一键启动（macOS / Linux）
 #   ./start.sh            安装所需环境（仅首次或有更新时）、启动服务并打开浏览器
 #   ./start.sh --no-open  启动但不打开浏览器
-#   PORT=5050 ./start.sh  换一个端口
+#   端口和局域网访问在程序的「设置 → 网络」里修改（保存在 .env）
 set -euo pipefail
 cd "$(dirname "$0")"
+# the port chosen in Settings is saved in .env; an explicit PORT=… still wins for one run
+if [ -z "${PORT:-}" ] && [ -f .env ]; then PORT="$(grep -E '^PORT=' .env | tail -1 | cut -d= -f2 | tr -d "\"' \r" || true)"; fi
 PORT="${PORT:-5001}"
 OPEN=1; [ "${1:-}" = "--no-open" ] && OPEN=0
 URL="http://localhost:${PORT}"
