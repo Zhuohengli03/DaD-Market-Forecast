@@ -116,3 +116,42 @@ def run_initialization(state, job, item_ids: list[str], max_pages: int) -> str:
     state.app_settings.update(initialized_at=datetime.now(timezone.utc).isoformat(timespec="seconds"))
     jm.progress(job, "done", 4, 4, items=[dict(r) for r in rows])
     return "init"
+
+
+def run_collect_all(state, job) -> str:
+    """Collect every enabled tracked item, one after another, with per-item progress."""
+    import os
+    from .collection import collector_env
+    jm, settings = state.jobs, state.settings
+    rows = [{"item_id": it.get("item_id") or it["name"], "name": it["name"], "name_zh": None, "status": "waiting",
+             "pages": 0, "collected": 0, "forecast": None, "run_id": None, "hours": None}
+            for it in state.items.list(enabled_only=True)]
+    names_zh = {}
+    for variants in state.catalog.types().values():
+        for v in variants:
+            if v.get("name_zh"):
+                names_zh[v["id"]] = v["name_zh"]
+    for r in rows:
+        r["name_zh"] = names_zh.get(r["item_id"])
+    env = {**os.environ, **collector_env(settings), "PYTHONUNBUFFERED": "1"}
+
+    def publish(stage):
+        jm.progress(job, stage, sum(r["status"] in ("collected", "collect_failed") for r in rows), len(rows),
+                    items=[dict(r) for r in rows])
+    for row in rows:
+        row["status"] = "collecting"
+        publish("collect")
+
+        def on_page(page, new, row=row):
+            row["pages"], row["collected"] = page or 0, new
+            publish("collect")
+        try:
+            row["collected"] = _run_collector(jm, job, state.collector_argv(state.items.get(row["name"]), None),
+                                              settings.project_root, env, on_page)
+            row["status"] = "collected"
+        except RuntimeError as exc:
+            row["status"], row["error"] = "collect_failed", ("auth" if "auth" in str(exc) else "api")
+        publish("collect")
+    state.item_stats.invalidate()
+    publish("done")
+    return "collect-all"

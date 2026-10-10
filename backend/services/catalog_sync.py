@@ -53,26 +53,46 @@ def chinese_names(client, log: Logger) -> dict[str, tuple[str, str | None]]:
     return out
 
 
-def check_tradability(client, store: CatalogStore, log: Logger, force: bool = False, progress=None) -> int:
-    """Ask the market how many listings each type has ever had. Zero means it cannot be traded.
+def check_tradability(client, store: CatalogStore, log: Logger, force: bool = False, progress=None,
+                      season_start: str | None = None) -> int:
+    """For every type: total listings ever and the first one (oldest-first query), plus listings this season.
 
-    DarkerDB's is_tradable flag is true for every item, so this is the reliable signal. One request per
-    type; progress is saved as it goes, so an interrupted check resumes where it stopped.
+    DarkerDB's is_tradable flag is true for every item, so "ever listed" is the tradability signal. Older
+    DarkerDB data mixes all seasons, so the first-listing date and a separate current-season count tell the
+    user what the totals contain. Progress is saved as it goes; a new season only re-counts the season column.
     """
-    totals = {} if force else dict(store.read()["trade_totals"])
-    todo = [k for k in store.types() if k not in totals]
-    log(f"需要检查 {len(todo)} 种道具（已检查 {len(totals)} 种）")
+    from src.api.darkerdb_client import canonical_ts
     step = progress or (lambda *a, **k: None)
+    info = {} if force else {k: dict(v) for k, v in store.read()["trade_info"].items()}
+    todo = []
+    for arch in store.types():
+        cur = info.get(arch)
+        need_history = cur is None
+        need_season = bool(season_start) and (cur is None or cur.get("season_start") != season_start)
+        if need_history or need_season:
+            todo.append((arch, need_history, need_season))
+    log(f"需要检查 {len(todo)} 种道具（已检查 {len(info)} 种）")
     step("check", 0, len(todo))
-    for i, arch in enumerate(todo, start=1):
-        payload = client.get("/market", {"archetype": arch, "limit": 1})
-        totals[arch] = int((payload.get("pagination") or {}).get("total") or 0)
+    for i, (arch, need_history, need_season) in enumerate(todo, start=1):
+        cur = info.setdefault(arch, {"total": 0, "first": None, "season": None, "season_start": None})
+        if need_history:
+            payload = client.get("/market", {"archetype": arch, "limit": 1, "sort": "created_at:asc"})
+            cur["total"] = int((payload.get("pagination") or {}).get("total") or 0)
+            body = payload.get("body") or []
+            cur["first"] = canonical_ts(body[0]["created_at"]) if body and body[0].get("created_at") else None
+        if need_season:
+            if cur["total"] == 0:
+                cur["season"] = 0
+            else:
+                payload = client.get("/market", {"archetype": arch, "limit": 1, "from": season_start})
+                cur["season"] = int((payload.get("pagination") or {}).get("total") or 0)
+            cur["season_start"] = season_start
         step("check", i, len(todo))
         if i % SAVE_EVERY == 0:
-            store.save_trade_totals(totals, complete=False)
+            store.save_trade_info(info, complete=False)
             log(f"已检查 {i}/{len(todo)}")
-    store.save_trade_totals(totals, complete=True)
-    tradable = sum(1 for v in totals.values() if v > 0)
-    log(f"完成：{len(totals)} 种道具中有 {tradable} 种在交易行出现过")
-    step("done", checked=len(totals), tradable=tradable)
+    store.save_trade_info(info, complete=True)
+    tradable = sum(1 for v in info.values() if v["total"] > 0)
+    log(f"完成：{len(info)} 种道具中有 {tradable} 种在交易行出现过")
+    step("done", checked=len(info), tradable=tradable)
     return tradable

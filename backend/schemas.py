@@ -41,7 +41,7 @@ class ItemConfigEntry(BaseModel):
     file: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_]+\.py$")
     csv: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_]+\.csv$")
     category: str = "ore"
-    schedule: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    schedule: str | dict | None = None  # "HH:MM" (legacy) or {"mode": "interval"|"daily", ...}
     description: str = ""
     enabled: bool = True
 

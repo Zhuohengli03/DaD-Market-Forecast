@@ -6,6 +6,7 @@ import type { CatalogType, CatalogVariant } from '../../api/types'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { useToast } from '../../components/ui/Toast'
+import { fmtDate } from '../../lib/format'
 import { itemName, paramLabel, paramValue, rarityLabel, typeLabel } from '../../lib/labels'
 
 // in Chinese, list the Chinese name and description before the English ones
@@ -58,7 +59,7 @@ export function CatalogTable({ rows, tracked }: { rows: CatalogType[]; tracked: 
       <table className="w-full text-sm">
         <thead className="bg-gray-50 text-left text-[var(--muted)]"><tr>
           <th className="px-3 py-2 w-12"></th><th className="px-3 py-2">{t('catalog.name')}</th><th className="px-3 py-2">{t('catalog.type')}</th>
-          <th className="px-3 py-2">{t('catalog.rarities')}</th><th className="px-3 py-2 text-right">{t('catalog.listings')}</th><th className="px-3 py-2"></th>
+          <th className="px-3 py-2">{t('catalog.rarities')}</th><th className="px-3 py-2 text-right" title={t('catalog.seasonListingsHint')}>{t('catalog.seasonListings')}</th><th className="px-3 py-2 text-right" title={t('catalog.listingsHint')}>{t('catalog.listings')}</th><th className="px-3 py-2 whitespace-nowrap" title={t('catalog.firstListedHint')}>{t('catalog.firstListed')}</th><th className="px-3 py-2"></th>
         </tr></thead>
         <tbody>{rows.map(r => {
           const single = r.variants.length === 1 ? r.variants[0] : null
@@ -70,13 +71,15 @@ export function CatalogTable({ rows, tracked }: { rows: CatalogType[]; tracked: 
                   {r.has_stats && <span className="ml-2"><Badge tone="warn">{t('catalog.withStats')}</Badge></span>}</td>
                 <td className="px-3 py-1.5">{typeLabel(r.item_type, t)}</td>
                 <td className="px-3 py-1.5 text-xs text-[var(--muted)]">{r.rarities.map(x => rarityLabel(x, t)).join(' · ')}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{r.listings_total ?? '–'}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums font-medium">{r.season_listings ?? '–'}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-[var(--muted)]">{r.listings_total ?? '–'}</td>
+                <td className="px-3 py-1.5 tabular-nums text-[var(--muted)] whitespace-nowrap">{fmtDate(r.first_listed)}</td>
                 <td className="px-3 py-1.5 text-right">
                   {r.has_stats ? <Link to={`/equipment?type=${r.archetype}`} className="text-sm font-medium text-[var(--accent)] hover:underline">{t('catalog.viewMarket')}</Link>
                     : single && tracked.has(single.id) ? <Badge tone="ok">{t('catalog.tracked')}</Badge> : null}
                 </td>
               </tr>
-              {open === r.archetype && <tr className="bg-gray-50"><td></td><td colSpan={5} className="px-3 py-3"><Variants row={r} tracked={tracked} /></td></tr>}
+              {open === r.archetype && <tr className="bg-gray-50"><td></td><td colSpan={7} className="px-3 py-3"><Variants row={r} tracked={tracked} /></td></tr>}
             </Fragment>)
         })}</tbody>
       </table>

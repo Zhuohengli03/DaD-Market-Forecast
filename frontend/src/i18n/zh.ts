@@ -78,7 +78,7 @@ export default {
   category: { food: '食物', soul_heart: '灵魂之心', ore: '矿石', ingot: '锭', powder: '粉末', gem: '宝石', drink: '药水饮品', herb: '药草', wood: '木材', consumable: '消耗品', throwable: '投掷物', light_source: '照明', treasure: '宝物', gold: '金币', hunting_loot: '狩猎战利品', currency: '货币', arrow: '箭', bolt: '弩矢', ball: '弹丸', sling_stone: '投石', trap: '陷阱', mining: '采矿工具', wood_cutting: '伐木工具', campfire_kit: '营火', weapon: '武器', armor: '防具', utility: '消耗品', misc: '杂项' },
   models: { naive: '沿用上一小时', seasonal_naive_24: '沿用昨天同一时刻', ets: '指数平滑', arima: 'ARIMA 时间序列', ridge: '线性回归', hgb: '梯度提升树', rf: '随机森林', ensemble: '多模型加权' },
   modelHelp: { naive: '基准：假设价格不变', seasonal_naive_24: '基准：假设和昨天同一时间一样', ets: '平滑趋势和每日周期', arima: '经典统计时间序列模型', ridge: '用过去的价格和成交量做线性预测', hgb: '能捕捉非线性关系的树模型', rf: '多棵决策树取平均' },
-  catalog: {
+  catalog: { seasonListings: '本赛季挂单', seasonListingsHint: '当前赛季开始以来在交易行出现的挂单数', listingsHint: 'DarkerDB 有记录以来的挂单总数。早期数据不区分赛季，会包含往届赛季', firstListed: '最早挂单', firstListedHint: 'DarkerDB 记录到的第一条挂单日期，早于本赛季开始日期说明历史挂单数里含往届赛季', seasonNote: '「本赛季挂单」从当前赛季开始（{{date}}）算起；「历史挂单」包含 DarkerDB 记录的所有赛季，看「最早挂单」日期就知道从哪天开始算。', needSeasonCheck: '还没统计本赛季的挂单数和最早挂单日期，点右上角「重新检查」更新（每种道具约 2 次请求）。', 
     title: '道具库', intro: '按道具类型列出：同名道具的所有稀有度算同一类。没有随机词条的道具（矿石、消耗品、材料）可以追踪、采集和预测价格；带词条的装备在「装备行情」里按词条数值查看。',
     onlyTradable: '只显示能在交易行买卖的道具。', notChecked: '还没有检查哪些道具能交易，下面暂时列出全部类型。点「检查可交易道具」完成后，不能交易的会自动隐藏。',
     checking: '已检查 {{done}} / {{total}} 个类型',
@@ -86,11 +86,11 @@ export default {
     patch: '游戏版本', syncedAt: '上次同步', checkedAt: '上次检查',
     summary: '{{types}} 种可交易道具，其中 {{withStats}} 种带词条',
     search: '搜索道具名', type: '类别', stats: '词条', withStats: '有词条', noStats: '无词条',
-    name: '道具', rarities: '稀有度', listings: '历史挂单数', rarity: '稀有度', gearScore: '装备分', vendor: '商人收购价',
+    name: '道具', rarities: '稀有度', listings: '历史挂单', rarity: '稀有度', gearScore: '装备分', vendor: '商人收购价',
     track: '追踪', tracked: '已追踪', trackedOk: '已开始追踪 {{name}}', viewMarket: '查看行情', params: '全部参数',
     empty: '道具库是空的。设置好 API key 后点"同步道具库"。', noMatch: '没有符合条件的道具',
   },
-  equipment: {
+  equipment: { sort: '挂单排序', sorts: { 'created_at_desc': '最新挂单在前', 'created_at_asc': '最早挂单在前', 'price_per_unit_asc': '单价从低到高', 'price_per_unit_desc': '单价从高到低' }, priceSortNote: '按单价排序时，只取最便宜（或最贵）的前 {{n}} 条挂单，走势图也只反映这部分。', 
     title: '装备行情', intro: '选一种装备和稀有度，再添加任意多个词条条件，每个词条设一个数值范围，查看符合条件的挂单价格走势和成交记录。数据实时来自 DarkerDB，默认从当前赛季开始。',
     type: '装备', pickType: '选择装备', rarity: '稀有度', anyRarity: '全部稀有度', addFilter: '添加词条条件', stat: '词条 {{n}}', min: '词条 {{n}} 最小值', max: '词条 {{n}} 最大值', remove: '删除条件',
     count: '挂单数', pickStat: '选择词条', base: '（基础属性）', observed: '最近挂单里见过 {{min}} ~ {{max}}', soldOnly: '只看已成交', depth: '查询数量', depthOption: '最新 {{n}} 条（约 {{s}} 秒）', run: '查询',
@@ -100,8 +100,8 @@ export default {
     time: '挂单时间', price: '单价', state: '状态', statsCol: '词条', sold: '已成交', active: '在售', gone: '已下架',
     noType: '先在上面选一种装备。',
   },
-  collect: { title: '数据采集', intro: '点"立即采集"从 DarkerDB 拉取这个道具的最新挂单。数据存在本机的内置数据库（data/market.db），配置了 Postgres 则存进 Postgres。', collectNow: '立即采集', recent: '采集记录', started: '已开始采集', untrack: '不再追踪', addFromCatalog: '从道具库添加道具', untracked: '已取消追踪 {{name}}' },
-  scheduler: { title: '定时采集', intro: '开启后，每个追踪的道具会在设定时间自动采集一次，多个道具会排队依次采集（共用一个 key 的请求额度）。修改追踪道具或时间后会自动生效。需要保持这个程序在运行。', status: '定时采集', on: '已开启', off: '已关闭', startBtn: '开启', stopBtn: '关闭', task: '道具', schedule: '每天采集时间', runNow: '立即采集' },
+  collect: { add: '添加道具', addTitle: '添加要采集的道具', addIntro: '这里列出还没追踪的、没有随机词条的可交易道具（共 {{n}} 种稀有度组合）。装备类请到「装备行情」按词条查询。', allTracked: '所有无词条道具都已经在追踪了。', needCatalog: '道具库还没下载，请先到「道具库」点「更新道具库」。', addN: '添加 {{n}} 个', added: '已添加 {{n}} 个道具', all: '全部采集（{{n}} 个）', trackedCount: '正在追踪 {{n}} 个道具', allProgress: '已采集 {{done}} / {{total}} 个道具', allDone: '全部采集完成',  title: '数据采集', intro: '点"立即采集"从 DarkerDB 拉取这个道具的最新挂单。数据存在本机的内置数据库（data/market.db），配置了 Postgres 则存进 Postgres。', collectNow: '立即采集', recent: '采集记录', started: '已开始采集', untrack: '不再追踪', addFromCatalog: '从道具库添加道具', untracked: '已取消追踪 {{name}}' },
+  scheduler: { perItemHint: '没有单独设置的道具按默认间隔（每 {{v}}）采集。点「修改」可以给某个道具单独设间隔，或设成每天固定几个时间采集。', everyText: '每 {{v}}', dailyText: '每天 {{v}}', isDefault: '（默认）', edit: '修改', saved: '已保存采集时间', modeDefault: '用默认间隔（每 {{v}}）', mode_interval: '自定义间隔', mode_daily: '每天固定时间', every: '每', dailyAt: '每天', timeN: '时间 {{n}}', removeTime: '删除这个时间', addTime: '加一个时间', err: { tooShort: '间隔最少 30 秒', tooLong: '间隔最多 30 天', noTimes: '至少设一个时间', badTime: '时间格式不对' },  title: '定时采集', intro: '开启后，每个追踪的道具会按自己的采集时间自动采集，多个道具会排队依次采集（共用一个 key 的请求额度）。修改追踪道具或时间后会自动生效。需要保持这个程序在运行。', status: '定时采集', on: '已开启', off: '已关闭', startBtn: '开启', stopBtn: '关闭', task: '道具', schedule: '采集时间', runNow: '立即采集' },
   settings: {
     title: '设置', interval: '数据获取间隔', apiKey: 'DarkerDB API key', seasons: '赛季', seasonsIntro: '暗黑地牢每个赛季开始会重置市场，不同赛季的价格不能混在一起训练。最简单的做法是点「从 DarkerDB 导入赛季」；也可以手动填写开始时间（UTC），当前赛季的结束时间留空。',
     importSeasons: '从 DarkerDB 导入赛季', importConfirm: '用 DarkerDB 公布的赛季时间替换下面的全部赛季？', imported: '已导入 {{n}} 个赛季', seasonName: '名称', seasonStart: '开始 (UTC)', seasonEnd: '结束 (UTC，进行中留空)', note: '备注',

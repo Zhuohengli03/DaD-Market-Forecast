@@ -33,6 +33,25 @@ def format_interval(seconds: int) -> str:
     return "".join(f"{v}{u}" for v, u in parts if v) or "0秒"
 
 
+def item_schedule(it: dict, default_seconds: int | None) -> tuple[str, object]:
+    """(schedule_type, value) for one tracked item: its own schedule, else the global default."""
+    sched = it.get("schedule")
+    if isinstance(sched, str) and sched:
+        return "daily_times", [sched]
+    if isinstance(sched, dict):
+        if sched.get("mode") == "interval" and sched.get("seconds"):
+            return "seconds", int(sched["seconds"])
+        if sched.get("mode") == "daily" and sched.get("times"):
+            return "daily_times", sorted(set(sched["times"]))
+    if default_seconds:
+        return "seconds", int(default_seconds)
+    return "daily_times", [DEFAULT_TIME]
+
+
+def describe(kind: str, value) -> str:
+    return f"每 {format_interval(value)}" if kind == "seconds" else "每天 " + "、".join(value)
+
+
 def tasks_from_items(items_path: Path, project_root: Path = PROJECT_ROOT, settings_path: Path | None = None) -> list[dict]:
     items_path = Path(items_path)
     if not items_path.exists():
@@ -45,16 +64,17 @@ def tasks_from_items(items_path: Path, project_root: Path = PROJECT_ROOT, settin
     for it in items:
         if not it.get("enabled", True):
             continue
+        kind, value = item_schedule(it, every)
         args = ["--item", it["name"]] + (["--item-id", it["item_id"]] if it.get("item_id") else [])
         tasks.append({
             "name": f"Collect {it['name']}",
             "item": it["name"],
             "script_path": str(Path(project_root) / "src" / "api" / "collect.py"),
             "args": args,
-            "schedule_type": "seconds" if every else "daily",
-            "schedule_value": every if every else it.get("schedule", DEFAULT_TIME),
+            "schedule_type": kind,
+            "schedule_value": value,
             "enabled": True,
-            "description": f"每 {format_interval(every)} 采集 {it['name']}" if every else f"每天 {it.get('schedule', DEFAULT_TIME)} 采集 {it['name']}",
+            "description": f"{describe(kind, value)} 采集 {it['name']}",
         })
     return tasks
 

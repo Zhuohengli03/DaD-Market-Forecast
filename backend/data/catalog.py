@@ -31,7 +31,7 @@ def has_stats(variants: list[dict]) -> bool:
 
 
 class CatalogStore:
-    _DEFAULTS = (("items", []), ("patch", None), ("synced_at", None), ("trade_totals", {}),
+    _DEFAULTS = (("items", []), ("patch", None), ("synced_at", None), ("trade_totals", {}), ("trade_info", {}),
                  ("trade_check_complete", False), ("trade_checked_at", None))
 
     def __init__(self, path: Path):
@@ -67,6 +67,13 @@ class CatalogStore:
         data.update(trade_totals=totals, trade_check_complete=complete, trade_checked_at=_now())
         self._write(data)
 
+    def save_trade_info(self, info: dict[str, dict], complete: bool) -> None:
+        """Per type: total listings ever, first listing time, listings in the current season."""
+        data = dict(self.read())
+        data.update(trade_info=info, trade_totals={k: v["total"] for k, v in info.items()},
+                    trade_check_complete=complete, trade_checked_at=_now())
+        self._write(data)
+
     # ----- types -------------------------------------------------------------
     def types(self) -> "OrderedDict[str, list[dict]]":
         groups: OrderedDict[str, list[dict]] = OrderedDict()
@@ -86,22 +93,24 @@ class CatalogStore:
     def type_variants(self, archetype: str) -> list[dict]:
         return self.types().get(archetype, [])
 
-    def _type_row(self, key: str, variants: list[dict], totals: dict) -> dict:
+    def _type_row(self, key: str, variants: list[dict], totals: dict, info: dict | None = None) -> dict:
         first = variants[0]
+        ti = (info or {}).get(key) or {}
         return {
             "archetype": key, "name": first.get("name", key), "name_zh": first.get("name_zh"), "item_type": first.get("item_type"),
             "category": first.get("misc_type") or first.get("utility_type") or first.get("item_type"),
             "slot_type": first.get("slot_type"), "icon_url": next((v.get("icon_url") for v in reversed(variants) if v.get("icon_url")), None),
             "has_stats": has_stats(variants), "rarities": [v.get("rarity") for v in variants],
-            "listings_total": totals.get(key),
+            "listings_total": ti.get("total", totals.get(key)),
+            "first_listed": ti.get("first"), "season_listings": ti.get("season"),
             "variants": [{**{k: v.get(k) for k in VARIANT_FIELDS}, "raw": v} for v in variants],
         }
 
     def visible_types(self) -> list[dict]:
         d = self.read()
-        totals = d["trade_totals"]
+        totals, info = d["trade_totals"], d["trade_info"]
         # hide only types we checked and found never listed; unchecked types stay visible
-        return [self._type_row(k, v, totals) for k, v in self.types().items() if totals.get(k, 1) != 0]
+        return [self._type_row(k, v, totals, info) for k, v in self.types().items() if totals.get(k, 1) != 0]
 
     def query(self, q: str = "", item_type: str = "", has_stats: bool | None = None,
               page: int = 1, page_size: int = 50) -> tuple[list[dict], int, dict]:
@@ -116,7 +125,9 @@ class CatalogStore:
             if has_stats is not None and r["has_stats"] != has_stats:
                 continue
             rows.append(r)
-        rows.sort(key=lambda r: (r["listings_total"] is None, -(r["listings_total"] or 0), r["name"]))
+        # this season first (older DarkerDB data mixes every season), then all-time, then name
+        rows.sort(key=lambda r: (r["season_listings"] is None, -(r["season_listings"] or 0),
+                                 -(r["listings_total"] or 0), r["name"]))
         facets = {"item_type": sorted({r["item_type"] for r in all_rows if r["item_type"]}),
                   "category": sorted({r["category"] for r in all_rows if r["category"]})}
         start = (page - 1) * page_size
@@ -127,6 +138,7 @@ class CatalogStore:
         groups = self.types()
         visible = self.visible_types()
         return {"patch": d["patch"], "synced_at": d["synced_at"], "items": len(d["items"]), "types": len(visible),
-                "types_total": len(groups), "trade_checked": sum(1 for k in groups if k in d["trade_totals"]),
+                "types_total": len(groups), "trade_checked": sum(1 for k in groups if k in d["trade_info"] or k in d["trade_totals"]),
+                "season_start": next((v.get("season_start") for v in d["trade_info"].values()), None),
                 "trade_check_complete": d["trade_check_complete"], "trade_checked_at": d["trade_checked_at"],
                 "with_stats": sum(1 for r in visible if r["has_stats"])}

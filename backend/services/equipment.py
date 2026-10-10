@@ -21,8 +21,8 @@ def _range(lo, hi) -> str:
 
 
 def build_market_params(archetype: str, rarity: str | None, filters: list[dict], sold_only: bool,
-                        since: str | None) -> dict:
-    p = {"archetype": archetype, "limit": MARKET_MAX_LIMIT, "sort": "created_at:desc"}
+                        since: str | None, sort: str = "created_at:desc") -> dict:
+    p = {"archetype": archetype, "limit": MARKET_MAX_LIMIT, "sort": sort}
     if rarity:
         p["rarity"] = rarity
     if sold_only:

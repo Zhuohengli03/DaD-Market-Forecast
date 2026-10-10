@@ -29,6 +29,7 @@ class EquipmentQuery(BaseModel):
     filters: list[StatFilter] = Field(default_factory=list, max_length=12)
     sold_only: bool = False
     max_pages: int = Field(default=10, ge=1, le=40)
+    sort: Literal["created_at:desc", "created_at:asc", "price_per_unit:asc", "price_per_unit:desc"] = "created_at:desc"
     since: str | None = None
 
 
@@ -54,6 +55,7 @@ def equipment_query(body: EquipmentQuery, request: Request):
     _equipment_type(request, body.archetype)
     seasons = request.app.state.seasons.list()
     since = body.since or (seasons[-1]["start"] if seasons else None)
-    params = build_market_params(body.archetype, body.rarity, [f.model_dump() for f in body.filters], body.sold_only, since)
+    params = build_market_params(body.archetype, body.rarity, [f.model_dump() for f in body.filters], body.sold_only, since,
+                                 body.sort)
     result = query_market(_client(request), params, body.max_pages)
     return ok({**result, "since": since, "params": params})

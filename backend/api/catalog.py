@@ -68,6 +68,8 @@ def start_trade_check(request: Request, body: CheckIn | None = None):
         raise HTTPException(409, "请先同步道具库 / sync the catalog first")
     job = st.jobs.create("catalog", "检查哪些道具能交易 / check which items trade")
     force = (body or CheckIn()).force
+    seasons = st.seasons.list()
+    season_start = seasons[-1]["start"] if seasons else None
     st.jobs.run_in_thread(job, lambda j: str(check_tradability(client, st.catalog, lambda s: st.jobs.append_log(j, s), force,
-                                                               progress=_progress(st.jobs, j))))
+                                                               progress=_progress(st.jobs, j), season_start=season_start)))
     return ok({"job_id": job.id})

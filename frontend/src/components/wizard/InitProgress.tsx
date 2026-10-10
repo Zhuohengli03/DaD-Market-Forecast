@@ -6,7 +6,7 @@ import { itemName } from '../../lib/labels'
 
 const STEPS = ['catalog', 'seasons', 'collect', 'forecast', 'done'] as const
 
-function ItemLine({ it }: { it: InitItem }) {
+export function ItemLine({ it }: { it: InitItem }) {
   const { t, i18n } = useTranslation()
   const collect = it.status === 'waiting' ? t('wizard.progress.waiting')
     : it.status === 'collecting' ? t('wizard.progress.collecting', { pages: it.pages, n: it.collected })
@@ -50,6 +50,25 @@ export function InitProgress({ status, progress, error }: { status: JobStatus | 
       {status === 'failed' && <p role="alert" className="text-sm text-[var(--bad)]">{error ?? t('progress.error.catalog')}</p>}
       {status === 'succeeded' && <p className="text-sm font-medium text-[var(--good)]">{t('wizard.progress.allDone')}</p>}
       <ul className="divide-y divide-[var(--line)]">{items.map(it => <ItemLine key={it.item_id} it={it} />)}</ul>
+    </div>
+  )
+}
+
+/** Per-item rows for a job that collects several items in a row (the "collect all" button). */
+export function BatchProgress({ status, progress, error }: { status: JobStatus | null; progress: JobProgress | null; error: string | null }) {
+  const { t } = useTranslation()
+  const items = ((progress?.detail?.items as InitItem[] | undefined) ?? [])
+  const finished = items.filter(i => i.status === 'collected' || i.status === 'collect_failed').length
+  const pct = status === 'succeeded' ? 100 : items.length ? Math.round((finished / items.length) * 100) : 0
+  return (
+    <div className="space-y-3">
+      <div className="text-sm font-medium">{t('collect.allProgress', { done: finished, total: items.length })}</div>
+      <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} className="h-2 rounded-full bg-gray-100 overflow-hidden">
+        <div className="h-full bg-[var(--accent)] transition-all" style={{ width: `${pct}%` }} />
+      </div>
+      {status === 'failed' && <p role="alert" className="text-sm text-[var(--bad)]">{error ?? t('progress.error.collect')}</p>}
+      {status === 'succeeded' && <p className="text-sm font-medium text-[var(--good)]">{t('collect.allDone')}</p>}
+      <ul className="divide-y divide-[var(--line)] max-h-96 overflow-auto">{items.map(it => <ItemLine key={it.item_id} it={it} />)}</ul>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, RunSummary, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
+import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, RunSummary, ScheduleInput, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
 
 export const useStatus = () => useQuery({ queryKey: ['status'], queryFn: () => api.get<StatusResponse>('/status').then(r => r.data), refetchInterval: 5000 })
 export const useItems = () => useQuery({ queryKey: ['items'], queryFn: () => api.get<ItemInfo[]>('/items').then(r => r.data) })
@@ -106,4 +106,20 @@ export function useDatabaseSetup() {
 }
 export function useInitialize() {
   return useMutation({ mutationFn: (b: { item_ids: string[]; max_pages: number }) => api.post<{ job_id: string }>('/setup/initialize', b).then(r => r.data.job_id) })
+}
+
+export function useSetItemSchedule() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: ({ name, ...b }: ScheduleInput & { name: string }) => api.put<unknown>(`/items/${encodeURIComponent(name)}/schedule`, b).then(r => r.data),
+    onSuccess: () => { ['itemsConfig', 'items', 'scheduler'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
+}
+export interface BulkTrackResult { added: number; skipped: { has_stats: number; already_tracked: number; not_in_catalog: number } }
+export function useTrackBulk() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (item_ids: string[]) => api.post<BulkTrackResult>('/items/track-bulk', { item_ids }).then(r => r.data),
+    onSuccess: () => { ['items', 'itemsConfig', 'setup', 'scheduler', 'status'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
+}
+export function useCollectAll() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: () => api.post<{ job_id: string }>('/collect-all').then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
 }
