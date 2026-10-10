@@ -2,13 +2,19 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![Node](https://img.shields.io/badge/Node-20+-green.svg)](https://nodejs.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
+[![爱发电](https://img.shields.io/badge/%E7%88%B1%E5%8F%91%E7%94%B5-Sponsor-946ce6.svg)](https://afdian.com/a/felixcode)
 
 Track and forecast **Dark and Darker** marketplace prices on your own machine, with data from the [DarkerDB API](https://darkerdb.com/documentation).
 
 在自己电脑上追踪和预测 **Dark and Darker（暗黑地牢）** 交易行价格，数据来自 [DarkerDB API](https://darkerdb.com/documentation)。
 
 [中文说明](#中文说明) · [English](#english)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/market-snake-dark.svg" />
+  <img alt="A price chart drawn in Dark and Darker rarity colours, eaten by a gold snake" src="docs/assets/market-snake.svg" />
+</picture>
 
 ---
 
@@ -105,5 +111,17 @@ cd darker-market
 - **预测说"没有找到比基准明显更准的方法"**：这是正常结果，说明这段时间价格接近随机波动，最好的猜测就是当前价格。
 - **想让局域网里的手机访问**：在 `.env` 里设 `HOST=0.0.0.0`，只在可信网络下这样做。
 
+## Support / 支持这个项目
+
+如果 Darker Market 对你有帮助，可以在 [爱发电](https://afdian.com/a/felixcode) 请作者喝一杯麦酒，微信和支付宝都能付款。赞助完全自愿，软件本身一直免费。
+
+If Darker Market saves you time, you can support it on [afdian](https://afdian.com/a/felixcode), a Chinese creator-support site (similar to Patreon). Sponsorship is optional; the app is and stays free.
+
 ## License
-[MIT](LICENSE). Not affiliated with IRONMACE or DarkerDB. 与 IRONMACE 和 DarkerDB 无关联。
+Copyright (C) 2025-2026 StarryCoder. Licensed under the [GNU Affero General Public License v3.0](LICENSE) or later (AGPL-3.0-or-later).
+
+You may use, modify and share this software freely. If you distribute a modified version, or let others use a modified version over a network (for example as a website), you must make its complete source code available to them under the same license.
+
+本项目以 [GNU AGPL v3.0](LICENSE) 或更新版本授权（AGPL-3.0-or-later）。你可以自由使用、修改和分享；如果你分发修改后的版本，或者把修改后的版本做成网站等在线服务给别人用，就必须按同样的许可证向这些用户公开完整源代码。
+
+Not affiliated with IRONMACE or DarkerDB. 与 IRONMACE 和 DarkerDB 无关联。
