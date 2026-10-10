@@ -116,6 +116,11 @@ export function SetupWizard() {
   const [step, setStep] = useState(0)
   const [initJob, setInitJob] = useState<string | null>(null)
   const initStream = useJobStream(initJob)
+  const qcRoot = useQueryClient()
+  useEffect(() => {
+    // initialization changed seasons, tracked items, collected data and forecasts: refresh what the app shows
+    if (initStream.status === 'succeeded') ['setup', 'items', 'seasons', 'runs', 'status', 'catalog', 'catalogMeta'].forEach(k => qcRoot.invalidateQueries({ queryKey: [k] }))
+  }, [initStream.status, qcRoot])
   const [dismissed, setDismissed] = useState(() => { try { return sessionStorage.getItem('wizardDismissed') === '1' } catch { return false } })
   const [forced, setForced] = useState(false)
   useEffect(() => {

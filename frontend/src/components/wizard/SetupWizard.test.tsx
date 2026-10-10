@@ -93,3 +93,12 @@ it('continues to the item picker as soon as the catalog download finishes', asyn
   expect(screen.getByPlaceholderText('搜索道具')).toBeInTheDocument()
   expect(spy).toHaveBeenCalledWith({ queryKey: ['setup'] })
 })
+
+it('refreshes the rest of the app when initialization finishes', async () => {
+  const qc = new QueryClient()
+  const spy = vi.spyOn(qc, 'invalidateQueries')
+  mount()
+  vi.mocked(stream.useJobStream).mockReturnValue({ progress: { stage: 'done', done: 4, total: 4, detail: { items: [] } }, status: 'succeeded', disconnected: false, error: null, resultRef: null })
+  render(<QueryClientProvider client={qc}><MemoryRouter><SetupWizard /></MemoryRouter></QueryClientProvider>)
+  for (const k of ['setup', 'items', 'seasons', 'runs']) expect(spy).toHaveBeenCalledWith({ queryKey: [k] })
+})
