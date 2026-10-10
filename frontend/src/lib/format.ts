@@ -1,3 +1,4 @@
+import i18n from '../i18n'
 export function fmtNum(n: number | null | undefined, digits = 2): string {
   return n === null || n === undefined || Number.isNaN(n) ? '–' : n.toFixed(digits)
 }
@@ -10,8 +11,9 @@ export function fmtTs(iso: string | null | undefined, opts: { withDate?: boolean
   if (!iso) return '–'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return opts.withDate === false ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : d.toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  const loc = (i18n.language || 'zh').startsWith('zh') ? 'zh-CN' : 'en-US'
+  return opts.withDate === false ? d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleString(loc, { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
 }
 export function fmtRelative(iso: string | null | undefined): string {
   if (!iso) return '–'

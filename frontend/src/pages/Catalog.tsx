@@ -12,7 +12,7 @@ import { inputCls } from '../components/ui/Field'
 import { useToast } from '../components/ui/Toast'
 import { fmtTs } from '../lib/format'
 import { useDebounced } from '../lib/useDebounced'
-import { typeLabel } from '../lib/labels'
+import { patchLabel, typeLabel } from '../lib/labels'
 import { CatalogTable } from './catalog/CatalogTable'
 
 const PAGE = 50
@@ -47,7 +47,7 @@ export default function Catalog() {
         <p className="text-xs text-[var(--muted)] mb-2">{t('catalog.onlyTradable')}</p>
         {m?.items && !m.trade_check_complete ? <p className="text-xs text-[var(--warn)] mb-2">{t('catalog.notChecked')} {m.trade_checked > 0 && t('catalog.checking', { done: m.trade_checked, total: m.types_total })}</p> : null}
         <dl className="text-xs grid grid-cols-1 md:grid-cols-3 gap-2 text-[var(--muted)]">
-          <div>{t('catalog.patch')}: <b className="text-[var(--ink)]">{m?.patch ?? '–'}</b></div>
+          <div>{t('catalog.patch')}: <b className="text-[var(--ink)]">{patchLabel(m?.patch, t)}</b></div>
           <div>{t('catalog.syncedAt')}: <b className="text-[var(--ink)]">{fmtTs(m?.synced_at)}</b></div>
           <div>{t('catalog.checkedAt')}: <b className="text-[var(--ink)]">{fmtTs(m?.trade_checked_at)}</b></div>
         </dl>

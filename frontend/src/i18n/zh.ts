@@ -44,7 +44,10 @@ export default {
   chart: { history: '历史中位价', band: '可信区间', forecast: '预测', actual: '后来的真实价格' },
   rarity: { poor: '粗劣', common: '普通', uncommon: '优秀', rare: '稀有', epic: '史诗', legendary: '传说', unique: '独特', artifact: '神器' },
   itemType: { weapon: '武器', armor: '防具', accessory: '饰品', utility: '消耗品', misc: '杂项' },
-  param: { id: '编号', archetype: '类型编号', slug: '别名', name: '名称', name_zh: '中文名称', flavor: '描述', flavor_zh: '中文描述', rarity: '稀有度', item_type: '类别', slot_type: '部位', armor_type: '护甲类型', hand_type: '持握方式', weapon_type: '武器类型', misc_type: '杂项类型', utility_type: '消耗品类型', gear_score: '装备分', vendor_price: '商人收购价', max_stack_size: '最大堆叠', inventory_width: '背包宽度', inventory_height: '背包高度', is_tradable: '可交易', is_droppable: '可丢弃', required_class: '职业限制', required_knowledge: '所需知识', num_primary_attributes: '基础属性数量', num_secondary_attributes: '可能词条数量', patch: '版本', patch_name: '版本名称', season: '赛季', season_label: '赛季名称', icon_url: '图标地址', model_url: '模型地址', experience: '经验值', adventure_points: '冒险点数', artifact_type: '神器类型', craft_set: '制作套装', is_craft_only: '仅可制作', primary_attributes: '基础属性', secondary_attributes: '可能出现的词条' },
+  slot: { primary: '主手', secondary: '副手', head: '头部', chest: '胸部', legs: '腿部', foot: '脚部', hands: '手部', back: '背部', necklace: '项链', ring: '戒指', utility: '道具栏', bag: '背包' },
+  patch: { season: '抢先体验第 {{n}} 赛季', seasonLabel: '第 {{n}} 赛季' },
+  yes: '是', no: '否',
+  param: { icon: '图标编号', model: '模型编号', has_model: '有 3D 模型', is_new: '本版本新增', patch_changed: '变动版本', patch_changed_name: '变动版本名称', is_changed: '本版本有改动', origin_id: '原始编号', wearing_delay_time: '穿戴耗时', id: '编号', archetype: '类型编号', slug: '别名', name: '名称', name_zh: '中文名称', flavor: '描述', flavor_zh: '中文描述', rarity: '稀有度', item_type: '类别', slot_type: '部位', armor_type: '护甲类型', hand_type: '持握方式', weapon_type: '武器类型', misc_type: '杂项类型', utility_type: '消耗品类型', gear_score: '装备分', vendor_price: '商人收购价', max_stack_size: '最大堆叠', inventory_width: '背包宽度', inventory_height: '背包高度', is_tradable: '可交易', is_droppable: '可丢弃', required_class: '职业限制', required_knowledge: '所需知识', num_primary_attributes: '基础属性数量', num_secondary_attributes: '可能词条数量', patch: '版本', patch_name: '版本名称', season: '赛季', season_label: '赛季名称', icon_url: '图标地址', model_url: '模型地址', experience: '经验值', adventure_points: '冒险点数', artifact_type: '神器类型', craft_set: '制作套装', is_craft_only: '仅可制作', primary_attributes: '基础属性', secondary_attributes: '可能出现的词条' },
   models: { naive: '沿用上一小时', seasonal_naive_24: '沿用昨天同一时刻', ets: '指数平滑', arima: 'ARIMA 时间序列', ridge: '线性回归', hgb: '梯度提升树', rf: '随机森林', ensemble: '多模型加权' },
   modelHelp: { naive: '基准：假设价格不变', seasonal_naive_24: '基准：假设和昨天同一时间一样', ets: '平滑趋势和每日周期', arima: '经典统计时间序列模型', ridge: '用过去的价格和成交量做线性预测', hgb: '能捕捉非线性关系的树模型', rf: '多棵决策树取平均' },
   catalog: {
@@ -62,7 +65,7 @@ export default {
   equipment: {
     title: '装备行情', intro: '选一种装备和稀有度，再添加任意多个词条条件，每个词条设一个数值范围，查看符合条件的挂单价格走势和成交记录。数据实时来自 DarkerDB，默认从当前赛季开始。',
     type: '装备', pickType: '选择装备', rarity: '稀有度', anyRarity: '全部稀有度', addFilter: '添加词条条件', stat: '词条 {{n}}', min: '词条 {{n}} 最小值', max: '词条 {{n}} 最大值', remove: '删除条件',
-    pickStat: '选择词条', base: '（基础属性）', observed: '最近挂单里见过 {{min}} ~ {{max}}', soldOnly: '只看已成交', depth: '查询数量', depthOption: '最新 {{n}} 条（约 {{s}} 秒）', run: '查询',
+    count: '挂单数', pickStat: '选择词条', base: '（基础属性）', observed: '最近挂单里见过 {{min}} ~ {{max}}', soldOnly: '只看已成交', depth: '查询数量', depthOption: '最新 {{n}} 条（约 {{s}} 秒）', run: '查询',
     soldNote: '"已成交"是 DarkerDB 的推断：挂单在到期前消失就算成交，游戏本身不提供成交记录。',
     result: '共找到 {{count}} 条，时间 {{from}} 至 {{to}}', truncated: '只取了最新的 {{count}} 条，增加查询数量可以看更早的。', none: '没有符合条件的挂单，试试放宽数值范围。',
     chartTitle: '每日单价', median: '挂单中位价', soldMedian: '成交中位价', range: '最低~最高', table: '挂单明细',

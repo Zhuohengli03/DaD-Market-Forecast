@@ -17,4 +17,25 @@ export function localizeMessage(msg: string, lang: string): string {
   return lang.startsWith('zh') ? msg.slice(0, i) : msg.slice(i + 3)
 }
 
+const VALUE_DICTS: Record<string, string> = { rarity: 'rarity', item_type: 'itemType', slot_type: 'slot' }
+
+/** Display a raw DarkerDB parameter value in the interface language where we know the vocabulary. */
+export function paramValue(key: string, value: unknown, t: TFunction): string {
+  if (typeof value === 'boolean') return value ? t('yes') : t('no')
+  if (value === null || value === undefined) return ''
+  const s = String(value)
+  if (VALUE_DICTS[key]) return t(`${VALUE_DICTS[key]}.${s}`, { defaultValue: s })
+  if (key === 'season_label' || key === 'patch_name') {
+    const m = /^Season (\d+)$/.exec(s)
+    if (m) return t('patch.seasonLabel', { n: m[1] })
+  }
+  return s
+}
+
+export function patchLabel(title: string | null | undefined, t: TFunction): string {
+  if (!title) return '–'
+  const m = /Season #?(\d+)/.exec(title)
+  return m ? t('patch.season', { n: m[1] }) : title
+}
+
 export const modelHelp = (name: string, t: TFunction) => t(`modelHelp.${name}`, { defaultValue: '' })
