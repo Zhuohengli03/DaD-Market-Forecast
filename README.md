@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![Node](https://img.shields.io/badge/Node-20+-green.svg)](https://nodejs.org)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![爱发电](https://img.shields.io/badge/%E7%88%B1%E5%8F%91%E7%94%B5-Sponsor-946ce6.svg)](https://afdian.com/a/felixcode)
 
 Track and forecast **Dark and Darker** marketplace prices on your own machine, with data from the [DarkerDB API](https://darkerdb.com/documentation).
@@ -113,4 +113,10 @@ cd darker-market
 If Darker Market saves you time, you can support it on [afdian](https://afdian.com/a/felixcode), a Chinese creator-support site (similar to Patreon). Sponsorship is optional; the app is and stays free.
 
 ## License
-[MIT](LICENSE). Not affiliated with IRONMACE or DarkerDB. 与 IRONMACE 和 DarkerDB 无关联。
+Copyright (C) 2025-2026 StarryCoder. Licensed under the [GNU Affero General Public License v3.0](LICENSE) or later (AGPL-3.0-or-later).
+
+You may use, modify and share this software freely. If you distribute a modified version, or let others use a modified version over a network (for example as a website), you must make its complete source code available to them under the same license.
+
+本项目以 [GNU AGPL v3.0](LICENSE) 或更新版本授权（AGPL-3.0-or-later）。你可以自由使用、修改和分享；如果你分发修改后的版本，或者把修改后的版本做成网站等在线服务给别人用，就必须按同样的许可证向这些用户公开完整源代码。
+
+Not affiliated with IRONMACE or DarkerDB. 与 IRONMACE 和 DarkerDB 无关联。
