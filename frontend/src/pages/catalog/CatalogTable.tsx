@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useTrackItem } from '../../api/hooks'
+import { useTrackItem, useTypeHistory } from '../../api/hooks'
 import type { CatalogType, CatalogVariant } from '../../api/types'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -30,6 +30,20 @@ function Params({ raw }: { raw: Record<string, unknown> }) {
   )
 }
 
+function History({ row }: { row: CatalogType }) {
+  const { t } = useTranslation()
+  const history = useTypeHistory(); const toast = useToast()
+  const known = row.season_listings != null && row.first_listed
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-xs">
+      <span>{t('catalog.seasonListings')}: <b>{row.season_listings ?? '–'}</b></span>
+      <span>{t('catalog.listings')}: <b>{row.listings_total ?? '–'}</b></span>
+      <span>{t('catalog.firstListed')}: <b>{fmtDate(row.first_listed)}</b></span>
+      {!known && <Button size="sm" variant="ghost" loading={history.isPending} onClick={() => history.mutate(row.archetype, { onError: e => toast.push((e as Error).message, 'error') })}>{t('catalog.fetchHistory')}</Button>}
+    </div>
+  )
+}
+
 function Variants({ row, tracked }: { row: CatalogType; tracked: Set<string> }) {
   const { t } = useTranslation()
   const track = useTrackItem(); const toast = useToast()
@@ -39,6 +53,7 @@ function Variants({ row, tracked }: { row: CatalogType; tracked: Set<string> }) 
     <Button size="sm" variant="ghost" onClick={() => track.mutate(v.id, { onSuccess: d => toast.push(t('catalog.trackedOk', { name: d.name })), onError: e => toast.push((e as Error).message, 'error') })}>{t('catalog.track')}</Button>
   return (
     <div className="space-y-3">
+      <History row={row} />
       <table className="text-sm"><thead className="text-left text-[var(--muted)]"><tr><th className="pr-6 py-1">{t('catalog.rarity')}</th><th className="pr-6">{t('catalog.gearScore')}</th><th className="pr-6">{t('catalog.vendor')}</th><th></th></tr></thead>
         <tbody>{row.variants.map(v => (
           <tr key={v.id} className={v.id === current?.id ? 'bg-blue-50' : ''}>
@@ -51,7 +66,8 @@ function Variants({ row, tracked }: { row: CatalogType; tracked: Set<string> }) 
   )
 }
 
-export function CatalogTable({ rows, tracked }: { rows: CatalogType[]; tracked: Set<string> }) {
+/** localSeason: this-season listings collected on this machine for tracked items (item id → count). */
+export function CatalogTable({ rows, tracked, localSeason = {} }: { rows: CatalogType[]; tracked: Set<string>; localSeason?: Record<string, number> }) {
   const { t, i18n } = useTranslation()
   const [open, setOpen] = useState<string | null>(null)
   return (
@@ -71,7 +87,11 @@ export function CatalogTable({ rows, tracked }: { rows: CatalogType[]; tracked: 
                   {r.has_stats && <span className="ml-2"><Badge tone="warn">{t('catalog.withStats')}</Badge></span>}</td>
                 <td className="px-3 py-1.5">{typeLabel(r.item_type, t)}</td>
                 <td className="px-3 py-1.5 text-xs text-[var(--muted)]">{r.rarities.map(x => rarityLabel(x, t)).join(' · ')}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums font-medium">{r.season_listings ?? '–'}</td>
+                <td className="px-3 py-1.5 text-right tabular-nums font-medium">{(() => {
+                  if (r.season_listings != null) return r.season_listings
+                  const local = r.variants.filter(v => v.id in localSeason)
+                  return local.length ? <span title={t('catalog.localHint')}>{local.reduce((n, v) => n + localSeason[v.id], 0)}<span className="ml-1 text-[10px] text-[var(--muted)]">{t('catalog.local')}</span></span> : '–'
+                })()}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums text-[var(--muted)]">{r.listings_total ?? '–'}</td>
                 <td className="px-3 py-1.5 tabular-nums text-[var(--muted)] whitespace-nowrap">{fmtDate(r.first_listed)}</td>
                 <td className="px-3 py-1.5 text-right">

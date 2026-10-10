@@ -53,40 +53,33 @@ def chinese_names(client, log: Logger) -> dict[str, tuple[str, str | None]]:
     return out
 
 
-def check_tradability(client, store: CatalogStore, log: Logger, force: bool = False, progress=None,
-                      season_start: str | None = None) -> int:
-    """For every type: total listings ever and the first one (oldest-first query), plus listings this season.
-
-    DarkerDB's is_tradable flag is true for every item, so "ever listed" is the tradability signal. Older
-    DarkerDB data mixes all seasons, so the first-listing date and a separate current-season count tell the
-    user what the totals contain. Progress is saved as it goes; a new season only re-counts the season column.
-    """
+def _history(client, arch: str) -> dict:
+    """All-time listing count and the first listing, in one request (oldest first, one row)."""
     from src.api.darkerdb_client import canonical_ts
+    payload = client.get("/market", {"archetype": arch, "limit": 1, "sort": "created_at:asc"})
+    body = payload.get("body") or []
+    return {"total": int((payload.get("pagination") or {}).get("total") or 0),
+            "first": canonical_ts(body[0]["created_at"]) if body and body[0].get("created_at") else None}
+
+
+def check_tradability(client, store: CatalogStore, log: Logger, force: bool = False, progress=None) -> int:
+    """One request per unchecked type: has it ever been listed, how often, and when first.
+
+    DarkerDB's is_tradable flag is true for every item, so "ever listed" is the tradability signal. Totals from an
+    earlier check are reused without a request; the free DarkerDB plan only allows about 10,000 requests a month.
+    Current-season counts are fetched per type on demand (type_history).
+    """
     step = progress or (lambda *a, **k: None)
-    info = {} if force else {k: dict(v) for k, v in store.read()["trade_info"].items()}
-    todo = []
-    for arch in store.types():
-        cur = info.get(arch)
-        need_history = cur is None
-        need_season = bool(season_start) and (cur is None or cur.get("season_start") != season_start)
-        if need_history or need_season:
-            todo.append((arch, need_history, need_season))
+    d = store.read()
+    info = {} if force else {k: dict(v) for k, v in d["trade_info"].items()}
+    if not force:
+        for arch, total in d["trade_totals"].items():
+            info.setdefault(arch, {"total": int(total), "first": None, "season": None, "season_start": None})
+    todo = [a for a in store.types() if a not in info]
     log(f"需要检查 {len(todo)} 种道具（已检查 {len(info)} 种）")
     step("check", 0, len(todo))
-    for i, (arch, need_history, need_season) in enumerate(todo, start=1):
-        cur = info.setdefault(arch, {"total": 0, "first": None, "season": None, "season_start": None})
-        if need_history:
-            payload = client.get("/market", {"archetype": arch, "limit": 1, "sort": "created_at:asc"})
-            cur["total"] = int((payload.get("pagination") or {}).get("total") or 0)
-            body = payload.get("body") or []
-            cur["first"] = canonical_ts(body[0]["created_at"]) if body and body[0].get("created_at") else None
-        if need_season:
-            if cur["total"] == 0:
-                cur["season"] = 0
-            else:
-                payload = client.get("/market", {"archetype": arch, "limit": 1, "from": season_start})
-                cur["season"] = int((payload.get("pagination") or {}).get("total") or 0)
-            cur["season_start"] = season_start
+    for i, arch in enumerate(todo, start=1):
+        info[arch] = {**_history(client, arch), "season": None, "season_start": None}
         step("check", i, len(todo))
         if i % SAVE_EVERY == 0:
             store.save_trade_info(info, complete=False)
@@ -96,3 +89,21 @@ def check_tradability(client, store: CatalogStore, log: Logger, force: bool = Fa
     log(f"完成：{len(info)} 种道具中有 {tradable} 种在交易行出现过")
     step("done", checked=len(info), tradable=tradable)
     return tradable
+
+
+def type_history(client, store: CatalogStore, arch: str, season_start: str | None) -> dict:
+    """First listing date and current-season count for one type; at most two requests, cached until a new season."""
+    if arch not in store.types():
+        raise KeyError(arch)
+    cur = dict(store.read()["trade_info"].get(arch) or {"total": None, "first": None, "season": None, "season_start": None})
+    if cur.get("total") is None or (cur["total"] > 0 and not cur.get("first")):
+        cur.update(_history(client, arch))
+    if season_start and cur.get("season_start") != season_start:
+        if cur["total"] == 0:
+            cur["season"] = 0
+        else:
+            payload = client.get("/market", {"archetype": arch, "limit": 1, "from": season_start})
+            cur["season"] = int((payload.get("pagination") or {}).get("total") or 0)
+        cur["season_start"] = season_start
+    store.save_trade_entry(arch, cur)
+    return cur

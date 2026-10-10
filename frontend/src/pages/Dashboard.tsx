@@ -7,11 +7,12 @@ import { Badge } from '../components/ui/Badge'
 import { EmptyState } from '../components/ui/EmptyState'
 import { Sparkline } from '../components/charts/Sparkline'
 import { GettingStarted } from './GettingStarted'
+import { RunningTasks } from '../components/RunningTasks'
 import { fmtNum, fmtPct, fmtRelative, fmtTs } from '../lib/format'
 import { change24h } from '../lib/market'
-import { itemName, localizeMessage } from '../lib/labels'
+import { itemName } from '../lib/labels'
 
-function ItemCard({ item }: { item: ItemInfo }) {
+function ItemCard({ item, state }: { item: ItemInfo; state?: 'collecting' | 'waiting' }) {
   const { t, i18n } = useTranslation()
   const last = item.last_ts ? new Date(item.last_ts).getTime() : null
   // the API range end is exclusive, so extend one hour past the newest listing
@@ -24,7 +25,7 @@ function ItemCard({ item }: { item: ItemInfo }) {
   return (
     <Link to={`/market?item=${encodeURIComponent(item.name)}`} className="block">
       <Card className="hover:shadow-md transition">
-        <div className="flex items-start justify-between"><div><div className="font-semibold">{itemName(item, i18n.language)}</div><div className="text-xs text-[var(--muted)]">{item.description}</div></div><Badge tone={item.rows ? 'muted' : 'warn'}>{item.rows} {t('dashboard.rows')}</Badge></div>
+        <div className="flex items-start justify-between"><div><div className="font-semibold">{itemName(item, i18n.language)}</div><div className="text-xs text-[var(--muted)]">{item.description}</div></div><div className="flex flex-col items-end gap-1"><Badge tone={item.rows ? 'muted' : 'warn'}>{item.rows} {t('dashboard.rows')}</Badge>{state && <Badge tone={state === 'collecting' ? 'warn' : 'muted'}>{t(`running.state.${state}`)}</Badge>}</div></div>
         <div className="mt-3 flex items-end justify-between">
           <div><div className="text-xs text-[var(--muted)]">{t('dashboard.latest')}</div><div className="text-2xl font-semibold">{fmtNum(latest)}</div></div>
           <div className="text-right"><div className="text-xs text-[var(--muted)]">{t('dashboard.change24')}</div><div className={`font-medium ${change === null ? '' : change >= 0 ? 'text-[var(--good)]' : 'text-[var(--bad)]'}`}>{fmtPct(change)}</div></div>
@@ -37,7 +38,7 @@ function ItemCard({ item }: { item: ItemInfo }) {
 }
 
 export default function Dashboard() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const items = useItems()
   const status = useStatus()
   return (
@@ -45,9 +46,9 @@ export default function Dashboard() {
       <h1 className="text-xl font-semibold">{t('dashboard.title')}</h1>
       <GettingStarted />
       {items.isLoading ? <p>{t('common.loading')}</p> : !items.data?.length ? <EmptyState title={t('common.none')} /> :
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{items.data.map(i => <ItemCard key={i.name} item={i} />)}</div>}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{items.data.map(i => <ItemCard key={i.name} item={i} state={status.data?.collecting?.[i.name]} />)}</div>}
       <Card title={t('dashboard.runningJobs')}>
-        {status.data?.jobs_running.length ? <ul className="text-sm space-y-1">{status.data.jobs_running.map(j => <li key={j.id} className="flex justify-between"><span>{localizeMessage(j.label, i18n.language)}</span><Badge tone="warn">{t(`progress.status.${j.status}`)}</Badge></li>)}</ul> : <p className="text-sm text-[var(--muted)]">{t('dashboard.noJobs')}</p>}
+        <RunningTasks />
       </Card>
     </div>
   )

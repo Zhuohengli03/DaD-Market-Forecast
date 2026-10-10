@@ -161,3 +161,26 @@ def test_collector_skips_the_lookup_when_the_item_id_is_known(tmp_path, monkeypa
     monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
     col.main(["--item", "Iron Ore", "--item-id", "id.item.iron_ores_2001", "--data-dir", str(tmp_path)])
     assert calls == []
+
+
+def test_client_records_credits_left_for_the_app(tmp_path):
+    import json
+    f = tmp_path / "quota.json"
+    s = _Session([_Resp(200, _env([]), {"X-Credits-Remaining": "7232", "X-Credits-Cost": "1", "X-Ratelimit-Limit": "60", "X-Ratelimit-Remaining": "59"})])
+    DarkerDBClient("k", session=s, min_interval=0, quota_file=f).get("/patches")
+    d = json.loads(f.read_text())
+    assert d["credits_remaining"] == 7232 and d["rate_limit"] == 60 and d["updated_at"]
+
+
+def test_quota_file_defaults_to_the_data_dir_from_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("DARKER_DATA_DIR", str(tmp_path))
+    s = _Session([_Resp(200, _env([]), {"X-Credits-Remaining": "5"})])
+    DarkerDBClient("k", session=s, min_interval=0).get("/patches")
+    assert (tmp_path / "quota.json").exists()
+
+
+def test_no_credit_header_leaves_the_file_alone(tmp_path):
+    f = tmp_path / "quota.json"
+    s = _Session([_Resp(200, _env([]), {})])
+    DarkerDBClient("k", session=s, min_interval=0, quota_file=f).get("/patches")
+    assert not f.exists()

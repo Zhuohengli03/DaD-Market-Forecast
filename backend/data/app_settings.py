@@ -6,7 +6,10 @@ from pathlib import Path
 
 from ..services.envfile import atomic_write
 
-DEFAULTS = {"initialized_at": None, "collect_interval_seconds": 6 * 3600, "auto_collect": False}
+DEFAULT_MONTHLY_QUOTA = 10_000  # DarkerDB free plan
+DEFAULTS = {"initialized_at": None, "collect_interval_seconds": 6 * 3600, "auto_collect": False,
+            "monthly_quota": DEFAULT_MONTHLY_QUOTA}
+MIN_MONTHLY_QUOTA, MAX_MONTHLY_QUOTA = 100, 100_000_000
 MIN_INTERVAL_SECONDS = 30
 MAX_INTERVAL_SECONDS = 30 * 86400
 DARKERDB_LIVE_RATE_PER_MINUTE = 60  # darkerdb.live scope default; plans may differ

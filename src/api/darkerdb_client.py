@@ -8,7 +8,12 @@ Differences from the retired v1 API that the old collectors used:
 """
 from __future__ import annotations
 
+import json
+import os
+import threading
 import time
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable, Iterator
 
 import requests
@@ -81,7 +86,7 @@ def normalize_listing(row: dict, fallback_item_name: str) -> dict:
 class DarkerDBClient:
     def __init__(self, api_key: str, base_url: str = BASE_URL, session=None,
                  min_interval: float = LIVE_MIN_INTERVAL, sleep: Callable[[float], None] = time.sleep,
-                 max_retries: int = 3, timeout: float = 30.0):
+                 max_retries: int = 3, timeout: float = 30.0, quota_file: "str | os.PathLike | None" = None):
         if not api_key:
             raise DarkerDBError(401, "DARKER_MARKET_API_KEY is empty; create a key at https://darkerdb.com/dashboard/api-keys")
         self._key = api_key
@@ -94,6 +99,9 @@ class DarkerDBClient:
         self._last_call = 0.0
         self._limit: int | None = None       # requests per minute allowed by this key's plan
         self._remaining: int | None = None   # requests left in the current one-minute window
+        if quota_file is None and os.environ.get("DARKER_DATA_DIR"):
+            quota_file = Path(os.environ["DARKER_DATA_DIR"]) / "quota.json"
+        self._quota_file = Path(quota_file) if quota_file else None
 
     def _throttle(self) -> None:
         """Go as fast as the key's plan allows: no waiting while quota remains, then 60s/limit spacing."""
@@ -112,11 +120,27 @@ class DarkerDBClient:
         self._last_call = time.monotonic()
 
     def _note_quota(self, headers) -> None:
+        h = {str(k).lower(): v for k, v in dict(headers).items()}
         try:
-            self._limit = int(headers.get("X-RateLimit-Limit") or headers.get("x-ratelimit-limit"))
-            self._remaining = int(headers.get("X-RateLimit-Remaining") or headers.get("x-ratelimit-remaining"))
+            self._limit = int(h.get("x-ratelimit-limit"))
+            self._remaining = int(h.get("x-ratelimit-remaining"))
         except (TypeError, ValueError):
             pass
+        self._record_credits(h)
+
+    def _record_credits(self, h: dict) -> None:
+        """Save the plan's credits left so the app can show them (shared by the server and collectors)."""
+        if not self._quota_file or h.get("x-credits-remaining") is None:
+            return
+        try:
+            data = {"credits_remaining": int(h["x-credits-remaining"]), "rate_limit": self._limit,
+                    "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+            self._quota_file.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self._quota_file.with_name(f".{self._quota_file.name}.{os.getpid()}.{threading.get_ident()}")
+            tmp.write_text(json.dumps(data), encoding="utf-8")
+            os.replace(tmp, self._quota_file)
+        except (OSError, ValueError):
+            pass  # showing credits is a convenience; never fail a request over it
 
     def get(self, path: str, params: dict | None = None) -> dict:
         url = self._base + path

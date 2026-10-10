@@ -18,9 +18,9 @@ def key_hint(key: str) -> str | None:
     return f"…{key[-4:]}" if key else None
 
 
-def default_key_validator(key: str) -> None:
+def default_key_validator(key: str, quota_file=None) -> None:
     """Raises DarkerDBError if DarkerDB rejects the key."""
-    client = DarkerDBClient(key, min_interval=0, max_retries=1, timeout=15)
+    client = DarkerDBClient(key, min_interval=0, max_retries=1, timeout=15, quota_file=quota_file)
     client.get("/items", {"limit": 1})   # darkerdb.data scope
     client.get("/market", {"limit": 1})  # darkerdb.live scope
 
@@ -49,7 +49,7 @@ def setup_state(request: Request) -> dict:
     prefs = st.app_settings.get()
     return {
         "initialized": bool(prefs["initialized_at"]), "collect_interval_seconds": prefs["collect_interval_seconds"],
-        "rate_limit_per_minute": DARKERDB_LIVE_RATE_PER_MINUTE,
+        "rate_limit_per_minute": DARKERDB_LIVE_RATE_PER_MINUTE, "monthly_quota": prefs["monthly_quota"],
         "auto_collect": prefs["auto_collect"], "environment": environment(st),
         "api_key_configured": bool(key),
         "api_key_hint": key_hint(key),
@@ -83,6 +83,19 @@ def put_api_key(body: ApiKeyIn, request: Request):
     settings = request.app.state.settings
     upsert_env(settings.env_path, "DARKER_MARKET_API_KEY", key)
     settings.darker_market_api_key = key
+    return ok(setup_state(request))
+
+
+class QuotaIn(BaseModel):
+    monthly_quota: int
+
+
+@router.put("/setup/quota")
+def put_quota(body: QuotaIn, request: Request):
+    from ..data.app_settings import MAX_MONTHLY_QUOTA, MIN_MONTHLY_QUOTA
+    if not MIN_MONTHLY_QUOTA <= body.monthly_quota <= MAX_MONTHLY_QUOTA:
+        raise HTTPException(422, f"每月额度需要在 {MIN_MONTHLY_QUOTA} 到 {MAX_MONTHLY_QUOTA} 之间 / monthly quota out of range")
+    request.app.state.app_settings.update(monthly_quota=body.monthly_quota)
     return ok(setup_state(request))
 
 

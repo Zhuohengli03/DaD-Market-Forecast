@@ -100,7 +100,7 @@ function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: stri
       <p className="text-xs text-[var(--muted)]">{t('wizard.init.choose')}</p>
       <ItemPicker options={options} chosen={chosen} onChange={setPicked} />
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs text-[var(--muted)]">{t('wizard.init.estimate', { n: chosen.length, time: upperMin >= 120 ? t('wizard.init.hours', { h: Math.ceil(upperMin / 60) }) : t('wizard.init.minutes', { m: upperMin }) })}</span>
+        <span className="text-xs text-[var(--muted)]">{t('wizard.init.cost', { n: chosen.length })} {t('wizard.init.estimate', { n: chosen.length, time: upperMin >= 120 ? t('wizard.init.hours', { h: Math.ceil(upperMin / 60) }) : t('wizard.init.minutes', { m: upperMin }) })}</span>
         <Button disabled={!chosen.length} loading={init.isPending} onClick={() => init.mutate({ item_ids: chosen, max_pages: MAX_PAGES }, { onSuccess: onStart, onError: e => toast.push((e as Error).message, 'error') })}>{t('wizard.init.start')}</Button>
       </div>
     </div>
@@ -150,7 +150,7 @@ export function SetupWizard() {
           {step === 0 && <EnvStep />}
           {step === 1 && <KeyStep />}
           {step === 2 && <InitStep jobId={initJob} onStart={setInitJob} />}
-          {step === 3 && <ScheduleForm initialSeconds={s.collect_interval_seconds} initialAuto={true} trackedItems={s.tracked_items} rateLimit={s.rate_limit_per_minute} submitLabel={t('wizard.finish')} onSaved={close} />}
+          {step === 3 && <ScheduleForm initialSeconds={s.collect_interval_seconds} initialAuto={true} trackedItems={s.tracked_items} rateLimit={s.rate_limit_per_minute} monthlyQuota={s.monthly_quota} submitLabel={t('wizard.finish')} onSaved={close} />}
         </div>
         <div className="flex justify-between items-center border-t border-[var(--line)] pt-4">
           <div className="flex gap-2">
