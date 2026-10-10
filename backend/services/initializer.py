@@ -66,7 +66,7 @@ def run_initialization(state, job, item_ids: list[str], max_pages: int) -> str:
         raw, variants = found
         name = str(raw.get("name") or iid) + (f" ({raw.get('rarity')})" if len(variants) > 1 else "")
         try:
-            state.items.track(name, iid, str(raw.get("item_type", "")), str(raw.get("rarity", "")))
+            state.items.track(name, iid, str(raw.get("item_type", "")))
         except ValueError:
             pass  # already tracked
         rows.append({"item_id": iid, "name": name, "name_zh": raw.get("name_zh"), "status": "waiting",

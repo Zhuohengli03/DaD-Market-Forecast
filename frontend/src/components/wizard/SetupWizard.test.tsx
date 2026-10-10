@@ -123,3 +123,27 @@ it('selects whole categories or everything in one click', () => {
   fireEvent.click(screen.getByRole('button', { name: '开始初始化' }))
   expect(init.mutate.mock.calls[0][0].item_ids).toHaveLength(4)
 })
+
+it('stays open when initialization marks the app initialized, until the user finishes', () => {
+  const qc = new QueryClient()
+  vi.mocked(hooks.useSetup).mockReturnValue({ data: base, isSuccess: true } as never)
+  mount()
+  expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  vi.mocked(hooks.useSetup).mockReturnValue({ data: { ...base, initialized: true }, isSuccess: true } as never)
+  fireEvent.click(screen.getAllByRole('button', { name: '下一步' })[0])      // any re-render with the new setup state
+  expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  void qc
+})
+
+it('puts the most useful categories first and translates them', () => {
+  mount()
+  vi.mocked(hooks.useCatalog).mockReturnValue({ data: { rows: [
+    { archetype: 'id.item.arrow', name: 'Arrow', category: 'arrow', has_stats: false, rarities: ['common'], listings_total: 1, variants: [{ id: 'id.item.arrow_2001', rarity: 'common', raw: {} }] },
+    { archetype: 'id.item.iron_ores', name: 'Iron Ore', name_zh: '铁矿', category: 'ore', has_stats: false, rarities: ['common'], listings_total: 5, variants: [{ id: 'id.item.iron_ores_2001', rarity: 'common', raw: {} }] },
+    { archetype: 'id.item.gold_ores', name: 'Gold Ore', name_zh: '金矿', category: 'ore', has_stats: false, rarities: ['epic'], listings_total: 7, variants: [{ id: 'id.item.gold_ores_5001', rarity: 'epic', raw: {} }] },
+  ], total: 3, facets: { item_type: [] } } } as never)
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  const chips = screen.getAllByRole('button').map(b => b.textContent ?? '').filter(t => t.startsWith('全选') && !/^全选（/.test(t))
+  expect(chips).toEqual(['全选矿石（2）', '全选箭（1）'])
+})

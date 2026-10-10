@@ -17,6 +17,8 @@ import { InitProgress } from './InitProgress'
 import { ScheduleForm } from './ScheduleForm'
 
 const STEP_KEYS = ['env', 'key', 'init', 'schedule'] as const
+// shortcut buttons: what players usually trade first, then everything else by size
+const CATEGORY_ORDER = ['ore', 'ingot', 'powder', 'gem', 'drink', 'herb', 'wood', 'consumable', 'throwable', 'light_source', 'food', 'treasure', 'gold', 'currency']
 const MAX_PAGES = 200
 export const OPEN_WIZARD_EVENT = 'open-setup-wizard'
 
@@ -94,7 +96,8 @@ function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: stri
   const groups = useMemo(() => {
     const m = new Map<string, typeof options>()
     for (const o of options) m.set(o.category, [...(m.get(o.category) ?? []), o])
-    return [...m.entries()].sort((a, b) => a[1].length - b[1].length)
+    const rank = (c: string) => { const i = CATEGORY_ORDER.indexOf(c); return i < 0 ? CATEGORY_ORDER.length : i }
+    return [...m.entries()].sort((a, b) => rank(a[0]) - rank(b[0]) || a[1].length - b[1].length)
   }, [options])
   const toggleGroup = (ids: string[]) => {
     const all = ids.every(id => chosen.includes(id))
@@ -149,16 +152,21 @@ export function SetupWizard() {
   }, [initStream.status, qcRoot])
   const [dismissed, setDismissed] = useState(() => { try { return sessionStorage.getItem('wizardDismissed') === '1' } catch { return false } })
   const [forced, setForced] = useState(false)
+  // once shown, the wizard stays until the user finishes or postpones it, even though initialization
+  // marks the app initialized half-way through
+  const [open, setOpen] = useState(false)
+  const shouldOpen = setup.isSuccess && !setup.data?.initialized && !dismissed
+  useEffect(() => { if (shouldOpen) setOpen(true) }, [shouldOpen])
   useEffect(() => {
-    const open = () => { setForced(true); setDismissed(false); setStep(0) }
-    window.addEventListener(OPEN_WIZARD_EVENT, open)
-    return () => window.removeEventListener(OPEN_WIZARD_EVENT, open)
+    const reopen = () => { setForced(true); setDismissed(false); setStep(0) }
+    window.addEventListener(OPEN_WIZARD_EVENT, reopen)
+    return () => window.removeEventListener(OPEN_WIZARD_EVENT, reopen)
   }, [])
   if (!setup.isSuccess) return null
   const s = setup.data
-  if (!(forced || (!s.initialized && !dismissed))) return null
-  const dismiss = () => { setDismissed(true); setForced(false); try { sessionStorage.setItem('wizardDismissed', '1') } catch { /* private mode */ } }
-  const close = () => { setForced(false); setDismissed(true); navigate('/') }
+  if (!(forced || open || shouldOpen)) return null
+  const dismiss = () => { setDismissed(true); setForced(false); setOpen(false); try { sessionStorage.setItem('wizardDismissed', '1') } catch { /* private mode */ } }
+  const close = () => { setForced(false); setOpen(false); setDismissed(true); navigate('/') }
   const canNext = step === 0 ? s.environment.python_ok : step === 1 ? s.api_key_configured : step === 2 ? initStream.status === 'succeeded' : true
   return (
     <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4" onKeyDown={e => { if (e.key === 'Escape') dismiss() }}>

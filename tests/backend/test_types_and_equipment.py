@@ -221,3 +221,10 @@ def test_initialize_accepts_large_selections(client):
     ids = [f"id.item.x_{i}" for i in range(400)]
     r = client.post("/api/setup/initialize", json={"item_ids": ids, "max_pages": 1}, headers=H)
     assert r.status_code == 202
+
+
+def test_tracked_catalog_items_do_not_store_raw_rarity_codes_as_description(client, settings):
+    _seed(settings)
+    client.post("/api/items/track", json={"item_id": "id.item.bandage_2001"}, headers=H)
+    item = next(i for i in client.get("/api/items").json()["data"] if i["name"].startswith("Bandage"))
+    assert item["description"] == ""
