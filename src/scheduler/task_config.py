@@ -1,72 +1,90 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-定时任务配置文件
-在这里配置需要定时运行的任务
-"""
+"""Scheduled tasks: one collection run per enabled tracked item.
 
+Tracked items live in data/items.json (created on first start from items_config.json). Each item may set
+"schedule": "HH:MM" (daily, local time); the default is 23:00. Add or remove items in the web app's Catalog
+or Settings page instead of editing this file.
+"""
+from __future__ import annotations
+
+import json
 import os
+from pathlib import Path
 
-# 获取项目根目录（从src/scheduler/向上两级到项目根）
-CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_TIME = "23:00"
 
-# 任务配置
-TASKS = [
-    {
-        "name": "Iron Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Iron_Ore_API.py"),
-        "schedule_type": "daily",  # daily, hourly, interval, weekly
-        "schedule_value": "23:00",  # 时间或间隔
-        "enabled": True,
-        "description": "每日晚上23点运行Iron Ore数据收集"
-    },
-    {
-        "name": "Gold Ore API", 
-        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Gold_Ore_API.py"),
-        "schedule_type": "daily",
-        "schedule_value": "23:00",
-        "enabled": True,
-        "description": "每日晚上23点运行Gold Ore数据收集"
-    },
-    {
-        "name": "Cobalt Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Cobalt_Ore_API.py"),
-        "schedule_type": "daily",
-        "schedule_value": "23:00",
-        "enabled": True,  # 已启用
-        "description": "每日晚上23点运行Cobalt Ore数据收集"
-    },
-    {
-        "name": "Copper Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Copper_Ore_API.py"),
-        "schedule_type": "daily",
-        "schedule_value": "13:50",
-        "enabled": True,
-        "description": "每日下午13点44分运行Copper Ore数据收集"
-    },
-    # 可以添加更多任务...
-    # {
-    #     "name": "Machine Learning Analysis",
-    #     "script_path": os.path.join(CURRENT_DIR, "Machine_learning_analysis.py"),
-    #     "schedule_type": "weekly",
-    #     "schedule_value": ("monday", "09:00"),
-    #     "enabled": False,
-    #     "description": "每周一早上9点运行机器学习分析"
-    # },
-    # {
-    #     "name": "Data Backup",
-    #     "script_path": os.path.join(CURRENT_DIR, "backup_data.py"),
-    #     "schedule_type": "interval",
-    #     "schedule_value": 60,  # 每60分钟
-    #     "enabled": False,
-    #     "description": "每60分钟备份一次数据"
-    # }
-]
 
-# 调度器配置
+def _interval_seconds(settings_path: Path | None) -> int | None:
+    if settings_path and Path(settings_path).exists():
+        raw = json.loads(Path(settings_path).read_text(encoding="utf-8"))
+        if raw.get("collect_interval_seconds"):
+            return int(raw["collect_interval_seconds"])
+        if raw.get("collect_interval_hours"):
+            return int(raw["collect_interval_hours"]) * 3600
+    return None
+
+
+def format_interval(seconds: int) -> str:
+    d, rem = divmod(int(seconds), 86400)
+    h, rem = divmod(rem, 3600)
+    m, s = divmod(rem, 60)
+    parts = [(d, "天"), (h, "时"), (m, "分"), (s, "秒")]
+    return "".join(f"{v}{u}" for v, u in parts if v) or "0秒"
+
+
+def item_schedule(it: dict, default_seconds: int | None) -> tuple[str, object]:
+    """(schedule_type, value) for one tracked item: its own schedule, else the global default."""
+    sched = it.get("schedule")
+    if isinstance(sched, str) and sched:
+        return "daily_times", [sched]
+    if isinstance(sched, dict):
+        if sched.get("mode") == "interval" and sched.get("seconds"):
+            return "seconds", int(sched["seconds"])
+        if sched.get("mode") == "daily" and sched.get("times"):
+            return "daily_times", sorted(set(sched["times"]))
+    if default_seconds:
+        return "seconds", int(default_seconds)
+    return "daily_times", [DEFAULT_TIME]
+
+
+def describe(kind: str, value) -> str:
+    return f"每 {format_interval(value)}" if kind == "seconds" else "每天 " + "、".join(value)
+
+
+def tasks_from_items(items_path: Path, project_root: Path = PROJECT_ROOT, settings_path: Path | None = None) -> list[dict]:
+    items_path = Path(items_path)
+    if not items_path.exists():
+        items_path = Path(project_root) / "items_config.json"
+    if not items_path.exists():
+        return []
+    items = json.loads(items_path.read_text(encoding="utf-8")).get("items", [])
+    every = _interval_seconds(settings_path)
+    tasks = []
+    for it in items:
+        if not it.get("enabled", True):
+            continue
+        kind, value = item_schedule(it, every)
+        args = ["--item", it["name"]] + (["--item-id", it["item_id"]] if it.get("item_id") else [])
+        tasks.append({
+            "name": f"Collect {it['name']}",
+            "item": it["name"],
+            "script_path": str(Path(project_root) / "src" / "api" / "collect.py"),
+            "args": args,
+            "schedule_type": kind,
+            "schedule_value": value,
+            "enabled": True,
+            "description": f"{describe(kind, value)} 采集 {it['name']}",
+        })
+    return tasks
+
+
+TASKS = tasks_from_items(Path(os.getenv("DARKER_ITEMS_CONFIG", PROJECT_ROOT / "data" / "items.json")),
+                         settings_path=Path(os.getenv("DARKER_SETTINGS", PROJECT_ROOT / "data" / "settings.json")))
+
 SCHEDULER_CONFIG = {
     "log_file": "scheduler.log",
     "log_level": "INFO",
-    "check_interval": 1,  # 检查间隔（秒）
-    "max_concurrent_tasks": 3,  # 最大并发任务数
+    "check_interval": 1,
+    "max_concurrent_tasks": 3,  # collectors share one key's 60 requests/min; more would only queue on it
 }

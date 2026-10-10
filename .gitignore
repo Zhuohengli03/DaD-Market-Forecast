@@ -4,6 +4,7 @@
 
 *.log
 *.txt
+!requirements*.txt
 
 # Python 缓存 / Python cache
 *.pyc
@@ -34,3 +35,25 @@ secrets.py
 # 系统文件 / System files
 .DS_Store
 Thumbs.db
+# forecast run outputs
+/runs/
+
+# frontend build/test artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+*.tsbuildinfo
+
+# user state (seasons, tracked items, catalog, runs, collected CSVs)
+/data/
+/seasons.json
+
+# coverage output
+.coverage
+frontend/coverage/
+htmlcov/
+
+# one-click start environment
+.venv/
+.build.log
