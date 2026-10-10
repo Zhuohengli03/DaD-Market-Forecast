@@ -30,17 +30,17 @@ Track and forecast **Dark and Darker** marketplace prices on your own machine, w
 ```bash
 git clone https://github.com/<you>/darker-market.git
 cd darker-market
-python -m pip install -r requirements.txt
-cd frontend && npm install && npm run build && cd ..
-python -m backend
+./start.sh            # Windows: double-click start.bat
 ```
-Open **http://localhost:5001**. On first launch a dialog asks for your DarkerDB API key; it is verified and saved to `.env` in the project folder (never committed).
+The script checks Python 3.10+ and Node.js 20+, creates a private Python environment (`.venv`), installs everything, builds the pages, starts the app and opens **http://localhost:5001**. The first run takes a few minutes; later runs start in seconds and only reinstall what changed.
 
-Then:
-1. **Settings → Seasons**: press *Import seasons from DarkerDB*. The market resets every season, so forecasts never mix seasons.
-2. **Item catalog**: press *Sync catalog*, then *Check tradable items* once (about 15 minutes, it hides items that never trade). *Track* stat-free items you care about; four ores are tracked by default. For equipment, use *View market*.
-3. **Collect data**: press *Collect now* on an item (or turn on *Scheduled collection*).
-4. **Forecast**: pick an item and a horizon, press *Run forecast*.
+A setup wizard then walks you through four steps:
+1. **Environment**: checks Python and lets you keep data in local files (recommended) or a Postgres database.
+2. **API key**: paste your DarkerDB key; it is verified and saved to `.env` (never committed).
+3. **Initialize**: pick items to track; the app syncs the item catalog, imports seasons, collects this season's listings and tries a first forecast, showing progress for each item.
+4. **Auto-collect**: choose how often to collect (every 1–24 hours). Collection resumes automatically every time you start the app.
+
+Change the interval later in **Settings**, or run the wizard again from there.
 
 ### How the forecast stays honest
 - Listings become an hourly median price. Every feature looks only at earlier hours (a test proves it).
@@ -88,17 +88,17 @@ More: [Quick start details](docs/guides/QUICK_START.md) · [Configuration](docs/
 ```bash
 git clone https://github.com/<you>/darker-market.git
 cd darker-market
-python -m pip install -r requirements.txt
-cd frontend && npm install && npm run build && cd ..
-python -m backend
+./start.sh            # Windows：双击 start.bat
 ```
-浏览器打开 **http://localhost:5001**。第一次打开会弹窗让你填写 DarkerDB API key，验证通过后保存到项目目录的 `.env`（不会被提交到 git）。
+脚本会检查 Python 3.10+ 和 Node.js 20+，建立独立的 Python 环境（`.venv`）、安装依赖、构建页面、启动程序并打开 **http://localhost:5001**。第一次需要几分钟，之后几秒就能启动，只有内容变化时才重新安装或构建。
 
-然后：
-1. **设置 → 赛季**：点「从 DarkerDB 导入赛季」。每个赛季市场都会重置，预测不会跨赛季混用数据。
-2. **道具库**：点「同步道具库」，再点一次「检查可交易道具」（约 15 分钟，会隐藏从来没人交易过的道具）。给关心的无词条道具点「追踪」，默认已追踪 4 种矿石。装备点「查看行情」。
-3. **数据采集**：点道具上的"立即采集"，或在"定时采集"里开启每天自动采集。
-4. **价格预测**：选道具和预测时长，点"开始预测"。
+打开页面后，设置向导会带你完成四步：
+1. **环境**：检查 Python，选择数据存在本机文件（推荐）还是 Postgres 数据库。
+2. **API key**：粘贴你的 DarkerDB key，验证通过后保存到 `.env`（不会被提交到 git）。
+3. **初始化**：选择要追踪的道具，程序会同步道具库、导入赛季、采集本赛季的挂单并尝试第一次预测，每个道具单独显示进度。
+4. **自动采集**：选择多久采集一次（每 1~24 小时）。之后每次启动程序都会自动恢复采集。
+
+之后可以在「设置」里修改采集间隔，或重新运行设置向导。
 
 ### 常见问题
 - **弹窗说 key 无效**：确认是 v2 key，并勾选了上面两个权限。旧的 v1 key 已经不能用了。
