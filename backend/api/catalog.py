@@ -8,6 +8,14 @@ from ..services.catalog_sync import check_tradability, sync_catalog
 router = APIRouter(tags=["catalog"])
 
 
+def client_for_state(st):
+    key = st.settings.darker_market_api_key
+    if not key:
+        raise HTTPException(409, "还没有设置 DarkerDB API key，请先在设置页填写 / Set your DarkerDB API key first")
+    factory = getattr(st, "client_factory", None) or (lambda k: DarkerDBClient(k))
+    return factory(key)
+
+
 def _client(request: Request):
     st = request.app.state
     key = st.settings.darker_market_api_key

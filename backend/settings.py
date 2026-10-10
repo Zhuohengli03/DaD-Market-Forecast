@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     items_config_path: Path | None = None
     catalog_path: Path | None = None
     env_path: Path | None = None
+    app_settings_path: Path | None = None
     frontend_dist: Path | None = None
     python_executable: str = sys.executable
 
@@ -47,6 +48,7 @@ class Settings(BaseSettings):
         self.items_config_path = self.items_config_path or self.data_dir / "items.json"
         self.catalog_path = self.catalog_path or self.data_dir / "catalog.json"
         self.env_path = self.env_path or root / ".env"
+        self.app_settings_path = self.app_settings_path or self.darker_data_dir / "settings.json"
         self.frontend_dist = self.frontend_dist or root / "frontend" / "dist"
 
     @property

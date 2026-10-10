@@ -37,6 +37,11 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
         app.state.settings = settings
         app.state.repo = repo or make_repository(settings)
         _attach_services(app)
+        if app.state.app_settings.get()["auto_collect"]:
+            try:
+                app.state.scheduler.start()  # resume scheduled collection chosen in the setup wizard
+            except FileNotFoundError:
+                pass
         yield
         app.state.scheduler.stop()
         app.state.jobs.shutdown()
@@ -104,6 +109,7 @@ def _add_guards(app: FastAPI, settings: Settings) -> None:
 def _attach_services(app: FastAPI) -> None:
     from .api.setup import default_key_validator
     from .data.catalog import CatalogStore
+    from .data.app_settings import AppSettings
     from .data.items import ItemsStore
     from .data.seasons import SeasonStore
     from .services.forecast_runs import RunStore
@@ -112,6 +118,9 @@ def _attach_services(app: FastAPI) -> None:
     st = app.state
     st.seasons = SeasonStore(st.settings.seasons_path)
     st.items = ItemsStore(st.settings.items_config_path)
+    st.app_settings = AppSettings(st.settings.app_settings_path)
+    from .services.collection import collector_argv
+    st.collector_argv = lambda entry, since: collector_argv(st.settings, entry) + (["--since", since] if since else [])
     st.catalog = CatalogStore(st.settings.catalog_path)
     st.key_validator = default_key_validator
     st.runs = RunStore(st.settings.runs_dir)

@@ -12,7 +12,7 @@ class SchedulerController:
         self._settings = settings
         self._jobs = jobs
         self._proc: subprocess.Popen | None = None
-        self._tasks_cache: tuple[float, list[dict]] | None = None
+        self._tasks_cache: tuple[tuple, list[dict]] | None = None
 
     def running(self) -> bool:
         return self._proc is not None and self._proc.poll() is None
@@ -26,7 +26,8 @@ class SchedulerController:
         self._proc = subprocess.Popen([self._settings.python_executable, str(script), "--start"],
                                       cwd=str(self._settings.project_root),
                                       env={**__import__("os").environ, "DARKER_ITEMS_CONFIG": str(self._settings.items_config_path),
-                                           "DARKER_DATA_DIR": str(self._settings.data_dir)},
+                                           "DARKER_DATA_DIR": str(self._settings.data_dir),
+                                           "DARKER_SETTINGS": str(self._settings.app_settings_path)},
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
 
@@ -50,14 +51,15 @@ class SchedulerController:
     def tasks(self) -> list[dict]:
         """One daily collection task per enabled tracked item (same rule as src/scheduler/task_config.py)."""
         path = self._settings.items_config_path
-        mtime = path.stat().st_mtime if path.exists() else 0.0
+        sp = self._settings.app_settings_path
+        mtime = (path.stat().st_mtime if path.exists() else 0.0, sp.stat().st_mtime if sp.exists() else 0.0)
         if self._tasks_cache and self._tasks_cache[0] == mtime:
             return self._tasks_cache[1]
         from src.scheduler.task_config import tasks_from_items
         out = [{"name": t["name"], "item": t["item"], "script_path": t["script_path"],
                 "schedule_type": t["schedule_type"], "schedule_value": str(t["schedule_value"]),
                 "enabled": t["enabled"], "description": t["description"]}
-               for t in tasks_from_items(path, self._settings.project_root)]
+               for t in tasks_from_items(path, self._settings.project_root, settings_path=sp)]
         self._tasks_cache = (mtime, out)
         return out
 
