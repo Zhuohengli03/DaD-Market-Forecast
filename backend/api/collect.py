@@ -1,3 +1,4 @@
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException, Request
 
 from ..schemas import ok
@@ -19,16 +20,27 @@ def collect(item: str, request: Request):
     return ok({"job_id": job.id})
 
 
+class CollectAllIn(BaseModel):
+    names: list[str] | None = Field(default=None, max_length=5000)   # only these tracked items; all when omitted
+
+
 @router.post("/collect-all", status_code=202)
-def collect_all(request: Request):
+def collect_all(request: Request, body: CollectAllIn | None = None):
+    from ..services.cost import collect_estimate
     from ..services.initializer import run_collect_all
     st = request.app.state
-    if not st.items.list(enabled_only=True):
-        raise HTTPException(422, "还没有追踪任何道具 / no tracked items")
+    items = st.items.list(enabled_only=True)
+    names = (body or CollectAllIn()).names
+    if names is not None:
+        wanted = set(names)
+        items = [it for it in items if it["name"] in wanted]
+    if not items:
+        raise HTTPException(422, "没有可采集的道具 / no tracked items to collect")
     if st.jobs.find_active("collect"):
         raise HTTPException(409, "已有采集正在进行 / a collection is already running")
-    from ..services.cost import collect_all_estimate
-    job = st.jobs.create("collect", "采集全部道具 / collect all items", meta={"item": "*"})
-    st.jobs.set_estimate(job, collect_all_estimate(st)["requests"])
-    st.jobs.run_in_thread(job, lambda j: run_collect_all(st, j))
+    label = "采集全部道具 / collect all items" if names is None else f"采集 {len(items)} 个道具 / collect {len(items)} items"
+    job = st.jobs.create("collect", label, meta={"item": "*"})
+    st.jobs.set_estimate(job, sum(collect_estimate(st, it)["requests"] for it in items))
+    chosen = [it["name"] for it in items]
+    st.jobs.run_in_thread(job, lambda j: run_collect_all(st, j, chosen))
     return ok({"job_id": job.id})

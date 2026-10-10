@@ -16,6 +16,10 @@ import { Card } from '../components/ui/Card'
 import { useToast } from '../components/ui/Toast'
 import { fmtRelative } from '../lib/format'
 import { itemName } from '../lib/labels'
+import { useUrlState } from '../lib/urlState'
+
+const FILTERS = ['all', 'nodata', 'data'] as const
+type Filter = typeof FILTERS[number]
 
 export default function Collect() {
   const { t, i18n } = useTranslation()
@@ -23,6 +27,13 @@ export default function Collect() {
   const start = useStartCollect(); const untrack = useUntrackItem(); const toast = useToast()
   const collectAll = useCollectAll(); const quota = useQuota(); const estimate = useCollectAllEstimate(!!items.data?.length)
   const est = estimate.data
+  const [filterRaw, setFilter] = useUrlState('filter', 'all')
+  const filter: Filter = (FILTERS as readonly string[]).includes(filterRaw) ? filterRaw as Filter : 'all'
+  const all = items.data ?? []
+  const counts = { all: all.length, nodata: all.filter(i => !i.rows).length, data: all.filter(i => i.rows > 0).length }
+  const shown = filter === 'nodata' ? all.filter(i => !i.rows) : filter === 'data' ? all.filter(i => i.rows > 0) : all
+  // the request estimate for exactly the items on screen
+  const shownCost = est ? shown.reduce((n, i) => n + (est.per_item[i.name] ?? 0), 0) : null
   const [jobId, setJobId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [removing, setRemoving] = useState(false)
@@ -38,18 +49,26 @@ export default function Collect() {
       <div className="flex flex-wrap items-center gap-2">
         <Button onClick={() => setAdding(true)}><Plus size={14} />{t('collect.add')}</Button>
         <Button variant="ghost" disabled={!items.data?.length} onClick={() => setRemoving(true)}><Minus size={14} />{t('collect.remove')}</Button>
-        <Button variant="ghost" disabled={!items.data?.length} loading={collectAll.isPending || runningFor.has('*')}
+        <Button variant={filter === 'all' ? 'ghost' : 'primary'} disabled={!shown.length} loading={collectAll.isPending || runningFor.has('*')}
           onClick={() => {
-            const n = est?.requests ?? items.data?.length ?? 0; const left = quota.data?.credits_remaining
-            if (!window.confirm(left != null && n > left ? t('collect.confirmOver', { n: fmtCount(n), left: fmtCount(left) }) : t('collect.confirmAll', { n: fmtCount(n), left: fmtCount(left) }))) return
-            collectAll.mutate(undefined, { onSuccess: id => { setJobId(id); toast.push(t('collect.started')) }, onError: onErr })
-          }}>{t('collect.all', { n: items.data?.length ?? 0 })}</Button>
-        <span className="text-xs text-[var(--muted)]">{t('collect.trackedCount', { n: items.data?.length ?? 0 })} · {est ? t('collect.cost', { n: fmtCount(est.requests), left: fmtCount(quota.data?.credits_remaining) }) : t('cost.estimating')}{est?.unknown ? ` ${t('collect.unknownItems', { n: est.unknown })}` : ''}</span>
+            const n = shownCost ?? shown.length; const left = quota.data?.credits_remaining
+            const ask = left != null && n > left ? 'collect.confirmOver' : filter === 'all' ? 'collect.confirmAll' : 'collect.confirmSome'
+            if (!window.confirm(t(ask, { n: fmtCount(n), left: fmtCount(left), items: shown.length }))) return
+            collectAll.mutate(filter === 'all' ? undefined : shown.map(i => i.name), { onSuccess: id => { setJobId(id); toast.push(t('collect.started')) }, onError: onErr })
+          }}>{filter === 'all' ? t('collect.all', { n: shown.length }) : t('collect.these', { n: shown.length })}</Button>
+        <span className="text-xs text-[var(--muted)]">{shownCost != null ? t('collect.shownCost', { n: fmtCount(shownCost), left: fmtCount(quota.data?.credits_remaining) }) : t('cost.estimating')}</span>
+      </div>
+      <div role="tablist" aria-label={t('collect.filter')} className="flex flex-wrap gap-1.5 text-sm">
+        {FILTERS.map(f => (
+          <button key={f} type="button" role="tab" aria-selected={filter === f} onClick={() => setFilter(f)}
+            className={`px-3 py-1 rounded-full border ${filter === f ? 'bg-[var(--accent)] text-white border-[var(--accent)]' : 'border-[var(--line)] text-[var(--muted)] hover:bg-gray-50'}`}>
+            {t(`collect.filters.${f}`, { n: counts[f] })}</button>))}
+        {filter === 'nodata' && counts.nodata > 0 && <span className="self-center text-xs text-[var(--muted)]">{t('collect.nodataHint')}</span>}
       </div>
       {adding && <AddItemsDialog onClose={() => setAdding(false)} />}
       {removing && <RemoveItemsDialog onClose={() => setRemoving(false)} />}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-        {(items.data ?? []).map(i => (
+        {shown.map(i => (
           <Card key={i.name}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex gap-3">

@@ -141,7 +141,7 @@ def since_for(state, name: str) -> str | None:
     return start.isoformat() if start is not None else None
 
 
-def run_collect_all(state, job) -> str:
+def run_collect_all(state, job, names: list[str] | None = None) -> str:
     """Collect every enabled tracked item, up to PARALLEL_COLLECTS at a time, with per-item progress."""
     import os
     import threading
@@ -150,7 +150,7 @@ def run_collect_all(state, job) -> str:
     jm, settings = state.jobs, state.settings
     rows = [{"item_id": it.get("item_id") or it["name"], "name": it["name"], "name_zh": None, "status": "waiting",
              "pages": 0, "collected": 0, "forecast": None, "run_id": None, "hours": None}
-            for it in state.items.list(enabled_only=True)]
+            for it in state.items.list(enabled_only=True) if names is None or it["name"] in names]
     for r in rows:
         found = state.catalog.variant(r["item_id"])
         r["name_zh"] = variant_name_zh(*found) if found else None

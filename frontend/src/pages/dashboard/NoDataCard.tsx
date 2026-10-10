@@ -20,7 +20,7 @@ export function NoDataCard({ items, states }: { items: ItemInfo[]; states: Recor
   })
   return (
     <Card title={t('dashboard.emptyItems.title', { n: items.length })} actions={<>
-      <Link to="/collect" className="text-sm font-medium text-[var(--accent)] hover:underline">{t('dashboard.emptyItems.collect')}</Link>
+      <Link to="/collect?filter=nodata" className="text-sm font-medium text-[var(--accent)] hover:underline">{t('dashboard.emptyItems.collect')}</Link>
       <Button size="sm" variant="ghost" disabled={!idle.length} loading={remove.isPending}
         onClick={() => window.confirm(t('dashboard.emptyItems.confirm', { n: idle.length })) && drop(idle.map(i => i.name))}>{t('dashboard.emptyItems.removeAll', { n: idle.length })}</Button></>}>
       <p className="text-sm text-[var(--muted)] mb-3">{t('dashboard.emptyItems.intro')}</p>
