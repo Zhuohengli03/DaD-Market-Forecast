@@ -15,7 +15,8 @@ import requests
 
 BASE_URL = "https://api.darkerdb.com/v2"
 MARKET_MAX_LIMIT = 50
-LIVE_MIN_INTERVAL = 1.1  # seconds between calls -> stays under 60 req/min
+LIVE_MIN_INTERVAL = 1.1  # fallback spacing when the server sends no rate-limit headers
+QUOTA_RESERVE = 5        # keep a few requests in hand so other tools using the key do not hit 429
 
 
 class DarkerDBError(RuntimeError):
@@ -91,14 +92,31 @@ class DarkerDBClient:
         self._max_retries = max_retries
         self._timeout = timeout
         self._last_call = 0.0
+        self._limit: int | None = None       # requests per minute allowed by this key's plan
+        self._remaining: int | None = None   # requests left in the current one-minute window
 
     def _throttle(self) -> None:
-        if self._min_interval <= 0:
+        """Go as fast as the key's plan allows: no waiting while quota remains, then 60s/limit spacing."""
+        if self._remaining is not None and self._limit:
+            if self._remaining > QUOTA_RESERVE:
+                self._last_call = time.monotonic()
+                return
+            gap = 60.0 / self._limit
+        elif self._min_interval > 0:
+            gap = self._min_interval
+        else:
             return
-        wait = self._min_interval - (time.monotonic() - self._last_call)
+        wait = gap - (time.monotonic() - self._last_call)
         if wait > 0:
             self._sleep(wait)
         self._last_call = time.monotonic()
+
+    def _note_quota(self, headers) -> None:
+        try:
+            self._limit = int(headers.get("X-RateLimit-Limit") or headers.get("x-ratelimit-limit"))
+            self._remaining = int(headers.get("X-RateLimit-Remaining") or headers.get("x-ratelimit-remaining"))
+        except (TypeError, ValueError):
+            pass
 
     def get(self, path: str, params: dict | None = None) -> dict:
         url = self._base + path
@@ -106,6 +124,7 @@ class DarkerDBClient:
         for attempt in range(self._max_retries + 1):
             self._throttle()
             resp = self._session.get(url, params=params, headers=headers, timeout=self._timeout)
+            self._note_quota(resp.headers or {})
             if resp.status_code == 429 and attempt < self._max_retries:
                 self._sleep(float(resp.headers.get("Retry-After", 5) or 5))
                 continue

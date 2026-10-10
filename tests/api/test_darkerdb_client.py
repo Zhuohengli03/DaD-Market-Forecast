@@ -115,3 +115,49 @@ def test_iter_pages_generic_and_item_id_extraction():
     assert listing_item_ref({"item_id": "id.item.x", "item": "X"}) == ("id.item.x", "X")
     assert listing_item_ref({"item": {"id": "id.item.y", "name": "Y"}}) == ("id.item.y", "Y")
     assert listing_item_ref({"item": "Z"}) == (None, "Z")
+
+
+class _HResp(_Resp):
+    def __init__(self, status, body, limit, remaining):
+        super().__init__(status, body, {"X-RateLimit-Limit": str(limit), "X-RateLimit-Remaining": str(remaining)})
+
+
+def test_adaptive_pacing_bursts_while_quota_remains_and_slows_near_the_limit():
+    sleeps = []
+    s = _Session([_HResp(200, _env([]), 60, 40), _HResp(200, _env([]), 60, 30), _HResp(200, _env([]), 60, 3), _HResp(200, _env([]), 60, 2)])
+    c = DarkerDBClient("k", session=s, sleep=sleeps.append)
+    for _ in range(4):
+        c.get("/market")
+    # no waiting while plenty of quota is left; once nearly exhausted, pace at 60s / limit
+    assert sleeps and all(abs(x - 1.0) < 0.05 for x in sleeps) and len(sleeps) == 1
+
+
+def test_pacing_follows_a_higher_plan_limit():
+    sleeps = []
+    s = _Session([_HResp(200, _env([]), 300, 2), _HResp(200, _env([]), 300, 1)])
+    c = DarkerDBClient("k", session=s, sleep=sleeps.append)
+    c.get("/market"); c.get("/market")
+    assert sleeps and abs(sleeps[0] - 0.2) < 0.05          # 300 requests/min allowed -> 0.2s spacing
+
+
+def test_collector_skips_the_lookup_when_the_item_id_is_known(tmp_path, monkeypatch):
+    import src.api.collect as col
+    calls = []
+
+    class FakeClient:
+        def __init__(self, key):
+            pass
+
+        def find_item_id(self, name):
+            calls.append(name)
+            return "id.item.x"
+
+        def iter_market(self, item_id, since=None, limit=50, sort="created_at:desc", max_pages=None):
+            yield []
+
+    monkeypatch.setenv("DARKER_MARKET_API_KEY", "k")
+    monkeypatch.delenv("DB_USER", raising=False)
+    monkeypatch.setattr(col, "DarkerDBClient", FakeClient)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
+    col.main(["--item", "Iron Ore", "--item-id", "id.item.iron_ores_2001", "--data-dir", str(tmp_path)])
+    assert calls == []
