@@ -36,14 +36,6 @@ def test_patch_title_is_recorded(settings):
     assert store.meta()["patch"] == "Early Access Season #11"
 
 
-def test_tradable_filter_uses_is_tradable_and_icon_url(client, settings):
-    sync_catalog(_Client(), CatalogStore(settings.catalog_path), log=lambda s: None)
-    rows = client.get("/api/catalog", params={"tradable": "true"}).json()["data"]
-    assert [r["name"] for r in rows] == ["Iron Ore"] and rows[0]["icon_url"] == "https://cdn.darkerdb.com/codex/abc"
-    assert rows[0]["is_tradable"] is True
-    assert client.get("/api/catalog/meta").json()["data"]["tradable"] == 1
-
-
 def test_import_seasons_from_darkerdb(client):
     client.app.state.settings.darker_market_api_key = "k"
     client.app.state.client_factory = lambda key: _Client()

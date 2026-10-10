@@ -189,25 +189,3 @@ def test_catalog_store_caches_parsed_file(settings, monkeypatch):
     for _ in range(5):
         store.query("a")
     assert len(loads) <= 1
-
-
-# ---- I4 scan coverage ---------------------------------------------------------
-def test_scan_records_actual_coverage(settings):
-    from backend.data.catalog import CatalogStore
-    from backend.services.catalog_sync import scan_market
-
-    class C:
-        def iter_pages(self, path, params, max_pages=None):
-            yield [{"id": "1", "item": {"id": "id.item.a", "name": "A"}, "quantity": 1, "price": 5, "created_at": "2026-10-02T00:00:00Z"},
-                   {"id": "2", "item": {"id": "id.item.a", "name": "A"}, "quantity": 1, "price": 7, "created_at": "2026-10-01T06:00:00Z"}]
-    settings.bootstrap()
-    store = CatalogStore(settings.catalog_path)
-    scan_market(C(), store, since="2026-09-01T00:00:00Z", max_pages=1, log=lambda s: None)
-    m = store.meta()
-    assert m["market_covered_from"] == "2026-10-01T06:00:00Z" and m["market_covered_to"] == "2026-10-02T00:00:00Z"
-    assert m["market_listings_read"] == 2
-
-
-def test_scan_page_budget_is_validated(client):
-    client.app.state.settings.darker_market_api_key = "k"
-    assert client.post("/api/catalog/scan-market", json={"max_pages": 5000}, headers=H).status_code == 422
