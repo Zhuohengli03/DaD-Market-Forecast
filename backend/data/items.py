@@ -43,6 +43,12 @@ class ItemsStore:
         cfg = self.read()
         if any(item_id and it.get("item_id") == item_id for it in cfg["items"]):
             raise ValueError(f"{name} 已经在追踪列表里 / already tracked")
+        # a starter or legacy entry tracked by name only is the same item: give it the id instead of duplicating
+        for it in cfg["items"]:
+            if it["name"].lower() == name.lower() and not it.get("item_id"):
+                it["item_id"] = item_id
+                self.write(cfg)
+                return it
         taken = {it["name"].lower() for it in cfg["items"]}
         if name.lower() in taken:  # another rarity of the same item: keep names unique (they name the data files)
             name = f"{name} ({description or item_id.rsplit('_', 1)[-1]})"
