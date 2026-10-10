@@ -54,3 +54,5 @@ export interface EquipmentDay { day: string; listings: number; sold: number; med
 export interface EquipmentResult { count: number; listings: EquipmentListing[]; daily: EquipmentDay[]; covered_from: string | null; covered_to: string | null; truncated: boolean; since?: string | null; credits_used?: number }
 export type EquipmentSort = 'created_at:desc' | 'created_at:asc' | 'price_per_unit:asc' | 'price_per_unit:desc'
 export interface EquipmentQueryBody { sort: EquipmentSort; archetype: string; rarity: string | null; sold_only: boolean; max_pages: number; filters: { kind: 'primary' | 'secondary'; name: string; min: number | null; max: number | null }[] }
+export interface OverviewVariant { name: string; label: string; label_en: string; rarity: string | null; rows: number; season_rows: number; last_ts: string | null; latest: number | null; change24: number | null; spark: (number | null)[] }
+export interface OverviewGroup { key: string; archetype: string | null; name: string; name_zh: string | null; category: string | null; icon_url: string | null; rows: number; season_rows: number; variants: OverviewVariant[] }

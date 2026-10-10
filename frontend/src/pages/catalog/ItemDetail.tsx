@@ -10,6 +10,7 @@ import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { useToast } from '../../components/ui/Toast'
 import { fmtDate } from '../../lib/format'
+import { QualityPrices } from './QualityPrices'
 import { itemName, paramLabel, paramValue, rarityLabel, typeLabel } from '../../lib/labels'
 
 // in Chinese, list the Chinese name and description before the English ones
@@ -104,10 +105,10 @@ export default function ItemDetail() {
           </div>
           <div className="flex flex-col gap-2">
             {row.has_stats && <Link to={`/equipment?type=${row.archetype}`} className="text-sm font-medium text-[var(--accent)] hover:underline">{t('catalog.viewMarket')}</Link>}
-            {mine.map(i => <Link key={i.name} to={`/market?item=${encodeURIComponent(i.name)}`} className="text-sm text-[var(--accent)] hover:underline">{t('catalog.detail.priceOf', { name: itemName(i, i18n.language) })}</Link>)}
           </div>
         </div>
       </Card>
+      <QualityPrices archetype={row.archetype} />
       <ListingStats row={row} localSeason={localSeason} />
       <Card title={t('catalog.detail.rarities')}>
         {row.has_stats && <p className="text-xs text-[var(--muted)] mb-2">{t('catalog.detail.statsNote')}</p>}
