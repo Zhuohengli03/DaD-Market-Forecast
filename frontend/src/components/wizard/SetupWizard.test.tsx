@@ -1,5 +1,6 @@
 import { act, render, screen, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { vi } from 'vitest'
 import '../../i18n'
 import * as hooks from '../../api/hooks'
@@ -29,7 +30,7 @@ function mount(setup = base) {
   vi.mocked(hooks.useInitialize).mockReturnValue(init as never)
   vi.mocked(hooks.useSaveSchedule).mockReturnValue(schedule as never)
   vi.mocked(stream.useJobStream).mockReturnValue({ progress: null, status: null, disconnected: false, error: null, resultRef: null })
-  render(<MemoryRouter><SetupWizard /></MemoryRouter>)
+  render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><SetupWizard /></MemoryRouter></QueryClientProvider>)
   return { init, schedule }
 }
 
@@ -78,4 +79,17 @@ it('saves the collection interval and auto-collect on finish', () => {
   fireEvent.change(screen.getByLabelText('多久采集一次'), { target: { value: '3' } })
   fireEvent.click(screen.getByRole('button', { name: '完成' }))
   expect(schedule.mutate.mock.calls[0][0]).toEqual({ interval_hours: 3, auto_collect: true })
+})
+
+it('continues to the item picker as soon as the catalog download finishes', async () => {
+  const { QueryClient, QueryClientProvider } = await import('@tanstack/react-query')
+  const qc = new QueryClient()
+  const spy = vi.spyOn(qc, 'invalidateQueries')
+  vi.mocked(hooks.useSetup).mockReturnValue({ data: { ...base, catalog_items: 0 }, isSuccess: true } as never)
+  vi.mocked(stream.useJobStream).mockReturnValue({ progress: { stage: 'done', done: null, total: null, detail: { items: 2432, types: 798 } }, status: 'succeeded', disconnected: false, error: null, resultRef: null })
+  render(<QueryClientProvider client={qc}><MemoryRouter><SetupWizard /></MemoryRouter></QueryClientProvider>)
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  fireEvent.click(screen.getByRole('button', { name: '下一步' }))
+  expect(screen.getByPlaceholderText('搜索道具')).toBeInTheDocument()
+  expect(spy).toHaveBeenCalledWith({ queryKey: ['setup'] })
 })

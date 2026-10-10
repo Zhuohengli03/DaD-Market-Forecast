@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle2, AlertCircle } from 'lucide-react'
@@ -74,6 +75,12 @@ function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: stri
   const [q, setQ] = useState(''); const query = useDebounced(q, 300)
   const cat = useCatalog({ q: query || undefined, has_stats: false, page: 1, page_size: 40 })
   const [picked, setPicked] = useState<string[] | null>(null)
+  const qc = useQueryClient()
+  const catalogReady = setup.catalog_items > 0 || sync.status === 'succeeded'
+  useEffect(() => {
+    // the catalog was empty when these queries first ran; refresh them once the download finishes
+    if (sync.status === 'succeeded') ['setup', 'catalog', 'catalogMeta'].forEach(k => qc.invalidateQueries({ queryKey: [k] }))
+  }, [sync.status, qc])
   useEffect(() => {
     if (!setup.catalog_items && !syncJob && setup.api_key_configured) catalogJob.mutate('sync', { onSuccess: setSyncJob })
   }, [setup.catalog_items, setup.api_key_configured]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -84,7 +91,7 @@ function InitStep({ jobId, onStart }: { jobId: string | null; onStart: (id: stri
   const chosen = picked ?? options.filter(o => tracked.has(o.id) || tracked.has(o.type.name)).map(o => o.id)
   const toggle = (id: string) => setPicked(chosen.includes(id) ? chosen.filter(x => x !== id) : [...chosen, id])
   if (jobId) return <InitProgress status={stream.status} progress={stream.progress} error={stream.error} />
-  if (!setup.catalog_items) return <div className="space-y-2"><p className="text-sm">{t('wizard.init.needCatalog')}</p><ProgressPanel kind="catalog" status={sync.status} progress={sync.progress} error={sync.error} disconnected={sync.disconnected} /></div>
+  if (!catalogReady) return <div className="space-y-2"><p className="text-sm">{t('wizard.init.needCatalog')}</p><ProgressPanel kind="catalog" status={sync.status} progress={sync.progress} error={sync.error} disconnected={sync.disconnected} /></div>
   return (
     <div className="space-y-3 text-sm">
       <p>{t('wizard.init.intro')}</p>
