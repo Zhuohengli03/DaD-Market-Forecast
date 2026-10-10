@@ -56,12 +56,12 @@ def make_repository(settings: Settings, log: Callable[[str], None] = print) -> L
         try:
             repo = PostgresListingRepository(settings)
             repo.probe()
-            log(f"data source: postgres {settings.db_host}:{settings.db_port}/{settings.db_database}")
+            log(f"数据库：Postgres {settings.db_host}:{settings.db_port}/{settings.db_database}")
             return repo
         except Exception as exc:
-            log(f"postgres unavailable ({exc}); using the built-in database")
+            log(f"连接不上 Postgres（{exc}），改用内置数据库")
     imported = import_csv_once(settings)
     for name, n in imported.items():
-        log(f"imported {n} listings of {name} from CSV into the built-in database")
-    log(f"data source: built-in database {settings.sqlite_path}")
+        log(f"已把 {name} 的 {n} 条旧 CSV 数据导入内置数据库")
+    log(f"数据库：内置数据库 {settings.sqlite_path}")
     return SqliteListingRepository(settings.sqlite_path, settings.items_config_path)
