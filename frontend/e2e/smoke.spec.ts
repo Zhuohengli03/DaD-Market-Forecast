@@ -23,13 +23,15 @@ test('first run asks for an API key and can be postponed', async ({ page }) => {
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
-test('catalog shows parameters and tracks an item', async ({ page }) => {
+test('catalog lists tradable types, tracks stat-free items and routes equipment to the market page', async ({ page }) => {
   await page.goto('/catalog')
-  await expect(page.getByText('Arming Sword')).toBeVisible()
-  await page.getByRole('button', { name: 'Arming Sword' }).click()
-  await expect(page.getByText('"weapon_damage": 30')).toBeVisible()
+  await expect(page.getByText('只显示能在交易行买卖的道具。')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Gold Coin' })).toHaveCount(0)       // never listed, hidden
+  await expect(page.getByRole('link', { name: '查看行情' })).toHaveAttribute('href', '/equipment?type=id.item.arming_sword')
+  await page.getByRole('button', { name: 'Bandage' }).click()
+  await expect(page.getByText('duration')).toBeVisible()
   await page.getByRole('button', { name: '追踪' }).click()
-  await expect(page.getByText('已开始追踪 Arming Sword')).toBeVisible()
+  await expect(page.getByText('已开始追踪 Bandage')).toBeVisible()
   await page.goto('/collect')
-  await expect(page.getByText('Arming Sword')).toBeVisible()
+  await expect(page.getByText('Bandage')).toBeVisible()
 })

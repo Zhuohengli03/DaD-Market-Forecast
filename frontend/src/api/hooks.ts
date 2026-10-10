@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { Actual, CatalogFacets, CatalogMeta, CatalogRow, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, RunSummary, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
+import type { Actual, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, RunSummary, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
 
 export const useStatus = () => useQuery({ queryKey: ['status'], queryFn: () => api.get<StatusResponse>('/status').then(r => r.data), refetchInterval: 5000 })
 export const useItems = () => useQuery({ queryKey: ['items'], queryFn: () => api.get<ItemInfo[]>('/items').then(r => r.data) })
@@ -68,15 +68,20 @@ export function useSaveApiKey() {
   return useMutation({ mutationFn: (key: string) => api.put<SetupState>('/setup/api-key', { api_key: key }).then(r => r.data), onSuccess: d => { qc.setQueryData(['setup'], d) } })
 }
 
-export interface CatalogParams { q?: string; rarity?: string; item_type?: string; tradable?: boolean; page: number; page_size: number }
+export interface CatalogParams { q?: string; item_type?: string; has_stats?: boolean; page: number; page_size: number }
 export const useCatalog = (p: CatalogParams) => useQuery({
   queryKey: ['catalog', p], placeholderData: prev => prev,
-  queryFn: () => api.get<CatalogRow[]>('/catalog', { ...p }).then(r => ({ rows: r.data, total: Number(r.meta?.total ?? 0), facets: (r.meta?.facets ?? { rarity: [], item_type: [] }) as CatalogFacets })),
+  queryFn: () => api.get<CatalogType[]>('/catalog', { ...p }).then(r => ({ rows: r.data, total: Number(r.meta?.total ?? 0), facets: (r.meta?.facets ?? { item_type: [] }) as CatalogFacets })),
 })
+export const useEquipmentStats = (archetype: string) => useQuery({
+  queryKey: ['equipmentStats', archetype], enabled: !!archetype, staleTime: 5 * 60_000,
+  queryFn: () => api.get<{ stats: EquipmentStat[]; rarities: string[] }>(`/equipment/${archetype}/stats`).then(r => r.data),
+})
+export const useEquipmentQuery = () => useMutation({ mutationFn: (body: EquipmentQueryBody) => api.post<EquipmentResult>('/equipment/query', body).then(r => r.data) })
 export const useCatalogMeta = () => useQuery({ queryKey: ['catalogMeta'], queryFn: () => api.get<CatalogMeta>('/catalog/meta').then(r => r.data) })
 export function useCatalogJob() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: ({ kind, maxPages }: { kind: 'sync' | 'scan'; maxPages?: number }) => api.post<{ job_id: string }>(kind === 'sync' ? '/catalog/sync' : '/catalog/scan-market', kind === 'scan' ? { max_pages: maxPages ?? 40 } : undefined).then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
+  return useMutation({ mutationFn: (kind: 'sync' | 'check') => api.post<{ job_id: string }>(kind === 'sync' ? '/catalog/sync' : '/catalog/check-trade', kind === 'check' ? { force: false } : undefined).then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
 }
 export function useTrackItem() {
   const qc = useQueryClient()

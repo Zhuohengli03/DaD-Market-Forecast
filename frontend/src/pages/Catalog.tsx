@@ -10,8 +10,8 @@ import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
 import { inputCls } from '../components/ui/Field'
 import { useToast } from '../components/ui/Toast'
-import { useDebounced } from '../lib/useDebounced'
 import { fmtTs } from '../lib/format'
+import { useDebounced } from '../lib/useDebounced'
 import { CatalogTable } from './catalog/CatalogTable'
 
 const PAGE = 50
@@ -21,49 +21,46 @@ export default function Catalog() {
   const qc = useQueryClient()
   const toast = useToast()
   const setup = useSetup(); const meta = useCatalogMeta(); const items = useItems(); const job = useCatalogJob()
-  const [q, setQ] = useState(''); const [rarity, setRarity] = useState(''); const [type, setType] = useState('')
-  const [tradable, setTradable] = useState<'' | 'true' | 'false'>(''); const [page, setPage] = useState(1)
+  const [q, setQ] = useState(''); const [type, setType] = useState(''); const [stats, setStats] = useState<'' | 'true' | 'false'>('')
+  const [page, setPage] = useState(1)
   const [jobId, setJobId] = useState<string | null>(null)
   const stream = useJobStream(jobId)
   const query = useDebounced(q, 300)
-  const [pagesBudget, setPagesBudget] = useState(40)
-  useEffect(() => { setPage(1) }, [query, rarity, type, tradable])
+  useEffect(() => { setPage(1) }, [query, type, stats])
   useEffect(() => {
     if (stream.status === 'succeeded' || stream.status === 'failed') { qc.invalidateQueries({ queryKey: ['catalog'] }); qc.invalidateQueries({ queryKey: ['catalogMeta'] }) }
   }, [stream.status, qc])
-  const cat = useCatalog({ q: query || undefined, rarity: rarity || undefined, item_type: type || undefined, tradable: tradable === '' ? undefined : tradable === 'true', page, page_size: PAGE })
+  const cat = useCatalog({ q: query || undefined, item_type: type || undefined, has_stats: stats === '' ? undefined : stats === 'true', page, page_size: PAGE })
   const tracked = new Set((items.data ?? []).map(i => i.item_id ?? i.name))
-  const run = (kind: 'sync' | 'scan') => job.mutate({ kind, maxPages: pagesBudget }, { onSuccess: setJobId, onError: e => toast.push((e as Error).message, 'error') })
+  const run = (kind: 'sync' | 'check') => job.mutate(kind, { onSuccess: setJobId, onError: e => toast.push((e as Error).message, 'error') })
   const pages = Math.max(1, Math.ceil((cat.data?.total ?? 0) / PAGE))
   const noKey = setup.data && !setup.data.api_key_configured
+  const m = meta.data
   return (
     <div className="space-y-4">
       <div><h1 className="text-xl font-semibold">{t('catalog.title')}</h1><p className="text-sm text-[var(--muted)] mt-1 max-w-3xl">{t('catalog.intro')}</p></div>
       {noKey && <Notice to="/settings" action={t('common.goSettings')}>{t('onboarding.noKey')}</Notice>}
-      <Card actions={<>
+      <Card title={m?.items ? t('catalog.summary', { types: m.types, withStats: m.with_stats }) : t('catalog.title')} actions={<>
         <Button size="sm" variant="ghost" disabled={!!noKey} loading={job.isPending} onClick={() => run('sync')}>{t('catalog.sync')}</Button>
-        <select className={inputCls} value={pagesBudget} onChange={e => setPagesBudget(Number(e.target.value))} aria-label={t('catalog.budget')} title={t('catalog.budgetHint')}>
-          {[40, 120, 300].map(n => <option key={n} value={n}>{t('catalog.budgetOption', { n: n * 50, min: Math.ceil(n * 1.1 / 60) })}</option>)}</select>
-        <Button size="sm" disabled={!!noKey || !meta.data?.items} loading={job.isPending} onClick={() => run('scan')}>{t('catalog.scan')}</Button></>}
-        title={t('catalog.summary', { items: meta.data?.items ?? 0, tradable: meta.data?.tradable ?? 0 })}>
-        <dl className="text-xs grid grid-cols-2 md:grid-cols-4 gap-2 text-[var(--muted)]">
-          <div>{t('catalog.patch')}: <b className="text-[var(--ink)]">{meta.data?.patch ?? '–'}</b></div>
-          <div>{t('catalog.syncedAt')}: <b className="text-[var(--ink)]">{fmtTs(meta.data?.synced_at)}</b></div>
-          <div>{t('catalog.scannedAt')}: <b className="text-[var(--ink)]">{fmtTs(meta.data?.market_scanned_at)}</b></div>
-          <div>{t('catalog.coverage')}: <b className="text-[var(--ink)]">{meta.data?.market_covered_from ? t('catalog.coverageValue', { from: fmtTs(meta.data.market_covered_from), to: fmtTs(meta.data.market_covered_to), n: meta.data.market_listings_read }) : '–'}</b></div>
+        <Button size="sm" disabled={!!noKey || !m?.items} loading={job.isPending} onClick={() => run('check')}>{m?.trade_check_complete ? t('catalog.recheck') : t('catalog.check')}</Button></>}>
+        <p className="text-xs text-[var(--muted)] mb-2">{t('catalog.onlyTradable')}</p>
+        {m?.items && !m.trade_check_complete ? <p className="text-xs text-[var(--warn)] mb-2">{t('catalog.notChecked')} {m.trade_checked > 0 && t('catalog.checking', { done: m.trade_checked, total: m.types_total })}</p> : null}
+        <dl className="text-xs grid grid-cols-1 md:grid-cols-3 gap-2 text-[var(--muted)]">
+          <div>{t('catalog.patch')}: <b className="text-[var(--ink)]">{m?.patch ?? '–'}</b></div>
+          <div>{t('catalog.syncedAt')}: <b className="text-[var(--ink)]">{fmtTs(m?.synced_at)}</b></div>
+          <div>{t('catalog.checkedAt')}: <b className="text-[var(--ink)]">{fmtTs(m?.trade_checked_at)}</b></div>
         </dl>
         {jobId && <div className="mt-3"><LogPanel lines={stream.lines} status={stream.status} disconnected={stream.disconnected} /></div>}
       </Card>
       <div className="flex flex-wrap gap-2 items-center text-sm">
         <input className={`${inputCls} w-64`} placeholder={t('catalog.search')} value={q} onChange={e => setQ(e.target.value)} aria-label={t('catalog.search')} />
-        <select className={inputCls} value={rarity} onChange={e => setRarity(e.target.value)} aria-label={t('catalog.rarity')}><option value="">{t('catalog.rarity')}: {t('common.all')}</option>{cat.data?.facets.rarity.map(r => <option key={r}>{r}</option>)}</select>
         <select className={inputCls} value={type} onChange={e => setType(e.target.value)} aria-label={t('catalog.type')}><option value="">{t('catalog.type')}: {t('common.all')}</option>{cat.data?.facets.item_type.map(r => <option key={r}>{r}</option>)}</select>
-        <select className={inputCls} value={tradable} onChange={e => setTradable(e.target.value as typeof tradable)} aria-label={t('catalog.tradable')}><option value="">{t('catalog.tradable')}: {t('common.all')}</option><option value="true">{t('catalog.tradableYes')}</option><option value="false">{t('catalog.tradableNo')}</option></select>
+        <select className={inputCls} value={stats} onChange={e => setStats(e.target.value as typeof stats)} aria-label={t('catalog.stats')}><option value="">{t('catalog.stats')}: {t('common.all')}</option><option value="false">{t('catalog.noStats')}</option><option value="true">{t('catalog.withStats')}</option></select>
         <span className="ml-auto text-[var(--muted)]">{t('market.page', { page, pages, total: cat.data?.total ?? 0 })}</span>
         <Button variant="ghost" size="sm" aria-label={t('common.prev')} disabled={page <= 1} onClick={() => setPage(p => p - 1)}>‹</Button>
         <Button variant="ghost" size="sm" aria-label={t('common.next')} disabled={page >= pages} onClick={() => setPage(p => p + 1)}>›</Button>
       </div>
-      {!meta.data?.items ? <EmptyState title={t('catalog.empty')} /> : !cat.data?.rows.length ? <EmptyState title={t('catalog.noMatch')} /> :
+      {!m?.items ? <EmptyState title={t('catalog.empty')} /> : !cat.data?.rows.length ? <EmptyState title={t('catalog.noMatch')} /> :
         <CatalogTable rows={cat.data.rows} tracked={tracked} />}
     </div>
   )
