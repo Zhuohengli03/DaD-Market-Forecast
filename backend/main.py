@@ -15,7 +15,7 @@ from .settings import Settings
 
 log = logging.getLogger("darker_market")
 
-ROUTER_MODULES = ("setup", "catalog", "equipment", "items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config", "quota", "estimate")
+ROUTER_MODULES = ("setup", "catalog", "equipment", "items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config", "quota", "estimate", "overview")
 
 
 def _format_validation(exc: RequestValidationError) -> str:

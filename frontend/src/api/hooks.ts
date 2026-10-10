@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, CollectAllEstimate, ItemsEstimate, QuotaInfo, RunSummary, ScheduleEstimate, ScheduleInput, TypeHistory, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
+import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, CollectAllEstimate, ItemsEstimate, OverviewGroup, QuotaInfo, RunSummary, ScheduleEstimate, ScheduleInput, TypeHistory, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
 
 export const useStatus = () => useQuery({ queryKey: ['status'], queryFn: () => api.get<StatusResponse>('/status').then(r => r.data), refetchInterval: 5000 })
 export const useItems = () => useQuery({ queryKey: ['items'], queryFn: () => api.get<ItemInfo[]>('/items').then(r => r.data) })
@@ -149,3 +149,5 @@ export function useUntrackBulk() {
   return useMutation({ mutationFn: (names: string[]) => api.post<{ removed: number; missing: number }>('/items/untrack-bulk', { names }).then(r => r.data),
     onSuccess: () => { ['items', 'itemsConfig', 'setup', 'scheduler', 'status', 'estimate'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
 }
+export const useOverview = () => useQuery({ queryKey: ['overview'], refetchInterval: 60_000,
+  queryFn: () => api.get<{ groups: OverviewGroup[] }>('/overview').then(r => r.data.groups) })

@@ -13,6 +13,8 @@ const bandage = { archetype: 'id.item.bandage', name: 'Bandage', name_zh: '绷�
   rarities: ['poor', 'common'], listings_total: 900, first_listed: '2024-09-06T10:00:00Z', season_listings: null, variants: [v('id.item.bandage_1001', 'poor'), v('id.item.bandage_2001', 'common', { duration: 4 })] }
 
 function mount(track = vi.fn(), history = vi.fn()) {
+  vi.mocked(hooks.useOverview).mockReturnValue({ data: [{ key: 'id.item.bandage', archetype: 'id.item.bandage', name: 'Bandage', name_zh: '绷带', category: 'consumable', icon_url: null, rows: 50, season_rows: 42,
+    variants: [{ name: 'Bandage (poor)', label: '粗劣', label_en: 'Poor', rarity: 'poor', rows: 50, season_rows: 42, last_ts: null, latest: 12.5, change24: -0.1, spark: [] }] }] } as never)
   vi.mocked(hooks.useCatalogType).mockReturnValue({ data: bandage, isLoading: false } as never)
   vi.mocked(hooks.useItems).mockReturnValue({ data: [{ name: 'Bandage (poor)', item_id: 'id.item.bandage_1001', rows: 50, season_rows: 42 }] } as never)
   vi.mocked(hooks.useTrackItem).mockReturnValue({ mutate: track, isPending: false } as never)
@@ -25,7 +27,7 @@ it('shows every detail of one item: names, listing counts, rarities and all para
   expect(screen.getByRole('heading', { name: /绷带/ })).toBeInTheDocument()
   expect(screen.getByText('900')).toBeInTheDocument()
   expect(screen.getByText('2024-09-06')).toBeInTheDocument()
-  expect(screen.getByText('42')).toBeInTheDocument()                 // this season from local data
+  expect(screen.getAllByText('42').length).toBeGreaterThan(0)       // this season from local data
   expect(screen.getByText('duration')).toBeInTheDocument()           // highest rarity's parameters shown first
   expect(screen.getByRole('link', { name: '返回道具库' })).toHaveAttribute('href', '/catalog')
 })
@@ -37,4 +39,12 @@ it('tracks another rarity and fetches season numbers on demand', () => {
   expect(track.mock.calls[0][0]).toBe('id.item.bandage_2001')
   fireEvent.click(screen.getByRole('button', { name: /查询本赛季挂单和最早日期/ }))
   expect(history.mock.calls[0][0]).toBe('id.item.bandage')
+})
+
+
+it('shows the price of each tracked quality', () => {
+  mount()
+  expect(screen.getByText('各品质价格')).toBeInTheDocument()
+  expect(screen.getByText('12.50')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: '看走势' })).toHaveAttribute('href', '/market?item=Bandage%20(poor)')
 })
