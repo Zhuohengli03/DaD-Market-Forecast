@@ -43,7 +43,7 @@ def collect_pages(client, item_id: str, item_name: str, since: str | None, seen:
             try:
                 row = normalize_listing(raw, item_name)
             except (KeyError, TypeError, ValueError) as exc:
-                log(f"skipping malformed row ({type(exc).__name__}: {exc}): {json.dumps(raw)[:200]}")
+                log(f"跳过格式异常的挂单（{type(exc).__name__}: {exc}）：{json.dumps(raw)[:200]}")
                 continue
             key = record_key(row)
             if key in seen:
@@ -51,11 +51,11 @@ def collect_pages(client, item_id: str, item_name: str, since: str | None, seen:
             seen.add(key)
             new_rows.append(row)
             added += 1
-        log(f"page {page_no}: {added} new / {len(page)} rows")
+        log(f"第 {page_no} 页：新增 {added} 条 / 共 {len(page)} 条")
         if added == 0:
             empty_streak += 1
             if empty_streak >= max_empty_pages:
-                log(f"{max_empty_pages} pages without new rows, stopping")
+                log(f"连续 {max_empty_pages} 页没有新挂单，停止采集")
                 break
         else:
             empty_streak = 0
@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         client = DarkerDBClient(key)
         item_id = args.item_id or client.find_item_id(args.item)
-        log(f"item {args.item!r} -> {item_id}")
+        log(f"道具 {args.item} 对应 DarkerDB 编号 {item_id}")
         if args.probe:
             first = next(client.iter_market(item_id, since=args.since, limit=1, max_pages=1), [])
             print(json.dumps(first[:1], indent=2, ensure_ascii=False))
@@ -92,10 +92,10 @@ def main(argv: list[str] | None = None) -> int:
                 print("normalized:", json.dumps(normalize_listing(first[0], args.item), ensure_ascii=False))
             return 0
     except DarkerDBError as exc:
-        log(f"DarkerDB API error: {exc}")
+        log(f"DarkerDB 接口出错：{exc}")
         if exc.code == 401:
-            log("Your DarkerDB API key is missing or invalid. Open the web app and enter it in Settings, "
-                "or create one at https://darkerdb.com/dashboard/api-keys (scopes darkerdb.live + darkerdb.data).")
+            log("DarkerDB API key 缺失或无效。请打开网页应用，在「设置」里填写；也可以到 "
+                "https://darkerdb.com/dashboard/api-keys 创建（勾选 darkerdb.live 和 darkerdb.data）。")
         return 2
 
     from src.api.storage import item_slug
@@ -105,17 +105,17 @@ def main(argv: list[str] | None = None) -> int:
         # incremental: only ask for listings newer than what is stored. v2 listing ids differ from v1 ids,
         # so re-fetching an already stored period would duplicate it.
         since = args.since or storage.latest_created_at()
-        log(f"{len(seen)} listings already stored; fetching listings since {since or 'the beginning'}")
+        log(f"已存有 {len(seen)} 条挂单，从 {since or '最新'} 开始采集")
         try:
             # resuming: walk oldest-first from the newest stored listing, so stopping at the page budget leaves
             # no gap (the next run continues). First run: take the newest pages.
             sort = "created_at:asc" if since else "created_at:desc"
             rows = collect_pages(client, item_id, args.item, since, seen, max_pages=args.max_pages, log=log, sort=sort)
         except DarkerDBError as exc:
-            log(f"DarkerDB API error: {exc}")
+            log(f"DarkerDB 接口出错：{exc}")
             return 2
         inserted = storage.insert(rows)
-        log(f"done: {inserted} new listings saved" if inserted else "done: no new listings")
+        log(f"完成：保存了 {inserted} 条新挂单" if inserted else "完成：没有新挂单")
     finally:
         storage.close()
     return 0

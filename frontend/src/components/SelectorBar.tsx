@@ -3,6 +3,7 @@ import { useItems, useSeasons } from '../api/hooks'
 import type { Resolution } from '../api/types'
 import { useUrlState } from '../lib/urlState'
 import { inputCls } from './ui/Field'
+import { itemName } from '../lib/labels'
 
 export function useSelection() {
   const items = useItems(); const seasons = useSeasons()
@@ -17,14 +18,14 @@ export function useSelection() {
 }
 
 export function SelectorBar({ showRange = true, showResolution = true }: { showRange?: boolean; showResolution?: boolean }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const s = useSelection()
   const toLocalInput = (iso: string) => iso ? new Date(iso).toISOString().slice(0, 16) : ''
   const fromLocalInput = (v: string) => v ? new Date(v + 'Z').toISOString() : ''
   return (
     <div className="flex flex-wrap items-end gap-3 bg-[var(--panel)] border border-[var(--line)] rounded-xl p-3">
       <label className="text-sm flex flex-col gap-1"><span className="text-[var(--muted)]">{t('common.item')}</span>
-        <select className={inputCls} value={s.item} onChange={e => s.setItem(e.target.value)}>{s.items.map(i => <option key={i.name} value={i.name}>{i.name}</option>)}</select></label>
+        <select className={inputCls} value={s.item} onChange={e => s.setItem(e.target.value)}>{s.items.map(i => <option key={i.name} value={i.name}>{itemName(i, i18n.language)}</option>)}</select></label>
       <label className="text-sm flex flex-col gap-1"><span className="text-[var(--muted)]">{t('common.season')}</span>
         <select className={inputCls} value={s.season} onChange={e => { s.setSeason(e.target.value); s.setStart(''); s.setEnd('') }}>
           <option value="">{t('market.customRange')}</option>

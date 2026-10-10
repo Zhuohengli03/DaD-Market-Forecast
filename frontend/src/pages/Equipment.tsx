@@ -13,6 +13,7 @@ import { Badge } from '../components/ui/Badge'
 import { fmtNum, fmtTs } from '../lib/format'
 import { useDebounced } from '../lib/useDebounced'
 import { useUrlState } from '../lib/urlState'
+import { itemName, rarityLabel } from '../lib/labels'
 import { buildQuery, formatStat, type FilterRow, type StatLabel } from './equipment/filters'
 
 const DEPTHS = [10, 20, 40]
@@ -36,7 +37,8 @@ function DailyChart({ days }: { days: EquipmentDay[] }) {
 }
 
 export default function Equipment() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const zh = i18n.language.startsWith('zh')
   const setup = useSetup()
   const [type, setType] = useUrlState('type', '')
   const [search, setSearch] = useState('')
@@ -48,7 +50,8 @@ export default function Equipment() {
   const [rows, setRows] = useState<FilterRow[]>([])
   const [soldOnly, setSoldOnly] = useState(false)
   const [depth, setDepth] = useState(10)
-  const labels = useMemo(() => Object.fromEntries((stats.data?.stats ?? []).map(s => [s.key, { label: s.label, percent: s.percent }])) as Record<string, StatLabel>, [stats.data])
+  const statLabel = (s: { label: string; label_zh?: string | null }) => (zh && s.label_zh ? s.label_zh : s.label)
+  const labels = useMemo(() => Object.fromEntries((stats.data?.stats ?? []).map(s => [s.key, { label: zh && s.label_zh ? s.label_zh : s.label, percent: s.percent }])) as Record<string, StatLabel>, [stats.data, zh])
   const selectedName = types.data?.rows.find(r => r.archetype === type)?.name
   const setRow = (i: number, patch: Partial<FilterRow>) => setRows(rs => rs.map((r, k) => (k === i ? { ...r, ...patch } : r)))
   const res = query.data
@@ -64,13 +67,13 @@ export default function Equipment() {
               <select aria-label={t('equipment.type')} className={`${inputCls} flex-1`} value={type} onChange={e => { setType(e.target.value); setRows([]); setRarity('') }}>
                 <option value="">{t('equipment.pickType')}</option>
                 {type && !selectedName && <option value={type}>{type}</option>}
-                {(types.data?.rows ?? []).map(r => <option key={r.archetype} value={r.archetype}>{r.name}</option>)}
+                {(types.data?.rows ?? []).map(r => <option key={r.archetype} value={r.archetype}>{itemName(r, i18n.language)}</option>)}
               </select>
             </div>
           </Field>
           <Field label={t('equipment.rarity')}>
             <select aria-label={t('equipment.rarity')} className={inputCls} value={rarity} onChange={e => setRarity(e.target.value)}>
-              <option value="">{t('equipment.anyRarity')}</option>{(stats.data?.rarities ?? []).map(r => <option key={r} value={r}>{r}</option>)}
+              <option value="">{t('equipment.anyRarity')}</option>{(stats.data?.rarities ?? []).map(r => <option key={r} value={r}>{rarityLabel(r, t)}</option>)}
             </select>
           </Field>
         </div>
@@ -81,7 +84,7 @@ export default function Equipment() {
               <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
                 <select aria-label={t('equipment.stat', { n: i + 1 })} className={`${inputCls} w-64`} value={r.key} onChange={e => setRow(i, { key: e.target.value })}>
                   <option value="">{t('equipment.pickStat')}</option>
-                  {(stats.data?.stats ?? []).map(x => <option key={x.key} value={x.key}>{x.label}{x.kind === 'primary' ? ' (base)' : ''}</option>)}
+                  {(stats.data?.stats ?? []).map(x => <option key={x.key} value={x.key}>{statLabel(x)}{x.kind === 'primary' ? t('equipment.base') : ''}</option>)}
                 </select>
                 <input aria-label={t('equipment.min', { n: i + 1 })} className={`${inputCls} w-24`} type="number" step="any" placeholder="min" value={r.min} onChange={e => setRow(i, { min: e.target.value })} />
                 <span>~</span>
@@ -108,7 +111,7 @@ export default function Equipment() {
             <thead className="text-left text-[var(--muted)]"><tr><th className="py-1">{t('equipment.time')}</th><th>{t('equipment.rarity')}</th><th className="text-right pr-4">{t('equipment.price')}</th><th>{t('equipment.state')}</th><th>{t('equipment.statsCol')}</th></tr></thead>
             <tbody>{res.listings.map(l => (
               <tr key={l.id} className="border-t border-[var(--line)] align-top">
-                <td className="py-1.5 whitespace-nowrap">{fmtTs(l.created_at)}</td><td>{l.rarity}</td>
+                <td className="py-1.5 whitespace-nowrap">{fmtTs(l.created_at)}</td><td>{rarityLabel(l.rarity, t)}</td>
                 <td className="text-right pr-4 tabular-nums font-medium">{fmtNum(l.price_per_unit)}</td>
                 <td>{l.has_sold ? <Badge tone="ok">{t('equipment.sold')}</Badge> : l.listing_state === 'active' ? <Badge>{t('equipment.active')}</Badge> : <Badge tone="warn">{t('equipment.gone')}</Badge>}</td>
                 <td className="py-1"><div className="flex flex-wrap gap-1">{Object.entries(l.attributes).map(([k, v]) => <span key={k} className={`text-xs px-1.5 py-0.5 rounded ${k.startsWith('secondary') ? 'bg-blue-50 text-blue-800' : 'bg-gray-100'}`}>{formatStat(k, v, labels)}</span>)}</div></td>

@@ -66,11 +66,19 @@ def attribute_labels(client) -> dict:
     hit = _attr_cache.get("all")
     if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
         return hit[1]
-    labels = {}
+    labels: dict[str, dict] = {}
     for page in client.iter_pages("/attributes", {"limit": 250}):
         for a in page:
             key = str(a.get("id", "")).replace("id.attribute.", "")
-            labels[key] = {"label": a.get("name") or key, "percent": bool(a.get("is_percentage"))}
+            labels[key] = {"label": a.get("name") or key, "label_zh": None, "percent": bool(a.get("is_percentage"))}
+    try:
+        for page in client.iter_pages("/attributes", {"limit": 250, "locale": "zh-Hans"}):
+            for a in page:
+                key = str(a.get("id", "")).replace("id.attribute.", "")
+                if key in labels and a.get("name"):
+                    labels[key]["label_zh"] = a["name"]
+    except Exception:
+        pass  # Chinese labels are a nicety; English still works
     _attr_cache["all"] = (time.monotonic(), labels)
     return labels
 
@@ -90,8 +98,9 @@ def stats_for_type(client, archetype: str, sample_pages: int = 2) -> list[dict]:
         kind, _, name = key.partition("_")
         if kind not in ("primary", "secondary"):
             continue
-        meta = labels.get(name, {"label": name.replace("_", " ").title(), "percent": False})
-        out.append({"key": key, "kind": kind, "name": name, "label": meta["label"], "percent": meta["percent"],
+        meta = labels.get(name, {"label": name.replace("_", " ").title(), "label_zh": None, "percent": False})
+        out.append({"key": key, "kind": kind, "name": name, "label": meta["label"], "label_zh": meta.get("label_zh"),
+                    "percent": meta["percent"],
                     "min": min(vals), "max": max(vals), "seen": len(vals)})
     out.sort(key=lambda s: (s["kind"] != "secondary", -s["seen"], s["label"]))
     return out

@@ -9,9 +9,9 @@ vi.mock('../../api/hooks')
 
 const v = (id: string, rarity: string, extra = {}) => ({ id, rarity, gear_score: 5, vendor_price: 3, num_secondary_attributes: 0, icon_url: null, raw: { id, rarity, vendor_price: 3, ...extra } })
 const rows = [
-  { archetype: 'id.item.iron_ores', name: 'Iron Ore', item_type: 'misc', has_stats: false, icon_url: 'https://cdn.darkerdb.com/codex/abc', rarities: ['common'], listings_total: 58042, variants: [v('id.item.iron_ores_2001', 'common')] },
-  { archetype: 'id.item.bandage', name: 'Bandage', item_type: 'utility', has_stats: false, icon_url: null, rarities: ['poor', 'common'], listings_total: 900, variants: [v('id.item.bandage_1001', 'poor'), v('id.item.bandage_2001', 'common', { duration: 4 })] },
-  { archetype: 'id.item.arming_sword', name: 'Arming Sword', item_type: 'weapon', has_stats: true, icon_url: null, rarities: ['common', 'legendary'], listings_total: 95498, variants: [v('id.item.arming_sword_6001', 'legendary')] },
+  { archetype: 'id.item.iron_ores', name: 'Iron Ore', name_zh: '铁矿石', item_type: 'misc', has_stats: false, icon_url: 'https://cdn.darkerdb.com/codex/abc', rarities: ['common'], listings_total: 58042, variants: [v('id.item.iron_ores_2001', 'common')] },
+  { archetype: 'id.item.bandage', name: 'Bandage', name_zh: '绷带', item_type: 'utility', has_stats: false, icon_url: null, rarities: ['poor', 'common'], listings_total: 900, variants: [v('id.item.bandage_1001', 'poor'), v('id.item.bandage_2001', 'common', { duration: 4 })] },
+  { archetype: 'id.item.arming_sword', name: 'Arming Sword', name_zh: '武装剑', item_type: 'weapon', has_stats: true, icon_url: null, rarities: ['common', 'legendary'], listings_total: 95498, variants: [v('id.item.arming_sword_6001', 'legendary')] },
 ]
 
 function setup(track = vi.fn()) {
@@ -25,13 +25,17 @@ it('shows one row per type with listings, icon and stats badge', () => {
   expect(screen.getByText('58042')).toBeInTheDocument()
   expect(document.querySelector('img')?.getAttribute('src')).toBe('https://cdn.darkerdb.com/codex/abc')
   expect(screen.getByText('有词条')).toBeInTheDocument()
+  expect(screen.getByText('铁矿石')).toBeInTheDocument()
+  expect(screen.getByText('武器')).toBeInTheDocument()
+  expect(screen.getByText('粗劣 · 普通')).toBeInTheDocument()
   expect(screen.getByText('已追踪')).toBeInTheDocument()
 })
 
 it('tracks a specific rarity of a stat-free type and shows all parameters', () => {
   const track = setup()
-  fireEvent.click(screen.getByRole('button', { name: 'Bandage' }))
+  fireEvent.click(screen.getByRole('button', { name: '绷带' }))
   expect(screen.getByText('duration')).toBeInTheDocument()
+  expect(screen.getAllByText('商人收购价')).toHaveLength(2)   // table header + translated parameter name
   fireEvent.click(screen.getAllByRole('button', { name: '追踪' })[1])
   expect(track.mock.calls[0][0]).toBe('id.item.bandage_2001')
 })

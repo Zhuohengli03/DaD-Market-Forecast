@@ -15,7 +15,7 @@ def test_plan_origins_normal():
 def test_plan_origins_shrinks_horizon():
     origins, h, warns = plan_origins(n=120, horizon=72, step=6, min_origins=5)
     assert len(origins) >= 5 and h < 72 and h >= 24
-    assert warns and "shrunk" in warns[0]
+    assert warns and "缩短" in warns[0]
 
 
 def test_plan_origins_raises_when_impossible():
@@ -71,7 +71,7 @@ def test_filled_hours_are_not_scored(synthetic_series, season_start):
         for j in range(r.horizon):
             if not observed[o + j]:
                 assert np.isnan(r.actuals[i, j])
-    assert any("filled" in w for w in r.warnings)
+    assert any("前向填充" in w for w in r.warnings)
 
 
 def test_direction_accuracy_ignores_ties():

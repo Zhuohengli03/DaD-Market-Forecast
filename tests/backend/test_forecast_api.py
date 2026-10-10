@@ -42,7 +42,7 @@ def test_forecast_job_fails_cleanly_on_short_data(client):
     r = client.post("/api/forecast", json={"item": "Test Ore", "season_id": "s1", "horizon_hours": 24, "models": ["ridge"]})
     assert r.status_code == 202
     job = _wait(client, r.json()["data"]["job_id"])
-    assert job["status"] == "failed" and "contiguous hours" in job["error"]
+    assert job["status"] == "failed" and "连续" in job["error"]
 
 
 def test_forecast_accepts_origin_step(client):

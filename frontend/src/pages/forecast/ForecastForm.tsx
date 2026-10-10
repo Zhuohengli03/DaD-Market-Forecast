@@ -5,13 +5,13 @@ import { useSelection } from '../../components/SelectorBar'
 import { Button } from '../../components/ui/Button'
 import { Field, inputCls } from '../../components/ui/Field'
 import { useToast } from '../../components/ui/Toast'
-import { modelHelp, modelLabel } from '../../lib/labels'
+import { itemName, modelHelp, modelLabel } from '../../lib/labels'
 
 const BASELINES = ['naive', 'seasonal_naive_24']
 const HORIZONS = [24, 48, 72, 168]
 
 export function ForecastForm({ onStarted }: { onStarted: (jobId: string) => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const sel = useSelection()
   const models = useModels()
   const start = useStartForecast()
@@ -32,7 +32,7 @@ export function ForecastForm({ onStarted }: { onStarted: (jobId: string) => void
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <Field label={t('common.item')}><select className={inputCls} value={sel.item} onChange={e => sel.setItem(e.target.value)}>{sel.items.map(i => <option key={i.name} value={i.name}>{i.name}</option>)}</select></Field>
+        <Field label={t('common.item')}><select className={inputCls} value={sel.item} onChange={e => sel.setItem(e.target.value)}>{sel.items.map(i => <option key={i.name} value={i.name}>{itemName(i, i18n.language)}</option>)}</select></Field>
         <Field label={t('common.season')}><select className={inputCls} value={sel.season} onChange={e => sel.setSeason(e.target.value)}>{sel.seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></Field>
         <Field label={t('forecast.horizon')}><select className={inputCls} value={horizon} onChange={e => setHorizon(Number(e.target.value))}>{HORIZONS.map(h => <option key={h} value={h}>{h} {t('common.hours')}</option>)}</select></Field>
         <Field label={t('forecast.coverage')} hint={t('forecast.coverageHint')}><select className={inputCls} value={coverage} onChange={e => setCoverage(Number(e.target.value))}>{[0.8, 0.9, 0.95].map(c => <option key={c} value={c}>{Math.round(c * 100)}%</option>)}</select></Field>

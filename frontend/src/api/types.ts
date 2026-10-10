@@ -1,4 +1,4 @@
-export interface ItemInfo { name: string; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; rows: number; first_ts: string | null; last_ts: string | null }
+export interface ItemInfo { name: string; name_zh?: string | null; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; rows: number; first_ts: string | null; last_ts: string | null }
 export interface SeriesPoint { ts: string; median_price: number | null; min_price: number | null; max_price: number | null; p25: number | null; p75: number | null; listings: number; sold: number; volume: number }
 export interface SeriesResponse { item: string; resolution: Resolution; start: string | null; end: string | null; points: SeriesPoint[] }
 export type Resolution = '1h' | '4h' | '1d'
@@ -32,10 +32,10 @@ export interface StatusResponse { source: string; python: string; items: { name:
 export interface SetupState { api_key_configured: boolean; api_key_hint: string | null; data_source: string; seasons: number; tracked_items: number; catalog_items: number }
 export interface MarketStats { name: string; listings: number; sold: number; min_price_per_unit: number; median_price_per_unit: number; last_seen: string }
 export interface CatalogVariant { id: string; rarity: string | null; gear_score?: number | null; vendor_price?: number | null; num_secondary_attributes?: number | null; icon_url?: string | null; raw: Record<string, unknown> }
-export interface CatalogType { archetype: string; name: string; item_type: string | null; slot_type?: string | null; icon_url: string | null; has_stats: boolean; rarities: string[]; listings_total: number | null; variants: CatalogVariant[] }
+export interface CatalogType { archetype: string; name: string; name_zh?: string | null; item_type: string | null; slot_type?: string | null; icon_url: string | null; has_stats: boolean; rarities: string[]; listings_total: number | null; variants: CatalogVariant[] }
 export interface CatalogMeta { patch: string | null; synced_at: string | null; items: number; types: number; types_total: number; trade_checked: number; trade_check_complete: boolean; trade_checked_at: string | null; with_stats: number }
 export interface CatalogFacets { item_type: string[] }
-export interface EquipmentStat { key: string; kind: 'primary' | 'secondary'; name: string; label: string; percent: boolean; min: number; max: number; seen: number }
+export interface EquipmentStat { key: string; kind: 'primary' | 'secondary'; name: string; label: string; label_zh?: string | null; percent: boolean; min: number; max: number; seen: number }
 export interface EquipmentListing { id: string; item_id: string | null; name: string | null; rarity: string | null; quantity: number; price: number; price_per_unit: number; has_sold: boolean; listing_state: string | null; created_at: string; attributes: Record<string, number> }
 export interface EquipmentDay { day: string; listings: number; sold: number; median: number; low: number; high: number; sold_median: number | null }
 export interface EquipmentResult { count: number; listings: EquipmentListing[]; daily: EquipmentDay[]; covered_from: string | null; covered_to: string | null; truncated: boolean; since?: string | null }

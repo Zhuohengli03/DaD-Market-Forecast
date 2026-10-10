@@ -15,10 +15,18 @@ class TrackIn(BaseModel):
 def list_items(request: Request):
     st = request.app.state
     stats = {i.name: i for i in st.item_stats.get()}
+    zh = {}
+    for variants in st.catalog.types().values():
+        for v in variants:
+            if v.get("name_zh"):
+                zh[v["id"]] = v["name_zh"]
+                zh.setdefault(v.get("name"), v["name_zh"])
     out = []
     for it in st.items.list():
         s = stats.get(it["name"])
-        out.append({**it, "rows": s.rows if s else 0, "first_ts": s.first_ts if s else None,
+        base = zh.get(it.get("item_id")) or zh.get(it["name"].split(" (")[0])
+        suffix = it["name"][len(it["name"].split(" (")[0]):] if base and " (" in it["name"] else ""
+        out.append({**it, "name_zh": f"{base}{suffix}" if base else None, "rows": s.rows if s else 0, "first_ts": s.first_ts if s else None,
                     "last_ts": s.last_ts if s else None})
     return ok(out)
 

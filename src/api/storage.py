@@ -127,10 +127,10 @@ def open_storage(table: str, data_dir: Path, log=print):
     if os.getenv("DB_USER"):
         try:
             s = PostgresStorage(table)
-            log(f"storage: postgres table {table}")
+            log(f"数据存储：Postgres 表 {table}")
             return s
         except Exception as exc:
-            log(f"postgres unavailable ({exc}); writing CSV instead")
+            log(f"连接不上 Postgres（{exc}），改为写入 CSV")
     path = Path(data_dir) / f"{table}.csv"
-    log(f"storage: {path}")
+    log(f"数据存储：{path}")
     return CsvStorage(path)

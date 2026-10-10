@@ -56,7 +56,7 @@ def darkerdb_seasons(request: Request) -> list[dict]:
         number = r.get("number") or r["slug"].rsplit("-", 1)[-1]
         start = f"{r['released_at'][:10]}T00:00:00+00:00"
         end = f"{rows[i + 1]['released_at'][:10]}T00:00:00+00:00" if i + 1 < len(rows) else None
-        out.append({"id": r["slug"], "name": f"Season {number}", "start": start, "end": end,
+        out.append({"id": r["slug"], "name": f"第 {number} 赛季", "start": start, "end": end,
                     "note": r.get("title", ""), "is_current": bool(r.get("is_current"))})
     return out
 

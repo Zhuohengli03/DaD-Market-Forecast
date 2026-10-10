@@ -1,3 +1,6 @@
+import i18n from '../i18n'
+import { localizeMessage } from '../lib/labels'
+
 export type Meta = Record<string, unknown>
 export interface Envelope<T> { ok: boolean; data: T; error: string | null; meta: Meta | null }
 
@@ -40,7 +43,7 @@ async function request<T>(method: string, path: string, body?: unknown, params?:
     const text = (await res.text().catch(() => '')).slice(0, 200)
     throw new ApiError(res.status, `HTTP ${res.status}: ${text || 'non-JSON response'}`)
   }
-  if (!res.ok || !env.ok) throw new ApiError(res.status, env.error || `HTTP ${res.status}`)
+  if (!res.ok || !env.ok) throw new ApiError(res.status, localizeMessage(env.error || `HTTP ${res.status}`, i18n.language || 'zh'))
   return { data: env.data, meta: env.meta }
 }
 
