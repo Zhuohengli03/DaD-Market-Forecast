@@ -26,7 +26,7 @@ def test_collect_pages_dedups_and_stops_after_empty_streak():
                          max_pages=200, max_empty_pages=3, log=logs.append)
     assert [r["id"] for r in rows] == ["1", "3"]          # 2 was already known, 9 never reached
     assert client.kwargs["since"] == "2026-04-01"
-    assert any("stopping" in l for l in logs)
+    assert any("停止" in l for l in logs)
 
 
 def test_collect_pages_normalizes_and_skips_bad_rows():
@@ -36,7 +36,7 @@ def test_collect_pages_normalizes_and_skips_bad_rows():
     rows = collect_pages(_Client(pages), "x", "Iron Ore", since=None, seen=set(), max_pages=5, log=logs.append)
     assert rows == [{"id": "1", "item": "Iron Ore", "quantity": 2, "price_per_unit": 5.0, "price": 10.0,
                      "has_sold": False, "created_at": "2026-04-04T14:01:00Z"}]
-    assert any("skipping" in l for l in logs)
+    assert any("跳过" in l for l in logs)
 
 
 def test_parse_args_defaults():
@@ -73,7 +73,7 @@ def test_main_reports_missing_key(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("DARKER_MARKET_API_KEY", "")
     monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
     assert col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path)]) == 2
-    assert "Settings" in capsys.readouterr().out
+    assert "设置" in capsys.readouterr().out
 
 
 def test_main_is_incremental_from_latest_stored(tmp_path, monkeypatch):

@@ -59,7 +59,7 @@ def prepare_target(series: pd.DataFrame, max_gap_hours: int = 6) -> tuple[pd.Dat
     s = series.copy()
     missing = s["median_price"].isna()
     if missing.all():
-        return s.iloc[0:0], ["series has no prices"]
+        return s.iloc[0:0], ["这段时间没有任何价格数据"]
     run_id = (missing != missing.shift()).cumsum()
     run_len = missing.groupby(run_id).transform("size")
     long_gap = missing & (run_len > max_gap_hours)
@@ -67,9 +67,8 @@ def prepare_target(series: pd.DataFrame, max_gap_hours: int = 6) -> tuple[pd.Dat
         last_gap_end = int(np.flatnonzero(long_gap.to_numpy())[-1])
         gap_hours = int(run_len.iloc[last_gap_end])
         warnings.append(
-            f"gap of {gap_hours} hours ending at {s.index[last_gap_end].isoformat()} exceeds "
-            f"{max_gap_hours}h; using only the {len(s) - last_gap_end - 1} hours after it"
-        )
+            f"数据在 {s.index[last_gap_end].isoformat()} 之前有 {gap_hours} 小时的空档（超过 {max_gap_hours} 小时），"
+            f"只用之后连续的 {len(s) - last_gap_end - 1} 小时数据")
         s = s.iloc[last_gap_end + 1:]
     s = s.loc[s["median_price"].first_valid_index():]
     s["observed"] = s["median_price"].notna()

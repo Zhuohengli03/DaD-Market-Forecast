@@ -10,9 +10,10 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { useToast } from '../components/ui/Toast'
 import { fmtRelative } from '../lib/format'
+import { itemName } from '../lib/labels'
 
 export default function Collect() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const items = useItems(); const status = useStatus(); const setup = useSetup()
   const start = useStartCollect(); const untrack = useUntrackItem(); const toast = useToast()
   const [jobId, setJobId] = useState<string | null>(null)
@@ -28,7 +29,7 @@ export default function Collect() {
         {(items.data ?? []).map(i => (
           <Card key={i.name}>
             <div className="flex items-start justify-between gap-2">
-              <div><div className="font-semibold">{i.name}</div><div className="text-xs text-[var(--muted)] mb-3">{i.rows} {t('dashboard.rows')} · {fmtRelative(i.last_ts)}</div></div>
+              <div><div className="font-semibold">{itemName(i, i18n.language)}</div><div className="text-xs text-[var(--muted)] mb-3">{i.rows} {t('dashboard.rows')} · {fmtRelative(i.last_ts)}</div></div>
               <button type="button" title={t('collect.untrack')} aria-label={`${t('collect.untrack')} ${i.name}`} className="text-[var(--muted)] hover:text-[var(--bad)]"
                 onClick={() => untrack.mutate(i.name, { onSuccess: () => toast.push(t('collect.untracked', { name: i.name })), onError: onErr })}><X size={16} /></button>
             </div>

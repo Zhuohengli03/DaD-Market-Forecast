@@ -40,7 +40,7 @@ def test_import_seasons_from_darkerdb(client):
     client.app.state.settings.darker_market_api_key = "k"
     client.app.state.client_factory = lambda key: _Client()
     preview = client.get("/api/seasons/darkerdb").json()["data"]
-    assert [p["name"] for p in preview] == ["Season 9", "Season 10", "Season 11"]
+    assert [p["name"] for p in preview] == ["第 9 赛季", "第 10 赛季", "第 11 赛季"]
     assert preview[0]["end"] == preview[1]["start"] and preview[-1]["end"] is None
     r = client.post("/api/seasons/import", json={"replace": True}, headers=H)
     assert r.status_code == 200
@@ -58,3 +58,35 @@ def test_import_without_replace_keeps_existing_and_skips_overlaps(client):
     assert r["skipped"] >= 1
     ids = [s["id"] for s in client.get("/api/seasons").json()["data"]]
     assert "s1" in ids
+
+
+class _ZhClient(_Client):
+    def iter_pages(self, path, params, max_pages=None):
+        if path == "/items" and params.get("locale") == "zh-Hans":
+            yield [{"id": "id.item.iron_ores_2001", "name": "铁矿石", "flavor": "含有铁的脏石头"}]
+            return
+        yield from super().iter_pages(path, params, max_pages)
+
+
+def test_sync_stores_chinese_names(settings):
+    settings.bootstrap()
+    store = CatalogStore(settings.catalog_path)
+    sync_catalog(_ZhClient(), store, log=lambda s: None)
+    rows, _, _ = store.query("铁矿")
+    assert rows and rows[0]["name"] == "Iron Ore" and rows[0]["name_zh"] == "铁矿石"
+
+
+def test_imported_season_names_are_chinese(client):
+    client.app.state.settings.darker_market_api_key = "k"
+    client.app.state.client_factory = lambda key: _Client()
+    names = [p["name"] for p in client.get("/api/seasons/darkerdb").json()["data"]]
+    assert names == ["第 9 赛季", "第 10 赛季", "第 11 赛季"]
+
+
+def test_tracked_items_carry_chinese_names(client, settings):
+    settings.bootstrap()
+    store = CatalogStore(settings.catalog_path)
+    sync_catalog(_ZhClient(), store, log=lambda s: None)
+    client.post("/api/items/track", json={"item_id": "id.item.iron_ores_2001"}, headers=H)
+    items = {i["name"]: i for i in client.get("/api/items").json()["data"]}
+    assert items["Iron Ore"]["name_zh"] == "铁矿石"

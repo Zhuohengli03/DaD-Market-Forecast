@@ -12,6 +12,7 @@ import { inputCls } from '../components/ui/Field'
 import { useToast } from '../components/ui/Toast'
 import { fmtTs } from '../lib/format'
 import { useDebounced } from '../lib/useDebounced'
+import { typeLabel } from '../lib/labels'
 import { CatalogTable } from './catalog/CatalogTable'
 
 const PAGE = 50
@@ -54,7 +55,7 @@ export default function Catalog() {
       </Card>
       <div className="flex flex-wrap gap-2 items-center text-sm">
         <input className={`${inputCls} w-64`} placeholder={t('catalog.search')} value={q} onChange={e => setQ(e.target.value)} aria-label={t('catalog.search')} />
-        <select className={inputCls} value={type} onChange={e => setType(e.target.value)} aria-label={t('catalog.type')}><option value="">{t('catalog.type')}: {t('common.all')}</option>{cat.data?.facets.item_type.map(r => <option key={r}>{r}</option>)}</select>
+        <select className={inputCls} value={type} onChange={e => setType(e.target.value)} aria-label={t('catalog.type')}><option value="">{t('catalog.type')}: {t('common.all')}</option>{cat.data?.facets.item_type.map(r => <option key={r} value={r}>{typeLabel(r, t)}</option>)}</select>
         <select className={inputCls} value={stats} onChange={e => setStats(e.target.value as typeof stats)} aria-label={t('catalog.stats')}><option value="">{t('catalog.stats')}: {t('common.all')}</option><option value="false">{t('catalog.noStats')}</option><option value="true">{t('catalog.withStats')}</option></select>
         <span className="ml-auto text-[var(--muted)]">{t('market.page', { page, pages, total: cat.data?.total ?? 0 })}</span>
         <Button variant="ghost" size="sm" aria-label={t('common.prev')} disabled={page <= 1} onClick={() => setPage(p => p - 1)}>‹</Button>

@@ -61,18 +61,18 @@ class ForecastRequest:
 def _validate(req: ForecastRequest, seasons: list[Season]) -> tuple[Season, tuple[str, ...]]:
     lo, hi = HORIZON_RANGE
     if not lo <= req.horizon_hours <= hi:
-        raise InvalidRequestError(f"horizon_hours must be in [{lo}, {hi}], got {req.horizon_hours}")
+        raise InvalidRequestError(f"预测时长必须在 {lo} 到 {hi} 小时之间，当前为 {req.horizon_hours}")
     clo, chi = COVERAGE_RANGE
     if not clo <= req.coverage <= chi:
-        raise InvalidRequestError(f"coverage must be in [{clo}, {chi}], got {req.coverage}")
+        raise InvalidRequestError(f"区间可信度必须在 {clo} 到 {chi} 之间，当前为 {req.coverage}")
     if req.backtest_origin_step < 1:
-        raise InvalidRequestError("backtest_origin_step must be >= 1")
+        raise InvalidRequestError("回测间隔至少为 1 小时")
     unknown = [m for m in req.models if m not in MODEL_FACTORIES]
     if unknown:
-        raise InvalidRequestError(f"unknown models {unknown}; valid: {sorted(MODEL_FACTORIES)}")
+        raise InvalidRequestError(f"不认识的方法 {unknown}，可选：{sorted(MODEL_FACTORIES)}")
     season = next((s for s in seasons if s.id == req.season_id), None)
     if season is None:
-        raise InvalidRequestError(f"unknown season_id {req.season_id!r}")
+        raise InvalidRequestError(f"找不到赛季 {req.season_id!r}")
     chosen = tuple(req.models) if req.models else tuple(MODEL_FACTORIES)
     names = tuple(dict.fromkeys(BASELINE_MODELS + chosen))  # baselines first, no duplicates
     return season, names
@@ -105,35 +105,34 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
                  source: str = "unknown", log: Logger | None = None) -> dict:
     say = log or (lambda _s: None)
     season, model_names = _validate(request, seasons)
-    say(f"loading listings for {request.item} in {season.name}")
+    say(f"读取 {request.item} 在 {season.name} 的挂单")
     listings = load_listings(request.item, season.start, season.end)
     full_series = hourly_series(listings)
     series, warnings = prepare_target(full_series)
     filled = int((~series["observed"]).sum()) if "observed" in series.columns else 0
     if filled:
-        warnings.append(f"{filled} gap hours forward-filled for model input (not scored)")
+        warnings.append(f"有 {filled} 个小时没有挂单，已用前一小时价格补齐（只用于建模，不计入评分）")
     if len(series) < MIN_HOURS:
         raise InsufficientDataError(
-            f"need at least {MIN_HOURS} contiguous hours, have {len(series)} "
-            f"(season {season.name}, {len(listings)} listings)")
-    say(f"{len(series)} hourly points, backtesting {len(model_names)} models")
+            f"至少需要 {MIN_HOURS} 个连续小时的数据，目前只有 {len(series)} 小时"
+            f"（{season.name}，共 {len(listings)} 条挂单）。请先多采集几天。")
+    say(f"共 {len(series)} 个小时的数据，开始回测 {len(model_names)} 种方法")
 
     result = run_backtest(series, season.start, model_names, request.horizon_hours,
                           origin_step=request.backtest_origin_step, log=say)
     warnings += list(result.warnings)
-    warnings += [f"model {n} failed: {err}" for n, err in result.failures.items()]
+    warnings += [f"方法 {n} 运行失败：{err}" for n, err in result.failures.items()]
     metrics = summarize(result)
     selection = select_model(result, metrics)
-    say(f"selected {selection.name} (skill vs naive {selection.skill_vs_naive:+.1%})")
+    say(f"选用 {selection.name}（相对基准 {selection.skill_vs_naive:+.1%}）")
 
     if selection.reason:
-        warnings.append(f"showing the naive forecast: {selection.reason}")
+        warnings.append(f"显示基准预测：{selection.reason}")
     try:
         point, importance = _fit_selected(selection, series, season.start, request.horizon_hours)
     except Exception as exc:
-        warnings.append(f"{selection.name} failed on the full season ({type(exc).__name__}: {exc}); "
-                        "falling back to the naive forecast")
-        selection = _naive_selection(result, 0.0, "selected model failed to refit")
+        warnings.append(f"{selection.name} 在完整赛季数据上运行失败（{type(exc).__name__}: {exc}），改用基准预测")
+        selection = _naive_selection(result, 0.0, "选中的方法在完整数据上运行失败")
         point, importance = _fit_selected(selection, series, season.start, request.horizon_hours)
     resid = result.actuals - selection.predictions
     lo, hi = quantile_bounds(resid, request.coverage)
@@ -141,7 +140,7 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     lower, upper = apply_bounds(point, lo, hi, floor=PRICE_FLOOR)
     coverage = empirical_coverage(resid, request.coverage)
     if request.horizon_hours > result.horizon:
-        warnings.append(f"intervals beyond h={result.horizon} reuse the last backtested width")
+        warnings.append(f"超过 {result.horizon} 小时的部分，区间宽度沿用回测到的最后一个值")
 
     last_ts = series.index[-1]
     current_offset = int((last_ts - season.start) / pd.Timedelta(hours=1))
@@ -158,8 +157,7 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     now = pd.Timestamp.now(tz="UTC")
     data_age_hours = float((now - last_ts) / pd.Timedelta(hours=1))
     if data_age_hours > STALE_HOURS:
-        warnings.append(f"latest listing is {data_age_hours:.0f} hours old; the forecast starts from then, "
-                        "not from now. Collect fresh data first.")
+        warnings.append(f"最新的挂单是 {data_age_hours:.0f} 小时前的，预测从那时起算，不是从现在。请先采集新数据。")
     run_id = f"{now:%Y%m%dT%H%M%S}-{_slug(request.item)}-{uuid.uuid4().hex[:6]}"
     return {
         "run_id": run_id,

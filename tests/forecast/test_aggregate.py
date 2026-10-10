@@ -57,7 +57,7 @@ def test_prepare_target_fills_short_gaps_and_cuts_long_ones():
     out, warnings = prepare_target(s, max_gap_hours=6)
     assert out.index[0] == idx[28] and len(out) == 12
     assert not out["median_price"].isna().any()
-    assert any("8" in w for w in warnings)
+    assert any("8 小时" in w for w in warnings)
 
 
 def test_prepare_target_drops_leading_nan():

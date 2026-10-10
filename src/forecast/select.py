@@ -47,9 +47,9 @@ def select_model(result: BacktestResult, metrics: list[ModelMetrics], top_k: int
     naive_pred = result.predictions["naive"]
     if len(result.origins) < MIN_ORIGINS:
         return Selection("naive", (("naive", 1.0),), False, float(skill), naive_pred,
-                         f"only {len(result.origins)} backtest origins; at least {MIN_ORIGINS} are needed to trust a winner")
+                         f"只有 {len(result.origins)} 次回测，至少需要 {MIN_ORIGINS} 次才能判断哪个方法更准")
     if skill <= MIN_SKILL:
-        why = "no model beat repeating the last hour" if skill <= 0 else \
-            f"best model ({name}) was only {skill:.1%} better, within noise (needs > {MIN_SKILL:.0%})"
+        why = "没有任何方法比\"沿用上一小时\"更准" if skill <= 0 else \
+            f"最好的方法（{name}）只比基准准 {skill:.1%}，在随机波动范围内（需要超过 {MIN_SKILL:.0%}）"
         return Selection("naive", (("naive", 1.0),), False, float(skill), naive_pred, why)
     return Selection(name, members, True, float(skill), pred)

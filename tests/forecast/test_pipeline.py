@@ -48,7 +48,7 @@ def test_end_to_end_schema_and_skill(frames):
     assert out["beats_baseline"] is True and out["skill_vs_naive"] > 0
     assert out["references"] and out["references"][0]["season_id"] == "s1"
     assert out["series_tail"][-1]["ts"] < out["forecast"][0]["ts"]
-    assert any("backtest" in line for line in logs)
+    assert any("回测" in line for line in logs)
     assert out["backtest"]["coverage"] is None or 0 <= out["backtest"]["coverage"] <= 1
 
 
@@ -110,7 +110,7 @@ def test_refit_failure_falls_back_to_naive(frames, monkeypatch):
 def test_stale_data_is_flagged(frames):
     out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, S2])
     assert out["data_age_hours"] > 24 * 200            # synthetic data is from Jan 2026
-    assert any("hours old" in w for w in out["warnings"])
+    assert any("小时前" in w for w in out["warnings"])
 
 
 def test_origin_step_is_respected(frames):

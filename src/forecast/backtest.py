@@ -26,14 +26,13 @@ def plan_origins(n: int, horizon: int, step: int, min_origins: int = 5,
         shrunk = min(horizon, max(min_horizon, n - start - (min_origins - 1) * step))
         if shrunk < horizon and len(origins_for(shrunk)) > len(origins):
             warnings.append(
-                f"evaluation horizon shrunk from {horizon}h to {shrunk}h to obtain "
-                f"{min_origins} backtest origins (series has {n} hours)")
+                f"数据只有 {n} 小时，回测评估长度从 {horizon} 小时缩短到 {shrunk} 小时，以获得足够的回测次数")
             h = shrunk
             origins = origins_for(h)
     if not origins:
-        raise ValueError(f"series of {n} hours is too short to backtest a {horizon}h horizon")
+        raise ValueError(f"数据只有 {n} 小时，太短，无法回测 {horizon} 小时的预测")
     if len(origins) < min_origins:
-        warnings.append(f"only {len(origins)} backtest origins available (wanted {min_origins})")
+        warnings.append(f"只能做 {len(origins)} 次回测（建议至少 {min_origins} 次），结果参考价值有限")
     return origins, h, warnings
 
 
@@ -61,7 +60,7 @@ def run_backtest(series: pd.DataFrame, season_start: pd.Timestamp, model_names: 
         mask = np.stack([~np.asarray(observed[o:o + h], dtype=bool) for o in origins])
         if mask.any():
             actuals = np.where(mask, np.nan, actuals)
-            warnings.append(f"{int(mask.sum())} forward-filled hour-steps excluded from backtest scoring")
+            warnings.append(f"{int(mask.sum())} 个前向填充的时间点没有计入回测评分")
     last_values = np.array([y[o - 1] for o in origins])
     predictions: dict[str, np.ndarray] = {}
     failures: dict[str, str] = {}
@@ -72,11 +71,11 @@ def run_backtest(series: pd.DataFrame, season_start: pd.Timestamp, model_names: 
                 rows.append(make_model(name).fit(series.iloc[:o], season_start).predict(h))
             predictions[name] = np.stack(rows)
             if log:
-                log(f"backtest {name}: {len(origins)} origins done")
+                log(f"回测 {name}：完成 {len(origins)} 次")
         except Exception as exc:  # one bad model must not sink the run
             failures[name] = f"{type(exc).__name__}: {exc}"
             if log:
-                log(f"backtest {name}: FAILED {failures[name]}")
+                log(f"回测 {name}：失败 {failures[name]}")
     return BacktestResult(h, tuple(origins), actuals, last_values, predictions, failures, tuple(warnings))
 
 

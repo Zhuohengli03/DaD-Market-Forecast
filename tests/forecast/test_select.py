@@ -61,4 +61,4 @@ def test_too_few_origins_is_not_claimed():
     good = rng.normal(0, 0.1, (3, 4))
     r = _result({"naive": naive, "good": good}, actual)
     sel = select_model(r, summarize(r))
-    assert sel.name == "naive" and not sel.beats_baseline and "origins" in sel.reason
+    assert sel.name == "naive" and not sel.beats_baseline and "回测" in sel.reason

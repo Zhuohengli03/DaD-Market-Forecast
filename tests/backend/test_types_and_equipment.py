@@ -167,3 +167,20 @@ def test_equipment_stats_endpoint(client, settings):
     assert keyed["secondary_armor_penetration"]["min"] == 2.9 and keyed["secondary_armor_penetration"]["max"] == 4.1
     assert keyed["primary_weapon_damage"]["kind"] == "primary"
     assert d["rarities"] == ["common", "legendary"]
+
+
+def test_stat_labels_include_chinese(client, settings):
+    _seed(settings)
+
+    class Zh(_MarketClient):
+        def iter_pages(self, path, params, max_pages=None):
+            if path == "/attributes" and params.get("locale") == "zh-Hans":
+                yield [{"id": "id.attribute.armor_penetration", "name": "护甲穿透", "is_percentage": True}]
+                return
+            yield from super().iter_pages(path, params, max_pages)
+    from backend.services import equipment
+    equipment._attr_cache.clear()
+    client.app.state.settings.darker_market_api_key = "k"
+    client.app.state.client_factory = lambda key: Zh()
+    stats = {s["key"]: s for s in client.get("/api/equipment/id.item.arming_sword/stats").json()["data"]["stats"]}
+    assert stats["secondary_armor_penetration"]["label_zh"] == "护甲穿透"
