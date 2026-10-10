@@ -44,9 +44,17 @@ class ImportIn(BaseModel):
 
 
 def darkerdb_seasons(request: Request) -> list[dict]:
+    return seasons_from_darkerdb(request.app.state)
+
+
+def import_records_from_darkerdb(state, replace: bool = False) -> tuple[int, int]:
+    return state.seasons.import_records(seasons_from_darkerdb(state), replace=replace)
+
+
+def seasons_from_darkerdb(state) -> list[dict]:
     """Season boundaries from DarkerDB's patch list: each season ends where the next one starts."""
-    from .catalog import _client
-    client = _client(request)
+    from .catalog import client_for_state
+    client = client_for_state(state)
     rows = []
     for page in client.iter_pages("/patches", {"kind": "season", "limit": 250}):
         rows.extend(r for r in page if r.get("kind") == "season" and r.get("released_at"))
