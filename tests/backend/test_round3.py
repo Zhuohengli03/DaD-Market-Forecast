@@ -189,3 +189,15 @@ def test_catalog_store_caches_parsed_file(settings, monkeypatch):
     for _ in range(5):
         store.query("a")
     assert len(loads) <= 1
+
+
+def test_tracking_upgrades_a_name_only_entry_instead_of_duplicating(tmp_path):
+    s = ItemsStore(tmp_path / "items.json")
+    s.write({"items": [{"name": "Iron Ore", "category": "ore", "description": "铁矿石", "enabled": True}], "categories": {}})
+    entry = s.track("Iron Ore", "id.item.iron_ores_2001", "misc", "common")
+    assert entry["name"] == "Iron Ore" and entry["item_id"] == "id.item.iron_ores_2001"
+    items = s.list()
+    assert len(items) == 1 and items[0]["item_id"] == "id.item.iron_ores_2001" and items[0]["description"] == "铁矿石"
+    import pytest
+    with pytest.raises(ValueError):
+        s.track("Iron Ore", "id.item.iron_ores_2001")
