@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test('run a forecast and see a verdict', async ({ page }) => {
   await page.goto('/forecast')
   await page.getByLabel('道具').selectOption('Test Ore')
-  await page.getByLabel('赛季').selectOption({ label: 'Season 2' })
+  await page.getByLabel('赛季').selectOption({ label: '第 2 赛季' })
   await page.getByLabel('预测多久').selectOption('24')
   for (const m of ['梯度提升树', '随机森林', '指数平滑', 'ARIMA 时间序列']) { const cb = page.getByLabel(m); if (await cb.isChecked()) await cb.click() }
   await page.getByRole('button', { name: '开始预测' }).click()
