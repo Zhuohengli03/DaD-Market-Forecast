@@ -1,4 +1,4 @@
-import { fmtNum, fmtPct, fmtRelative, fmtTs, fmtTsUtc } from './format'
+import { fmtDate, fmtNum, fmtPct, fmtRelative, fmtTs, fmtTsUtc } from './format'
 
 it('formats numbers, percents and timestamps', () => {
   expect(fmtNum(12.3456)).toBe('12.35')
@@ -30,4 +30,10 @@ describe('fmtRelative', () => {
     expect(fmtRelative(ago(8 * 6e4))).toBe('8 min ago')
     await i18n.changeLanguage('zh')
   })
+})
+
+it('shows calendar dates in UTC, like season boundaries', () => {
+  expect(fmtDate('2026-07-31T00:00:20Z')).toBe('2026-07-31')        // not 07-30 in a timezone behind UTC
+  expect(fmtDate('2026-10-09T23:59:00Z')).toBe('2026-10-09')
+  expect(fmtDate(null)).toBe('–')
 })

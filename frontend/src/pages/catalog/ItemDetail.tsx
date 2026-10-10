@@ -37,8 +37,10 @@ export function Params({ raw }: { raw: Record<string, unknown> }) {
 function ListingStats({ row, localSeason }: { row: CatalogType; localSeason: number | null }) {
   const { t } = useTranslation()
   const history = useTypeHistory(); const toast = useToast()
-  const known = row.season_listings != null && !!row.first_listed
+  // looked up: the season count is known, and the first listing too (or there never was one)
+  const known = row.season_listings != null && (!!row.first_listed || row.listings_total === 0)
   const season = row.season_listings ?? localSeason
+  const first = row.first_listed ? fmtDate(row.first_listed) : known ? t('catalog.noListing') : '–'
   return (
     <section aria-label={t('catalog.detail.listings')} className="lg:border-l lg:border-[var(--line)] lg:pl-6 min-w-[300px]">
       <div className="text-sm font-semibold mb-2">{t('catalog.detail.listings')}</div>
@@ -46,7 +48,7 @@ function ListingStats({ row, localSeason }: { row: CatalogType; localSeason: num
         <div><dt className="text-[var(--muted)]">{t('catalog.seasonListings')}</dt>
           <dd className="text-xl font-semibold tabular-nums">{season ?? '–'}{row.season_listings == null && localSeason != null && <span className="ml-1 text-xs font-normal text-[var(--muted)]">{t('catalog.local')}</span>}</dd></div>
         <div><dt className="text-[var(--muted)]">{t('catalog.listings')}</dt><dd className="text-xl font-semibold tabular-nums">{row.listings_total ?? '–'}</dd></div>
-        <div><dt className="text-[var(--muted)]">{t('catalog.firstListed')}</dt><dd className="text-xl font-semibold tabular-nums">{fmtDate(row.first_listed)}</dd></div>
+        <div><dt className="text-[var(--muted)]">{t('catalog.firstListed')}</dt><dd className="text-xl font-semibold tabular-nums">{first}</dd></div>
       </dl>
       <p className="mt-2 text-xs text-[var(--muted)] max-w-md">{t('catalog.listingsHint')}</p>
       {!known && <Button className="mt-2" size="sm" variant="ghost" loading={history.isPending}

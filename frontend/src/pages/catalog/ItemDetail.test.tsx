@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { cleanup, render, screen, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { vi } from 'vitest'
 import '../../i18n'
@@ -47,4 +47,16 @@ it('shows the price of each tracked quality', () => {
   expect(screen.getByText('各品质价格')).toBeInTheDocument()
   expect(screen.getByText('12.50')).toBeInTheDocument()
   expect(screen.getByRole('link', { name: '看走势' })).toHaveAttribute('href', '/market?item=Bandage%20(poor)')
+})
+
+it('after a lookup with no listings, shows 0 and "none" instead of dashes, without the lookup button', () => {
+  mount()
+  vi.mocked(hooks.useCatalogType).mockReturnValue({ data: { ...bandage, listings_total: 0, first_listed: null, season_listings: 0 }, isLoading: false } as never)
+  vi.mocked(hooks.useItems).mockReturnValue({ data: [] } as never)
+  cleanup()
+  render(<MemoryRouter initialEntries={['/catalog/id.item.bandage']}><Routes><Route path="/catalog/:archetype" element={<ItemDetail />} /></Routes></MemoryRouter>)
+  const stats = screen.getByRole('region', { name: '挂单统计' })
+  expect(within(stats).getAllByText('0')).toHaveLength(2)
+  expect(within(stats).getByText('无')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /查询本赛季挂单/ })).not.toBeInTheDocument()
 })
