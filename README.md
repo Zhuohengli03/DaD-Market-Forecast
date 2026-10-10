@@ -3,6 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
 [![Node](https://img.shields.io/badge/Node-20+-green.svg)](https://nodejs.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![爱发电](https://img.shields.io/badge/%E7%88%B1%E5%8F%91%E7%94%B5-Sponsor-946ce6.svg)](https://afdian.com/a/felixcode)
 
 Track and forecast **Dark and Darker** marketplace prices on your own machine, with data from the [DarkerDB API](https://darkerdb.com/documentation).
 
@@ -104,6 +105,12 @@ cd darker-market
 - **弹窗说 key 无效**：确认是 v2 key，并勾选了上面两个权限。旧的 v1 key 已经不能用了。
 - **预测说"没有找到比基准明显更准的方法"**：这是正常结果，说明这段时间价格接近随机波动，最好的猜测就是当前价格。
 - **想让局域网里的手机访问**：在 `.env` 里设 `HOST=0.0.0.0`，只在可信网络下这样做。
+
+## Support / 支持这个项目
+
+如果 Darker Market 对你有帮助，可以在 [爱发电](https://afdian.com/a/felixcode) 请作者喝一杯麦酒，微信和支付宝都能付款。赞助完全自愿，软件本身一直免费。
+
+If Darker Market saves you time, you can support it on [afdian](https://afdian.com/a/felixcode), a Chinese creator-support site (similar to Patreon). Sponsorship is optional; the app is and stays free.
 
 ## License
 [MIT](LICENSE). Not affiliated with IRONMACE or DarkerDB. 与 IRONMACE 和 DarkerDB 无关联。
