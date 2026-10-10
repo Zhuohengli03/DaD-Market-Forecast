@@ -31,7 +31,7 @@ def _progress(jobs, job):
 
 @router.get("/catalog")
 def catalog(request: Request, q: str = "", item_type: str = "", has_stats: bool | None = None,
-            page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=200)):
+            page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=1000)):
     store = request.app.state.catalog
     rows, total, facets = store.query(q, item_type, has_stats, page, page_size)
     return ok(rows, meta={"total": total, "page": page, "page_size": page_size, "facets": facets, **store.meta()})

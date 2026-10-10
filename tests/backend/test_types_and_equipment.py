@@ -196,3 +196,28 @@ def test_tradability_check_reports_progress(settings):
     check_tradability(C(), store, log=lambda s: None, progress=lambda stage, done=None, total=None, **d: seen.append((stage, done, total, d)))
     assert seen[-1][0] == "done" and seen[-1][3] == {"checked": 4, "tradable": 4}
     assert ("check", 4, 4, {}) in seen
+
+
+def test_types_carry_a_category_for_bulk_selection(settings):
+    store = _seed(settings)
+    data = dict(store.read())
+    data["items"] = data["items"] + [
+        {"id": "id.item.gold_ores_5001", "archetype": "id.item.gold_ores", "name": "Gold Ore", "item_type": "misc", "misc_type": "ore", "num_secondary_attributes": 0},
+        {"id": "id.item.potion_healing_2001", "archetype": "id.item.potion_healing", "name": "Healing Potion", "item_type": "utility", "utility_type": "drink", "num_secondary_attributes": 0}]
+    store.save_items(data["items"], None)
+    rows, _, facets = store.query(has_stats=False)
+    cats = {r["name"]: r["category"] for r in rows}
+    assert cats["Gold Ore"] == "ore" and cats["Healing Potion"] == "drink" and cats["Bandage"] == "utility"
+    assert {"ore", "drink"} <= set(facets["category"])
+
+
+def test_catalog_lists_all_stat_free_types_in_one_page(client, settings):
+    _seed(settings)
+    assert client.get("/api/catalog", params={"has_stats": "false", "page_size": 1000}).status_code == 200
+
+
+def test_initialize_accepts_large_selections(client):
+    client.app.state.settings.darker_market_api_key = "k"
+    ids = [f"id.item.x_{i}" for i in range(400)]
+    r = client.post("/api/setup/initialize", json={"item_ids": ids, "max_pages": 1}, headers=H)
+    assert r.status_code == 202

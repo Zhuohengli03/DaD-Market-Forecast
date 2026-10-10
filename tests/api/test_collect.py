@@ -45,8 +45,8 @@ def test_parse_args_defaults():
     assert a.item == "Gold Ore" and a.max_pages == 200 and a.since is None and not a.probe
 
 
-def test_main_without_postgres_writes_csv_and_dedupes(tmp_path, monkeypatch):
-    import csv as _csv
+def test_main_without_postgres_writes_builtin_db_and_dedupes(tmp_path, monkeypatch):
+    import sqlite3
     import src.api.collect as col
 
     class FakeClient:
@@ -65,8 +65,8 @@ def test_main_without_postgres_writes_csv_and_dedupes(tmp_path, monkeypatch):
     monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
     assert col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path)]) == 0
     assert col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path)]) == 0
-    rows = list(_csv.DictReader((tmp_path / "iron_ore.csv").open()))
-    assert [r["item_id"] for r in rows] == ["1", "2"]
+    con = sqlite3.connect(tmp_path / "market.db")
+    assert [r[0] for r in con.execute("SELECT item_id FROM listings WHERE item='iron_ore' ORDER BY item_id")] == ["1", "2"]
 
 
 def test_main_reports_missing_key(tmp_path, monkeypatch, capsys):
@@ -79,8 +79,8 @@ def test_main_reports_missing_key(tmp_path, monkeypatch, capsys):
 
 def test_main_is_incremental_from_latest_stored(tmp_path, monkeypatch):
     import src.api.collect as col
-    from src.api.storage import CsvStorage
-    CsvStorage(tmp_path / "iron_ore.csv").insert([_row(1)])
+    from src.api.storage import SqliteStorage
+    SqliteStorage(tmp_path / "market.db", "iron_ore").insert([_row(1)])
     seen = {}
 
     class FakeClient:

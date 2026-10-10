@@ -46,7 +46,7 @@ def test_upsert_env_preserves_other_lines_and_is_private(tmp_path):
 def test_setup_reports_missing_key(client):
     d = client.get("/api/setup").json()["data"]
     assert d["api_key_configured"] is False and d["api_key_hint"] is None
-    assert d["seasons"] == 2 and d["tracked_items"] == 1 and d["data_source"] == "csv"
+    assert d["seasons"] == 2 and d["tracked_items"] == 1 and d["data_source"] == "sqlite"
 
 
 def _app(project_root, validator):

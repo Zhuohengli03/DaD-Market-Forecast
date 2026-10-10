@@ -39,9 +39,15 @@ def test_lan_mode_accepts_other_hosts(project_root):
 
 # ---- I2 / I3 names with punctuation or leading digits -----------------------
 def test_forecast_for_item_with_apostrophe_saves(project_root):
-    (project_root / "adventurer_s_boots.csv").write_bytes((project_root / "test_ore.csv").read_bytes())
+    import pandas as pd
+    from src.api.storage import SqliteStorage
+    from src.api.darkerdb_client import canonical_ts
     app = _app(project_root)
     with TestClient(app, headers=H) as c:
+        df = pd.read_csv(project_root / "test_ore.csv", dtype={"item_id": str})
+        SqliteStorage(app.state.settings.sqlite_path, "adventurer_s_boots").insert([
+            {"id": r.item_id, "item": "Adventurer's Boots", "quantity": r.quantity, "price_per_unit": r.price_per_unit,
+             "price": r.price, "has_sold": bool(r.has_sold), "created_at": canonical_ts(r.created_at)} for r in df.itertuples()])
         cfg = c.get("/api/config/items").json()["data"]
         cfg["items"].append({"name": "Adventurer's Boots", "enabled": True, "category": "", "description": ""})
         c.put("/api/config/items", json=cfg)
@@ -55,10 +61,11 @@ def test_forecast_for_item_with_apostrophe_saves(project_root):
 
 
 def test_digit_leading_item_collected_csv_is_found(project_root):
-    from src.api.storage import CsvStorage, item_slug
+    from src.api.storage import SqliteStorage, item_slug
     assert item_slug("3 Leaf Clover") == "item_3_leaf_clover"
-    with TestClient(_app(project_root), headers=H) as c:
-        CsvStorage(project_root / "data" / f"{item_slug('3 Leaf Clover')}.csv").insert(
+    app = _app(project_root)
+    with TestClient(app, headers=H) as c:
+        SqliteStorage(app.state.settings.sqlite_path, item_slug("3 Leaf Clover")).insert(
             [{"id": "1", "item": "3 Leaf Clover", "quantity": 1, "price_per_unit": 2.0, "price": 2.0, "has_sold": False, "created_at": "2026-01-20T01:00:00Z"}])
         cfg = c.get("/api/config/items").json()["data"]
         cfg["items"].append({"name": "3 Leaf Clover", "enabled": True, "category": "", "description": ""})

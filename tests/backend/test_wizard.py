@@ -24,33 +24,41 @@ def _wait(c, job_id, timeout=60):
 
 def test_app_settings_defaults_and_update(tmp_path):
     s = AppSettings(tmp_path / "settings.json")
-    assert s.get() == {"initialized_at": None, "collect_interval_hours": 6, "auto_collect": False}
-    s.update(collect_interval_hours=3, auto_collect=True)
-    assert AppSettings(tmp_path / "settings.json").get()["collect_interval_hours"] == 3
+    assert s.get() == {"initialized_at": None, "collect_interval_seconds": 21600, "auto_collect": False}
+    s.update(collect_interval_seconds=90, auto_collect=True)
+    assert AppSettings(tmp_path / "settings.json").get()["collect_interval_seconds"] == 90
+
+
+def test_app_settings_migrates_old_hour_setting(tmp_path):
+    (tmp_path / "settings.json").write_text('{"collect_interval_hours": 3}')
+    assert AppSettings(tmp_path / "settings.json").get()["collect_interval_seconds"] == 10800
 
 
 def test_setup_reports_environment_and_wizard_state(client):
     d = client.get("/api/setup").json()["data"]
-    assert d["initialized"] is False and d["collect_interval_hours"] == 6 and d["auto_collect"] is False
+    assert d["initialized"] is False and d["collect_interval_seconds"] == 21600 and d["auto_collect"] is False
+    assert d["rate_limit_per_minute"] == 60
     env = d["environment"]
-    assert env["python_ok"] is True and env["python_version"].startswith("3.") and env["storage"] == "csv"
+    assert env["python_ok"] is True and env["python_version"].startswith("3.") and env["storage"] == "sqlite"
     assert env["data_dir"].endswith("data")
 
 
 def test_schedule_endpoint_validates_and_drives_tasks(client, project_root):
-    assert client.put("/api/setup/schedule", json={"interval_hours": 5, "auto_collect": False}).status_code == 422
-    r = client.put("/api/setup/schedule", json={"interval_hours": 3, "auto_collect": False})
-    assert r.status_code == 200 and r.json()["data"]["collect_interval_hours"] == 3
+    assert client.put("/api/setup/schedule", json={"interval_seconds": 29, "auto_collect": False}).status_code == 422
+    assert client.put("/api/setup/schedule", json={"interval_seconds": 31 * 86400, "auto_collect": False}).status_code == 422
+    r = client.put("/api/setup/schedule", json={"interval_seconds": 30, "auto_collect": False})
+    assert r.status_code == 200 and r.json()["data"]["collect_interval_seconds"] == 30
     tasks = client.get("/api/scheduler").json()["data"]["tasks"]
-    assert tasks[0]["schedule_type"] == "interval" and tasks[0]["schedule_value"] == "180"
+    assert tasks[0]["schedule_type"] == "seconds" and tasks[0]["schedule_value"] == "30"
 
 
 def test_tasks_use_interval_from_settings_file(tmp_path):
     items = tmp_path / "items.json"
     items.write_text(json.dumps({"items": [{"name": "Iron Ore", "item_id": "id.item.iron_ores_2001", "enabled": True}]}))
-    (tmp_path / "settings.json").write_text(json.dumps({"collect_interval_hours": 12}))
+    (tmp_path / "settings.json").write_text(json.dumps({"collect_interval_seconds": 93784}))
     t = tasks_from_items(items, settings_path=tmp_path / "settings.json")
-    assert t[0]["schedule_type"] == "interval" and t[0]["schedule_value"] == 720
+    assert t[0]["schedule_type"] == "seconds" and t[0]["schedule_value"] == 93784
+    assert t[0]["description"] == "每 1天2时3分4秒 采集 Iron Ore"
     assert t[0]["args"][-2:] == ["--item-id", "id.item.iron_ores_2001"]
 
 
@@ -60,13 +68,13 @@ def test_auto_collect_starts_scheduler_and_on_next_launch(project_root):
     mk = lambda: create_app(Settings(project_root=project_root, db_user="", darker_market_api_key="", _env_file=None))
     app = mk()
     with TestClient(app, headers=H) as c:
-        c.put("/api/setup/schedule", json={"interval_hours": 6, "auto_collect": True})
+        c.put("/api/setup/schedule", json={"interval_seconds": 21600, "auto_collect": True})
         assert app.state.scheduler.running()
     app2 = mk()
     with TestClient(app2, headers=H):
         assert app2.state.scheduler.running()          # resumed automatically on launch
     with TestClient(mk(), headers=H) as c:
-        c.put("/api/setup/schedule", json={"interval_hours": 6, "auto_collect": False})
+        c.put("/api/setup/schedule", json={"interval_seconds": 21600, "auto_collect": False})
 
 
 def test_database_setup_tests_connection_and_falls_back(client, monkeypatch, project_root):
@@ -88,7 +96,7 @@ def test_database_setup_tests_connection_and_falls_back(client, monkeypatch, pro
     env = (project_root / ".env").read_text()
     assert "DB_USER=u" in env and "DB_PASSWORD=p" in env
     r = client.delete("/api/setup/database")
-    assert r.json()["data"]["environment"]["storage"] == "csv" and "DB_USER=\n" in (project_root / ".env").read_text()
+    assert r.json()["data"]["environment"]["storage"] == "sqlite" and "DB_USER=\n" in (project_root / ".env").read_text()
 
 
 def test_initialize_runs_every_step_and_reports_per_item(client, project_root, settings):

@@ -50,7 +50,7 @@ class ListingRepository(Protocol):
 
 
 def make_repository(settings: Settings, log: Callable[[str], None] = print) -> ListingRepository:
-    from .csv_repo import CsvListingRepository
+    from .sqlite_repo import SqliteListingRepository, import_csv_once
     if settings.postgres_configured:
         from .postgres_repo import PostgresListingRepository
         try:
@@ -59,7 +59,9 @@ def make_repository(settings: Settings, log: Callable[[str], None] = print) -> L
             log(f"data source: postgres {settings.db_host}:{settings.db_port}/{settings.db_database}")
             return repo
         except Exception as exc:
-            log(f"postgres unavailable ({exc}); falling back to CSV")
-    else:
-        log("postgres not configured (DB_USER empty); using CSV")
-    return CsvListingRepository(settings.csv_dirs, settings.items_config_path)
+            log(f"postgres unavailable ({exc}); using the built-in database")
+    imported = import_csv_once(settings)
+    for name, n in imported.items():
+        log(f"imported {n} listings of {name} from CSV into the built-in database")
+    log(f"data source: built-in database {settings.sqlite_path}")
+    return SqliteListingRepository(settings.sqlite_path, settings.items_config_path)

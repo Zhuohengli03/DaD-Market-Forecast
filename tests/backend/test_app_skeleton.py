@@ -3,7 +3,7 @@ def test_status_envelope(client):
     assert r.status_code == 200
     body = r.json()
     assert body["ok"] is True and body["error"] is None
-    assert body["data"]["source"] == "csv"
+    assert body["data"]["source"] == "sqlite"
     assert body["data"]["items"][0]["name"] == "Test Ore"
 
 

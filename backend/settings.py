@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     catalog_path: Path | None = None
     env_path: Path | None = None
     app_settings_path: Path | None = None
+    sqlite_path: Path | None = None
     frontend_dist: Path | None = None
     python_executable: str = sys.executable
 
@@ -49,6 +50,7 @@ class Settings(BaseSettings):
         self.catalog_path = self.catalog_path or self.data_dir / "catalog.json"
         self.env_path = self.env_path or root / ".env"
         self.app_settings_path = self.app_settings_path or self.darker_data_dir / "settings.json"
+        self.sqlite_path = self.sqlite_path or self.darker_data_dir / "market.db"
         self.frontend_dist = self.frontend_dist or root / "frontend" / "dist"
 
     @property

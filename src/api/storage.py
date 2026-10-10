@@ -89,6 +89,37 @@ class CsvStorage:
         pass
 
 
+class SqliteStorage:
+    """Listings of one item in the built-in database; duplicates are ignored by the UNIQUE key."""
+    name = "sqlite"
+
+    def __init__(self, db_path: Path, item: str):
+        from src.api.sqlite_db import connect
+        self.con = connect(db_path)
+        self.item = item
+
+    def existing_keys(self) -> set[str]:
+        rows = self.con.execute("SELECT item_id, created_at FROM listings WHERE item = ?", (self.item,))
+        return {record_key(a, b) for a, b in rows}
+
+    def latest_created_at(self) -> str | None:
+        return self.con.execute("SELECT MAX(created_at) FROM listings WHERE item = ?", (self.item,)).fetchone()[0]
+
+    def insert(self, rows: list[dict]) -> int:
+        now = datetime.now().isoformat(sep=" ")
+        before = self.con.total_changes
+        with self.con:
+            self.con.executemany(
+                "INSERT OR IGNORE INTO listings (item, item_id, item_name, quantity, price_per_unit, price, has_sold,"
+                " created_at, insert_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [(self.item, str(r["id"]), r.get("item"), int(r["quantity"]), float(r["price_per_unit"]),
+                  float(r["price"]), int(bool(r["has_sold"])), r["created_at"], now) for r in rows])
+        return self.con.total_changes - before
+
+    def close(self) -> None:
+        self.con.close()
+
+
 class PostgresStorage:
     name = "postgres"
 
@@ -123,14 +154,14 @@ class PostgresStorage:
 
 
 def open_storage(table: str, data_dir: Path, log=print):
-    """Postgres if DB_USER is set and the server answers; otherwise data/<table>.csv."""
+    """Postgres if DB_USER is set and the server answers; otherwise the built-in database data/market.db."""
     if os.getenv("DB_USER"):
         try:
             s = PostgresStorage(table)
             log(f"数据存储：Postgres 表 {table}")
             return s
         except Exception as exc:
-            log(f"连接不上 Postgres（{exc}），改为写入 CSV")
-    path = Path(data_dir) / f"{table}.csv"
-    log(f"数据存储：{path}")
-    return CsvStorage(path)
+            log(f"连接不上 Postgres（{exc}），改用内置数据库")
+    path = Path(os.getenv("DARKER_DB_PATH") or Path(data_dir) / "market.db")
+    log(f"数据存储：内置数据库 {path}")
+    return SqliteStorage(path, table)
