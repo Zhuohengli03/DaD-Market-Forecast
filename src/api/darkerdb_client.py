@@ -50,17 +50,15 @@ def listing_item_ref(row: dict) -> tuple[str | None, str | None]:
     """(item_id, display name) of a market row, whether `item` is a string or a nested object."""
     item = row.get("item")
     if isinstance(item, dict):
-        return (item.get("id") or row.get("item_id")), (item.get("name") or row.get("item_name"))
-    return row.get("item_id"), (item or row.get("item_name"))
+        return (item.get("id") or row.get("item_id")), (item.get("name") or row.get("name"))
+    # live v2 rows are flat: item_id + name
+    return row.get("item_id"), (item or row.get("name") or row.get("item_name"))
 
 
 def normalize_listing(row: dict, fallback_item_name: str) -> dict:
     """Map a v2 market row onto the legacy DB record shape used by DarkerMarketDB."""
-    item = row.get("item")
-    if isinstance(item, dict):
-        item_name = item.get("name") or item.get("id") or fallback_item_name
-    else:
-        item_name = item or fallback_item_name
+    _, ref_name = listing_item_ref(row)
+    item_name = ref_name or fallback_item_name
     quantity = int(row["quantity"])
     price = _to_float(row["price"])
     ppu = row.get("price_per_unit")
@@ -138,10 +136,15 @@ class DarkerDBClient:
             body = payload.get("body") or []
             yield list(body) if isinstance(body, list) else [body]
             pages += 1
-            cursor = (payload.get("pagination") or {}).get("next")
-            if not cursor or (max_pages is not None and pages >= max_pages):
+            nxt = (payload.get("pagination") or {}).get("next")
+            if not nxt or (max_pages is not None and pages >= max_pages):
                 return
-            params["cursor"] = cursor
+            if str(nxt).startswith("http"):
+                # page-based endpoints (e.g. /market) return the full URL of the next page
+                from urllib.parse import parse_qsl, urlsplit
+                params = dict(parse_qsl(urlsplit(nxt).query))
+            else:
+                params["cursor"] = nxt
 
     def iter_market(self, item_id: str | None, since: str | None = None, limit: int = MARKET_MAX_LIMIT,
                     sort: str = "created_at:desc", max_pages: int | None = None) -> Iterator[list[dict]]:

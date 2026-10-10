@@ -33,8 +33,13 @@ export function SeasonEditor() {
   const [error, setError] = useState<string | null>(null)
   const fail = (e: unknown) => { setError((e as Error).message); toast.push((e as Error).message, 'error') }
   const okay = () => { setError(null); setEditing(null); toast.push(t('settings.saved')) }
+  const importFromDarkerDB = () => {
+    if (!window.confirm(t('settings.importConfirm'))) return
+    m.importSeasons.mutate({ replace: true }, { onSuccess: r => toast.push(t('settings.imported', { n: r.added })), onError: fail })
+  }
   return (
     <div className="space-y-4">
+      <Button variant="ghost" size="sm" loading={m.importSeasons.isPending} onClick={importFromDarkerDB}>{t('settings.importSeasons')}</Button>
       <table className="w-full text-sm"><thead className="text-left text-[var(--muted)]"><tr><th className="py-1">{t('settings.seasonName')}</th><th>{t('common.start')}</th><th>{t('common.end')}</th><th>{t('settings.note')}</th><th></th></tr></thead>
         <tbody>{(seasons.data ?? []).map(s => (
           <tr key={s.id} className="border-t border-[var(--line)]"><td className="py-1.5 font-medium">{s.name}</td><td>{fmtTsUtc(s.start)}</td><td>{s.end ? fmtTsUtc(s.end) : '—'}</td><td className="text-[var(--muted)]">{s.note}</td>
