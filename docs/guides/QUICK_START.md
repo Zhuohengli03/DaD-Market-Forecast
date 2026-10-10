@@ -1,160 +1,35 @@
-# Quick Start Guide / 快速开始指南
+# Quick start in detail / 详细上手指南
 
-## 🚀 5-Minute Setup / 5分钟设置
-
-### Step 1: Install Dependencies / 步骤1：安装依赖
+## 1. Install / 安装
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt     # use a virtualenv or conda env if you prefer
+cd frontend && npm install && npm run build && cd ..
 ```
+`psycopg2-binary` is installed but only used if you configure Postgres.
 
-### Step 2: Configure Environment / 步骤2：配置环境变量
-Copy environment template and edit with your credentials:
-复制环境变量模板并编辑你的凭证：
-
+## 2. Start / 启动
 ```bash
-cp env.template .env
-# Edit .env with your actual database credentials and API key
-# 编辑.env文件添加你的数据库凭证和API密钥
+python -m backend        # http://localhost:5001
 ```
+The first start creates `data/` with your tracked items (seeded from `items_config.json`), an empty season list, and a folder for forecast runs. Everything in `data/` and `.env` is ignored by git.
 
-### Step 3: Test Data Collection / 步骤3：测试数据收集
-```bash
-# Test Iron Ore collection / 测试铁矿石收集
-python src/api/Iron_Ore_API.py
-```
+## 3. API key / 填写 API key
+The app opens a dialog. Create a key at https://darkerdb.com/dashboard/api-keys with the `darkerdb.live` and `darkerdb.data` scopes and paste it. The key is checked against DarkerDB before it is saved. You can change it later in **Settings**.
 
-### Step 4: Start Task Scheduler / 步骤4：启动任务调度器
-```bash
-python src/scheduler/start_scheduler.py --start
-```
+## 4. Seasons / 赛季
+**Settings → Seasons**: add the current season with its start time in UTC and an empty end. Add past seasons too if you have their data; they appear as dotted reference lines on forecasts.
 
-### Step 5: Run Analysis / 步骤5：运行分析
-```bash
-# Machine learning analysis / 机器学习分析
-python src/analysis/Machine_learning_analysis.py
-```
-————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
-———————————————————————————————————————— 📋 Common Commands / 常用命令————————————————————————————————————————————-————
+## 5. Pick items / 选择道具
+**Item catalog → Sync catalog** downloads every item and its parameters (rarity, type, gear score, vendor price, attribute ranges, everything DarkerDB returns). **Scan this season's market** reads the newest listings since the season start (40 pages by default, about a minute at DarkerDB's 60 requests/min limit) and marks which items are trading. Press **Track** on the items you want.
 
-### Data Collection / 数据收集
-```bash
-# Manual collection / 手动收集
-python src/api/Iron_Ore_API.py
-python src/api/Gold_Ore_API.py
-python src/api/Cobalt_Ore_API.py
-```
+## 6. Collect and forecast / 采集与预测
+**Collect data → Collect now** fetches listings for one item. A forecast needs at least 72 continuous hours of data in the selected season, so collect for a few days (or turn on **Scheduled collection**) before forecasting a new item.
 
-### Task Management / 任务管理
-```bash
-# Check status / 查看状态
-python src/scheduler/start_scheduler.py --status
-
-# List tasks / 列出任务
-python src/scheduler/start_scheduler.py --list
-
-# Run specific task / 运行特定任务
-python src/scheduler/start_scheduler.py --run "src/api/Iron_Ore_API.py"
-
-# Start scheduler / 启动调度器
-python src/scheduler/start_scheduler.py --start
-```
-
-### Data Analysis / 数据分析
-```bash
-# Machine learning / 机器学习
-python src/analysis/Machine_learning_analysis.py
-```
-
-## ⚙️ Configuration / 配置
-
-### Schedule Tasks / 调度任务
-Edit `src/scheduler/task_config.py`:
-编辑`src/scheduler/task_config.py`：
-
-```python
-TASKS = [
-    {
-        "name": "Iron Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Iron_Ore_API.py"),
-        "schedule_type": "daily",
-        "schedule_value": "23:00",
-        "enabled": True,
-        "description": "Daily Iron Ore data collection at 23:00"
-    }
-]
-```
-
-### Schedule Types / 调度类型
-- `"daily"` - Daily at specific time / 每日特定时间
-- `"hourly"` - Every hour / 每小时
-- `"interval"` - Every N minutes / 每N分钟
-- `"weekly"` - Weekly on specific day / 每周特定日期
-
-## 🔍 Troubleshooting / 故障排除
-
-### Database Issues / 数据库问题
-```bash
-# Check PostgreSQL / 检查PostgreSQL
-sudo service postgresql status
-
-# Test connection / 测试连接
-python -c "from src.database.Database_connect import DarkerMarketDB; print('OK' if DarkerMarketDB().connect() else 'Failed')"
-```
-
-### Import Errors / 导入错误
-```bash
-# Make sure you're in the right directory / 确保在正确目录
-pwd
-# Should show: /path/to/Darker Market
-
-# Check Python path / 检查Python路径
-python -c "import sys; print('\\n'.join(sys.path))"
-```
-
-### Task Scheduler Issues / 任务调度问题
-```bash
-# Check if files exist / 检查文件是否存在
-ls -la src/api/
-ls -la src/scheduler/
-
-# Test individual components / 测试单个组件
-python src/scheduler/start_scheduler.py --run "src/api/Iron_Ore_API.py"
-```
-
-## 📊 Expected Output / 预期输出
-
-### Successful Data Collection / 成功的数据收集
-```
-🔌 连接数据库...
-✅ 成功连接到PostgreSQL数据库
-📚 已加载 5028 条现有记录到去重集合
-去重后: 5 条新数据 (跳过 45 条重复数据)
-✅ 第1页: 收集到 5 条数据
-💾 开始统一插入数据到数据库...
-✅ 批量插入完成: 新增 5 条数据
-📊 本次运行总计新增数据: 5 条
-```
-
-### Successful Task Scheduling / 成功的任务调度
-```
-📋 从配置文件加载任务...
-📅 已添加每日任务: Iron Ore API 在 23:00
-📅 已添加每日任务: Gold Ore API 在 23:00
-📅 已添加每日任务: Cobalt Ore API 在 23:00
-🕐 智能定时任务调度器启动
-📝 当前定时任务:
-  1. run_script_async - 下次运行: 2025-09-22 23:00:00
-  2. run_script_async - 下次运行: 2025-09-22 23:00:00
-  3. run_script_async - 下次运行: 2025-09-22 23:00:00
-```
-
-## 🎯 Next Steps / 下一步
-
-1. **Customize Schedule** / **自定义调度** - Modify `task_config.py` for your needs
-2. **Add More Analysis** / **添加更多分析** - Extend the analysis modules
-3. **Monitor Logs** / **监控日志** - Check `scheduler.log` for issues
-4. **Scale Up** / **扩展** - Add more ore types or analysis methods
-
----
-
-**Need Help? / 需要帮助？** Check the full [README.md](README.md) for detailed documentation.
+## Troubleshooting / 排错
+| Symptom | Fix |
+|---|---|
+| Dialog says the key was rejected | Use a v2 key with both scopes. v1 keys stopped working. |
+| "need at least 72 contiguous hours" | Collect more data, or check the season start. Gaps longer than 6 hours cut the series. |
+| Forecast shows the baseline | Normal when prices move randomly. The banner explains why. |
+| `python -m backend` cannot import sklearn | Install the requirements into the same Python you run. |
+| Port 5001 in use | `PORT=5050 python -m backend` |
