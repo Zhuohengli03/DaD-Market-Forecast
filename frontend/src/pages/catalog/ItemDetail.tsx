@@ -40,17 +40,18 @@ function ListingStats({ row, localSeason }: { row: CatalogType; localSeason: num
   const known = row.season_listings != null && !!row.first_listed
   const season = row.season_listings ?? localSeason
   return (
-    <Card title={t('catalog.detail.listings')}>
-      <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+    <section aria-label={t('catalog.detail.listings')} className="lg:border-l lg:border-[var(--line)] lg:pl-6 min-w-[300px]">
+      <div className="text-sm font-semibold mb-2">{t('catalog.detail.listings')}</div>
+      <dl className="grid grid-cols-3 gap-4 text-sm">
         <div><dt className="text-[var(--muted)]">{t('catalog.seasonListings')}</dt>
           <dd className="text-xl font-semibold tabular-nums">{season ?? '–'}{row.season_listings == null && localSeason != null && <span className="ml-1 text-xs font-normal text-[var(--muted)]">{t('catalog.local')}</span>}</dd></div>
         <div><dt className="text-[var(--muted)]">{t('catalog.listings')}</dt><dd className="text-xl font-semibold tabular-nums">{row.listings_total ?? '–'}</dd></div>
         <div><dt className="text-[var(--muted)]">{t('catalog.firstListed')}</dt><dd className="text-xl font-semibold tabular-nums">{fmtDate(row.first_listed)}</dd></div>
       </dl>
-      <p className="mt-2 text-xs text-[var(--muted)]">{t('catalog.listingsHint')}</p>
-      {!known && <Button className="mt-3" size="sm" variant="ghost" loading={history.isPending}
+      <p className="mt-2 text-xs text-[var(--muted)] max-w-md">{t('catalog.listingsHint')}</p>
+      {!known && <Button className="mt-2" size="sm" variant="ghost" loading={history.isPending}
         onClick={() => history.mutate(row.archetype, { onSuccess: d => toast.push(t('catalog.detail.fetched', { n: d.credits_used ?? 0 })), onError: e => toast.push((e as Error).message, 'error') })}>{t('catalog.fetchHistory')}</Button>}
-    </Card>
+    </section>
   )
 }
 
@@ -94,7 +95,7 @@ export default function ItemDetail() {
       <Card>
         <div className="flex flex-wrap items-start gap-4">
           {current?.icon_url || row.icon_url ? <img src={current?.icon_url || row.icon_url!} alt="" className="w-24 h-24 object-contain rounded-lg bg-gray-50" /> : <div className="w-24 h-24 rounded-lg bg-gray-100" />}
-          <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex-1 min-w-[260px] space-y-1">
             <h1 className="text-xl font-semibold">{itemName(row, i18n.language)}{zh && row.name_zh && <span className="ml-2 text-sm font-normal text-[var(--muted)]">{row.name}</span>}</h1>
             <div className="flex flex-wrap gap-2 text-xs">
               <Badge>{row.category && row.category !== row.item_type ? t(`category.${row.category}`, { defaultValue: typeLabel(row.item_type, t) }) : typeLabel(row.item_type, t)}</Badge>
@@ -102,14 +103,12 @@ export default function ItemDetail() {
             </div>
             <div className="text-xs text-[var(--muted)]">{t('catalog.rarity')}：{row.rarities.map(x => rarityLabel(x, t)).join(' · ')}</div>
             <div className="text-xs text-[var(--muted)] font-mono">{row.archetype}</div>
+            {row.has_stats && <Link to={`/equipment?type=${row.archetype}`} className="inline-block text-sm font-medium text-[var(--accent)] hover:underline">{t('catalog.viewMarket')}</Link>}
           </div>
-          <div className="flex flex-col gap-2">
-            {row.has_stats && <Link to={`/equipment?type=${row.archetype}`} className="text-sm font-medium text-[var(--accent)] hover:underline">{t('catalog.viewMarket')}</Link>}
-          </div>
+          <ListingStats row={row} localSeason={localSeason} />
         </div>
       </Card>
       <QualityPrices archetype={row.archetype} />
-      <ListingStats row={row} localSeason={localSeason} />
       <Card title={t('catalog.detail.rarities')}>
         {row.has_stats && <p className="text-xs text-[var(--muted)] mb-2">{t('catalog.detail.statsNote')}</p>}
         <VariantTable row={row} tracked={tracked} shown={shown} onShow={setPicked} />
