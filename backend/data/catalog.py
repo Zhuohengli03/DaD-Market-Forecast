@@ -67,6 +67,12 @@ class CatalogStore:
         data.update(trade_totals=totals, trade_check_complete=complete, trade_checked_at=_now())
         self._write(data)
 
+    def save_trade_entry(self, arch: str, entry: dict) -> None:
+        data = dict(self.read())
+        info = {**data["trade_info"], arch: entry}
+        data.update(trade_info=info, trade_totals={**data["trade_totals"], arch: entry["total"]})
+        self._write(data)
+
     def save_trade_info(self, info: dict[str, dict], complete: bool) -> None:
         """Per type: total listings ever, first listing time, listings in the current season."""
         data = dict(self.read())

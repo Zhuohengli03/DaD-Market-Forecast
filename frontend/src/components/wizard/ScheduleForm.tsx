@@ -5,6 +5,7 @@ import { useSaveSchedule } from '../../api/hooks'
 import { Button } from '../ui/Button'
 import { inputCls } from '../ui/Field'
 import { useToast } from '../ui/Toast'
+import { fmtCount, monthlyRequests } from '../../lib/quota'
 
 export const MIN_SECONDS = 30
 const UNITS = [['d', 86400], ['h', 3600], ['m', 60], ['s', 1]] as const
@@ -20,9 +21,9 @@ export function requestsPerMinute(intervalSeconds: number, items: number): numbe
   return Math.ceil((items * 60) / Math.max(intervalSeconds, 1))
 }
 
-interface Props { initialSeconds: number; initialAuto: boolean; trackedItems: number; rateLimit: number; submitLabel: string; onSaved?: () => void }
+interface Props { initialSeconds: number; initialAuto: boolean; trackedItems: number; rateLimit: number; monthlyQuota?: number; submitLabel: string; onSaved?: () => void }
 
-export function ScheduleForm({ initialSeconds, initialAuto, trackedItems, rateLimit, submitLabel, onSaved }: Props) {
+export function ScheduleForm({ initialSeconds, initialAuto, trackedItems, rateLimit, monthlyQuota = 10000, submitLabel, onSaved }: Props) {
   const { t } = useTranslation()
   const save = useSaveSchedule(); const toast = useToast()
   const [parts, setParts] = useState<Parts>(splitSeconds(initialSeconds))
@@ -31,6 +32,9 @@ export function ScheduleForm({ initialSeconds, initialAuto, trackedItems, rateLi
   const tooShort = total < MIN_SECONDS
   const perMin = requestsPerMinute(total, Math.max(trackedItems, 1))
   const over = auto && !tooShort && perMin > rateLimit
+  const perMonth = monthlyRequests(total, Math.max(trackedItems, 1))
+  const overMonth = auto && !tooShort && perMonth > monthlyQuota
+  const [ack, setAck] = useState(false)
   return (
     <div className="space-y-3 text-sm">
       <p className="text-[var(--muted)]">{t('wizard.schedule.intro')}</p>
@@ -51,9 +55,14 @@ export function ScheduleForm({ initialSeconds, initialAuto, trackedItems, rateLi
         <p className="flex gap-2"><AlertTriangle size={16} className={over ? 'text-[var(--bad)]' : 'text-[var(--warn)]'} />{t('wizard.schedule.quota')}</p>
         {!tooShort && <p className="mt-1 text-xs">{t('wizard.schedule.estimate', { items: trackedItems, perMin, perDay: Math.ceil((trackedItems * 86400) / total) })}</p>}
         {over && <p className="mt-1 text-xs font-medium text-[var(--bad)]">{t('wizard.schedule.over', { limit: rateLimit })}</p>}
+        {!tooShort && <p className="mt-1 text-xs">{t('wizard.schedule.month', { n: fmtCount(perMonth), quota: fmtCount(monthlyQuota) })}</p>}
+        {overMonth && <>
+          <p className="mt-1 text-xs font-medium text-[var(--bad)]">{t('wizard.schedule.overMonth', { days: Math.max(1, Math.floor((monthlyQuota / perMonth) * 30)) })}</p>
+          <label className="mt-1 flex items-center gap-2 text-xs"><input type="checkbox" checked={ack} onChange={e => setAck(e.target.checked)} />{t('wizard.schedule.ack')}</label>
+        </>}
       </div>
       <p className="text-xs text-[var(--muted)]">{t('wizard.schedule.hint')}</p>
-      <Button disabled={tooShort} loading={save.isPending} onClick={() => save.mutate({ interval_seconds: total, auto_collect: auto }, { onSuccess: () => { toast.push(t('settings.saved')); onSaved?.() }, onError: e => toast.push((e as Error).message, 'error') })}>{submitLabel}</Button>
+      <Button disabled={tooShort || (overMonth && !ack)} loading={save.isPending} onClick={() => save.mutate({ interval_seconds: total, auto_collect: auto }, { onSuccess: () => { toast.push(t('settings.saved')); onSaved?.() }, onError: e => toast.push((e as Error).message, 'error') })}>{submitLabel}</Button>
     </div>
   )
 }

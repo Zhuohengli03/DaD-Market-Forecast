@@ -24,7 +24,8 @@ def _wait(c, job_id, timeout=60):
 
 def test_app_settings_defaults_and_update(tmp_path):
     s = AppSettings(tmp_path / "settings.json")
-    assert s.get() == {"initialized_at": None, "collect_interval_seconds": 21600, "auto_collect": False}
+    assert s.get() == {"initialized_at": None, "collect_interval_seconds": 21600, "auto_collect": False,
+                       "monthly_quota": 10000}
     s.update(collect_interval_seconds=90, auto_collect=True)
     assert AppSettings(tmp_path / "settings.json").get()["collect_interval_seconds"] == 90
 

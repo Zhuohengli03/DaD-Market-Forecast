@@ -1,4 +1,6 @@
-export interface ItemInfo { name: string; name_zh?: string | null; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; rows: number; first_ts: string | null; last_ts: string | null }
+export interface QuotaInfo { credits_remaining: number | null; rate_limit: number | null; updated_at: string | null; monthly_quota: number }
+export interface TypeHistory { total: number | null; first: string | null; season: number | null; season_start: string | null }
+export interface ItemInfo { icon_url?: string | null; season_rows?: number | null; name: string; name_zh?: string | null; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; rows: number; first_ts: string | null; last_ts: string | null }
 export interface SeriesPoint { ts: string; median_price: number | null; min_price: number | null; max_price: number | null; p25: number | null; p75: number | null; listings: number; sold: number; volume: number }
 export interface SeriesResponse { item: string; resolution: Resolution; start: string | null; end: string | null; points: SeriesPoint[] }
 export type Resolution = '1h' | '4h' | '1d'
@@ -32,9 +34,9 @@ export interface ItemConfigEntry { name: string; item_id?: string; file?: string
 export interface ItemSchedule { mode: 'interval' | 'daily'; seconds?: number; times?: string[] }
 export interface ScheduleInput { mode: 'default' | 'interval' | 'daily'; seconds?: number; times?: string[] }
 export interface ItemsConfig { items: ItemConfigEntry[]; categories: Record<string, string>; auto_discovery?: Record<string, unknown> }
-export interface StatusResponse { source: string; python: string; items: { name: string; rows: number; first_ts: string | null; last_ts: string | null }[]; jobs_running: Job[]; scheduler_running: boolean }
+export interface StatusResponse { source: string; python: string; items: { name: string; rows: number; first_ts: string | null; last_ts: string | null }[]; jobs_running: Job[]; scheduler_running: boolean; collecting?: Record<string, 'collecting' | 'waiting'> }
 export interface Environment { python_version: string; python_ok: boolean; storage: string; data_dir: string; db_host: string | null; db_database: string | null; db_saved?: { host: string; port: number; database: string; user: string } | null }
-export interface SetupState { initialized: boolean; collect_interval_seconds: number; rate_limit_per_minute: number; auto_collect: boolean; environment: Environment; api_key_configured: boolean; api_key_hint: string | null; data_source: string; seasons: number; tracked_items: number; catalog_items: number }
+export interface SetupState { monthly_quota: number; initialized: boolean; collect_interval_seconds: number; rate_limit_per_minute: number; auto_collect: boolean; environment: Environment; api_key_configured: boolean; api_key_hint: string | null; data_source: string; seasons: number; tracked_items: number; catalog_items: number }
 export interface InitItem { item_id: string; name: string; name_zh?: string | null; status: 'waiting' | 'collecting' | 'collected' | 'collect_failed' | 'forecasting' | 'done'; pages: number; collected: number; forecast: 'ok' | 'not_enough_data' | 'failed' | null; run_id: string | null; hours: number | null; error?: string }
 export interface DatabaseInput { host: string; port: number; database: string; user: string; password: string }
 export interface MarketStats { name: string; listings: number; sold: number; min_price_per_unit: number; median_price_per_unit: number; last_seen: string }

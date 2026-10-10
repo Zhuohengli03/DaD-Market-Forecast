@@ -33,7 +33,13 @@ export default function Catalog() {
   }, [stream.status, qc])
   const cat = useCatalog({ q: query || undefined, item_type: type || undefined, has_stats: stats === '' ? undefined : stats === 'true', page, page_size: PAGE })
   const tracked = new Set((items.data ?? []).map(i => i.item_id ?? i.name))
-  const run = (kind: 'sync' | 'check') => job.mutate(kind, { onSuccess: setJobId, onError: e => toast.push((e as Error).message, 'error') })
+  const run = (kind: 'sync' | 'check') => {
+    const unchecked = Math.max(0, (meta.data?.types_total ?? 0) - (meta.data?.trade_checked ?? 0))
+    const cost = kind === 'check' ? unchecked : 30
+    if (kind === 'check' && unchecked === 0) { toast.push(t('catalog.nothingToCheck')); return }
+    if (!window.confirm(t('catalog.confirmCost', { n: cost }))) return
+    job.mutate(kind, { onSuccess: setJobId, onError: e => toast.push((e as Error).message, 'error') })
+  }
   const pages = Math.max(1, Math.ceil((cat.data?.total ?? 0) / PAGE))
   const noKey = setup.data && !setup.data.api_key_configured
   const m = meta.data
@@ -46,7 +52,6 @@ export default function Catalog() {
         <Button size="sm" disabled={!!noKey || !m?.items} loading={job.isPending} onClick={() => run('check')}>{m?.trade_check_complete ? t('catalog.recheck') : t('catalog.check')}</Button></>}>
         <p className="text-xs text-[var(--muted)] mb-2">{t('catalog.onlyTradable')}</p>
         <p className="text-xs text-[var(--muted)] mb-2">{t('catalog.seasonNote', { date: m?.season_start ? fmtDate(m.season_start) : '–' })}</p>
-        {m?.items && m.trade_check_complete && !m.season_start ? <p className="text-xs text-[var(--warn)] mb-2">{t('catalog.needSeasonCheck')}</p> : null}
         {m?.items && !m.trade_check_complete ? <p className="text-xs text-[var(--warn)] mb-2">{t('catalog.notChecked')} {m.trade_checked > 0 && t('catalog.checking', { done: m.trade_checked, total: m.types_total })}</p> : null}
         <dl className="text-xs grid grid-cols-1 md:grid-cols-3 gap-2 text-[var(--muted)]">
           <div>{t('catalog.patch')}: <b className="text-[var(--ink)]">{patchLabel(m?.patch, t)}</b></div>
@@ -64,7 +69,7 @@ export default function Catalog() {
         <Button variant="ghost" size="sm" aria-label={t('common.next')} disabled={page >= pages} onClick={() => setPage(p => p + 1)}>›</Button>
       </div>
       {!m?.items ? <EmptyState title={t('catalog.empty')} /> : !cat.data?.rows.length ? <EmptyState title={t('catalog.noMatch')} /> :
-        <CatalogTable rows={cat.data.rows} tracked={tracked} />}
+        <CatalogTable rows={cat.data.rows} tracked={tracked} localSeason={Object.fromEntries((items.data ?? []).filter(i => i.item_id && i.season_rows != null).map(i => [i.item_id!, i.season_rows!]))} />}
     </div>
   )
 }

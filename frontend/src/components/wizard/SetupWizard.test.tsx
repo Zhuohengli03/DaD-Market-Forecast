@@ -82,6 +82,10 @@ it('saves the collection interval and auto-collect on finish', () => {
   fireEvent.change(screen.getByLabelText('时'), { target: { value: '0' } })
   fireEvent.change(screen.getByLabelText('分'), { target: { value: '1' } })
   fireEvent.change(screen.getByLabelText('秒'), { target: { value: '30' } })
+  // every 90 s is far over the free plan's 10,000 requests a month: saving needs an explicit acknowledgement
+  expect(screen.getByText(/超出每月额度/)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: '完成' })).toBeDisabled()
+  fireEvent.click(screen.getByLabelText('我知道会超出额度，仍然保存'))
   fireEvent.click(screen.getByRole('button', { name: '完成' }))
   expect(schedule.mutate.mock.calls[0][0]).toEqual({ interval_seconds: 90, auto_collect: true })
 })

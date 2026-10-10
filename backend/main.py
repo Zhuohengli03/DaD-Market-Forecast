@@ -15,7 +15,7 @@ from .settings import Settings
 
 log = logging.getLogger("darker_market")
 
-ROUTER_MODULES = ("setup", "catalog", "equipment", "items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config")
+ROUTER_MODULES = ("setup", "catalog", "equipment", "items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config", "quota")
 
 
 def _format_validation(exc: RequestValidationError) -> str:
@@ -25,6 +25,9 @@ def _format_validation(exc: RequestValidationError) -> str:
         parts.append(f"{loc}: {e.get('msg')}")
     return "; ".join(parts) or "invalid request"
 
+
+
+from .services.collection import collection_states  # noqa: E402
 
 
 def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
@@ -73,6 +76,7 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
             "items": [i.__dict__ for i in st.item_stats.get()],
             "jobs_running": [j.to_dict() for j in st.jobs.active()],
             "scheduler_running": st.scheduler.running(),
+            "collecting": collection_states(st),
         })
 
     _include_routers(app)
@@ -122,7 +126,7 @@ def _attach_services(app: FastAPI) -> None:
     from .services.collection import collector_argv
     st.collector_argv = lambda entry, since: collector_argv(st.settings, entry) + (["--since", since] if since else [])
     st.catalog = CatalogStore(st.settings.catalog_path)
-    st.key_validator = default_key_validator
+    st.key_validator = lambda k: default_key_validator(k, quota_file=st.settings.data_dir / "quota.json")
     st.runs = RunStore(st.settings.runs_dir)
     st.jobs = JobManager()
     st.scheduler = SchedulerController(st.settings, st.jobs)

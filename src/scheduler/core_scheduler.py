@@ -11,6 +11,7 @@ import subprocess
 import sys
 import os
 import threading
+import json
 from datetime import datetime
 import logging
 from task_config import TASKS, SCHEDULER_CONFIG
@@ -107,6 +108,25 @@ class SmartScheduler:
                 del self.running_tasks[script_name]
             return False
     
+    def _set_state(self, script_name, state):
+        """Share which tasks are collecting or waiting with the web app (caller holds _queued_lock)."""
+        states = self.__dict__.setdefault("_states", {})
+        if state:
+            states[script_name] = state
+        else:
+            states.pop(script_name, None)
+        data_dir = os.environ.get("DARKER_DATA_DIR")
+        if not data_dir:
+            return
+        try:
+            path = os.path.join(data_dir, "scheduler_state.json")
+            tmp = f"{path}.{os.getpid()}.tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump({"tasks": dict(states), "updated_at": datetime.now().isoformat()}, f, ensure_ascii=False)
+            os.replace(tmp, path)
+        except OSError as exc:
+            logging.warning(f"无法写入调度状态: {exc}")
+
     def run_script_async(self, script_path, script_name="Unknown", args=None):
         """异步运行脚本（避免阻塞）。同一任务上一次还没结束时跳过本次，避免短间隔下任务越积越多。"""
         with self._queued_lock:
@@ -114,10 +134,13 @@ class SmartScheduler:
                 logging.info(f"⏭️ 上一次还没结束，跳过本次: {script_name}")
                 return None
             self._queued.add(script_name)
+            self._set_state(script_name, "waiting")
 
         def run():
             try:
                 with _RUN_SLOTS:
+                    with self._queued_lock:
+                        self._set_state(script_name, "collecting")
                     logging.info(f"🔄 异步任务开始: {script_name}")
                     if self.run_script(script_path, script_name, args):
                         logging.info(f"🎉 异步任务完成: {script_name}")
@@ -126,6 +149,7 @@ class SmartScheduler:
             finally:
                 with self._queued_lock:
                     self._queued.discard(script_name)
+                    self._set_state(script_name, None)
 
         thread = threading.Thread(target=run, name=f"AsyncTask-{script_name}", daemon=True)
         thread.start()

@@ -89,9 +89,10 @@ def test_scheduler_restarts_after_item_change(project_root):
         first.wait(timeout=5)
 
 
-def test_scheduler_runs_one_collection_at_a_time():
+def test_scheduler_runs_as_many_collections_as_collect_all():
+    from backend.services.initializer import PARALLEL_COLLECTS
     from src.scheduler.task_config import SCHEDULER_CONFIG
-    assert SCHEDULER_CONFIG["max_concurrent_tasks"] == 1
+    assert SCHEDULER_CONFIG["max_concurrent_tasks"] == PARALLEL_COLLECTS == 3
 
 
 # ---- I6 + M1 + M2 API key handling ------------------------------------------

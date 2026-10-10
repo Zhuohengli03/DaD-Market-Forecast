@@ -2,8 +2,9 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Activity, BarChart3, Database, Download, LayoutDashboard, Package, Settings, Clock, Swords } from 'lucide-react'
 import { useStatus } from '../../api/hooks'
+import { RunningTasks } from '../RunningTasks'
 import { setLang } from '../../i18n'
-import { Badge } from '../ui/Badge'
+import { QuotaWidget } from './QuotaWidget'
 
 // ordered by workflow: data has to be collected before it can be viewed or forecast
 const HOME = { to: '/', key: 'dashboard', icon: LayoutDashboard }
@@ -25,7 +26,6 @@ type NavItem = { to: string; key: string; icon: typeof Package }
 export function Shell() {
   const { t, i18n } = useTranslation()
   const status = useStatus()
-  const running = status.data?.jobs_running.length ?? 0
   const link = (n: NavItem) => (
     <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => `flex items-center gap-3 px-4 py-2 text-sm ${isActive ? 'bg-white/10 text-white' : 'text-gray-300 hover:bg-white/5'}`}>
       <n.icon size={16} />{t(`nav.${n.key}`)}
@@ -43,10 +43,10 @@ export function Shell() {
               {g.items.map(link)}
             </div>
           ))}
-          <div className="mt-auto border-t border-white/10 pt-2">{link(SETTINGS)}</div>
+          <div className="mt-auto border-t border-white/10 pt-2">{link(SETTINGS)}<QuotaWidget /></div>
         </nav>
-        <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between text-xs">
-          <span>{running > 0 ? <Badge tone="warn">{running} {t('common.running')}</Badge> : <span className="text-gray-500">{t('dashboard.noJobs')}</span>}</span>
+        <div className="px-4 py-2 border-t border-white/10 text-xs"><RunningTasks compact /></div>
+        <div className="px-4 py-2 border-t border-white/10 flex items-center justify-end text-xs">
           <div className="flex gap-1">
             {(['zh', 'en'] as const).map(l => <button key={l} type="button" onClick={() => setLang(l)} className={`px-1.5 py-0.5 rounded ${i18n.language === l ? 'bg-white/20 text-white' : 'text-gray-400'}`}>{l.toUpperCase()}</button>)}
           </div>

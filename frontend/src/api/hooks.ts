@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, RunSummary, ScheduleInput, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
+import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, QuotaInfo, RunSummary, ScheduleInput, TypeHistory, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
 
 export const useStatus = () => useQuery({ queryKey: ['status'], queryFn: () => api.get<StatusResponse>('/status').then(r => r.data), refetchInterval: 5000 })
 export const useItems = () => useQuery({ queryKey: ['items'], queryFn: () => api.get<ItemInfo[]>('/items').then(r => r.data) })
@@ -77,7 +77,7 @@ export const useEquipmentStats = (archetype: string) => useQuery({
   queryKey: ['equipmentStats', archetype], enabled: !!archetype, staleTime: 5 * 60_000,
   queryFn: () => api.get<{ stats: EquipmentStat[]; rarities: string[] }>(`/equipment/${archetype}/stats`).then(r => r.data),
 })
-export const useEquipmentQuery = () => useMutation({ mutationFn: (body: EquipmentQueryBody) => api.post<EquipmentResult>('/equipment/query', body).then(r => r.data) })
+export const useEquipmentQuery = () => useMutation({ mutationKey: ['equipmentQuery'], mutationFn: (body: EquipmentQueryBody) => api.post<EquipmentResult>('/equipment/query', body).then(r => r.data) })
 export const useCatalogMeta = () => useQuery({ queryKey: ['catalogMeta'], queryFn: () => api.get<CatalogMeta>('/catalog/meta').then(r => r.data) })
 export function useCatalogJob() {
   const qc = useQueryClient()
@@ -122,4 +122,15 @@ export function useTrackBulk() {
 export function useCollectAll() {
   const qc = useQueryClient()
   return useMutation({ mutationFn: () => api.post<{ job_id: string }>('/collect-all').then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
+}
+export const useQuota = () => useQuery({ queryKey: ['quota'], queryFn: () => api.get<QuotaInfo>('/quota').then(r => r.data), refetchInterval: 15000 })
+export function useSaveQuota() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (monthly_quota: number) => api.put<SetupState>('/setup/quota', { monthly_quota }).then(r => r.data),
+    onSuccess: d => { qc.setQueryData(['setup'], d); qc.invalidateQueries({ queryKey: ['quota'] }) } })
+}
+export function useTypeHistory() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (archetype: string) => api.post<TypeHistory>(`/catalog/types/${encodeURIComponent(archetype)}/history`).then(r => r.data),
+    onSuccess: () => { ['catalog', 'quota'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
 }

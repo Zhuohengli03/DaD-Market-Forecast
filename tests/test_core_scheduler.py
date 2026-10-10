@@ -26,3 +26,23 @@ def test_seconds_schedule_and_no_pile_up(tmp_path, monkeypatch):
     first.join(timeout=5)
     assert sched.run_script_async(str(script), "Collect X") is not None
     schedule.clear()
+
+
+def test_scheduler_reports_collecting_and_waiting_tasks(tmp_path, monkeypatch):
+    import json
+    import core_scheduler
+    monkeypatch.setenv("DARKER_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(core_scheduler, "_RUN_SLOTS", threading.BoundedSemaphore(1))
+    sched = core_scheduler.SmartScheduler.__new__(core_scheduler.SmartScheduler)
+    sched.running_tasks = {}
+    sched._queued = set()
+    sched._queued_lock = threading.Lock()
+    script = tmp_path / "s.py"
+    script.write_text("import time\ntime.sleep(0.8)\n")
+    a = sched.run_script_async(str(script), "Collect A")
+    b = sched.run_script_async(str(script), "Collect B")
+    time.sleep(0.3)
+    state = json.loads((tmp_path / "scheduler_state.json").read_text())["tasks"]
+    assert sorted(state.values()) == ["collecting", "waiting"]
+    a.join(timeout=5); b.join(timeout=5)
+    assert json.loads((tmp_path / "scheduler_state.json").read_text())["tasks"] == {}

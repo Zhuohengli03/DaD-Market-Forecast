@@ -8,6 +8,8 @@ from ..data.app_settings import MAX_INTERVAL_SECONDS, MIN_INTERVAL_SECONDS
 
 from ..schemas import ok
 
+import logging
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["items"])
 
 
@@ -20,20 +22,42 @@ class TrackIn(BaseModel):
 def list_items(request: Request):
     st = request.app.state
     stats = {i.name: i for i in st.item_stats.get()}
-    zh = {}
+    zh, icons = {}, {}
     for variants in st.catalog.types().values():
         for v in variants:
+            if v.get("icon_url"):
+                icons[v["id"]] = v["icon_url"]
+                icons.setdefault(v.get("name"), v["icon_url"])
             if v.get("name_zh"):
                 zh[v["id"]] = v["name_zh"]
                 zh.setdefault(v.get("name"), v["name_zh"])
+    season = _latest_season_start(st)
     out = []
     for it in st.items.list():
         s = stats.get(it["name"])
-        base = zh.get(it.get("item_id")) or zh.get(it["name"].split(" (")[0])
-        suffix = it["name"][len(it["name"].split(" (")[0]):] if base and " (" in it["name"] else ""
+        plain = it["name"].split(" (")[0]
+        base = zh.get(it.get("item_id")) or zh.get(plain)
+        suffix = it["name"][len(plain):] if base and " (" in it["name"] else ""
         out.append({**it, "name_zh": f"{base}{suffix}" if base else None, "rows": s.rows if s else 0, "first_ts": s.first_ts if s else None,
-                    "last_ts": s.last_ts if s else None})
+                    "last_ts": s.last_ts if s else None, "icon_url": icons.get(it.get("item_id")) or icons.get(plain),
+                    "season_rows": _season_rows(st, it["name"], season) if s and s.rows else 0})
     return ok(out)
+
+
+def _latest_season_start(st):
+    import pandas as pd
+    starts = [x["start"] for x in st.seasons.list() if x.get("start")]
+    return pd.Timestamp(max(starts, key=pd.Timestamp)) if starts else None
+
+
+def _season_rows(st, name, season) -> int | None:
+    """Listings collected locally since the latest season started (no DarkerDB request)."""
+    from ..data.repository import ListingQuery
+    try:
+        return st.repo.fetch(name, ListingQuery(start=season, page_size=1))[1]
+    except Exception:  # noqa: BLE001 - a broken store must not break the item list
+        logger.warning("could not count this-season rows for %s", name, exc_info=True)
+        return None
 
 
 @router.post("/items/track", status_code=201)

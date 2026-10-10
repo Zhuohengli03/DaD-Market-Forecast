@@ -118,31 +118,35 @@ def run_initialization(state, job, item_ids: list[str], max_pages: int) -> str:
     return "init"
 
 
+PARALLEL_COLLECTS = 3  # collectors share one key's per-minute limit; more workers would only queue on it
+
+
 def run_collect_all(state, job) -> str:
-    """Collect every enabled tracked item, one after another, with per-item progress."""
+    """Collect every enabled tracked item, up to PARALLEL_COLLECTS at a time, with per-item progress."""
     import os
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
     from .collection import collector_env
     jm, settings = state.jobs, state.settings
     rows = [{"item_id": it.get("item_id") or it["name"], "name": it["name"], "name_zh": None, "status": "waiting",
              "pages": 0, "collected": 0, "forecast": None, "run_id": None, "hours": None}
             for it in state.items.list(enabled_only=True)]
-    names_zh = {}
-    for variants in state.catalog.types().values():
-        for v in variants:
-            if v.get("name_zh"):
-                names_zh[v["id"]] = v["name_zh"]
+    names_zh = {v["id"]: v["name_zh"] for variants in state.catalog.types().values() for v in variants if v.get("name_zh")}
     for r in rows:
         r["name_zh"] = names_zh.get(r["item_id"])
     env = {**os.environ, **collector_env(settings), "PYTHONUNBUFFERED": "1"}
+    lock = threading.Lock()
 
     def publish(stage):
-        jm.progress(job, stage, sum(r["status"] in ("collected", "collect_failed") for r in rows), len(rows),
-                    items=[dict(r) for r in rows])
-    for row in rows:
+        with lock:
+            jm.progress(job, stage, sum(r["status"] in ("collected", "collect_failed") for r in rows), len(rows),
+                        items=[dict(r) for r in rows])
+
+    def collect(row):
         row["status"] = "collecting"
         publish("collect")
 
-        def on_page(page, new, row=row):
+        def on_page(page, new):
             row["pages"], row["collected"] = page or 0, new
             publish("collect")
         try:
@@ -152,6 +156,8 @@ def run_collect_all(state, job) -> str:
         except RuntimeError as exc:
             row["status"], row["error"] = "collect_failed", ("auth" if "auth" in str(exc) else "api")
         publish("collect")
+    with ThreadPoolExecutor(max_workers=PARALLEL_COLLECTS) as pool:
+        list(pool.map(collect, rows))
     state.item_stats.invalidate()
     publish("done")
     return "collect-all"

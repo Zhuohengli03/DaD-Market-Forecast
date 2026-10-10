@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 from src.api.darkerdb_client import DarkerDBClient
 from ..schemas import ok
-from ..services.catalog_sync import check_tradability, sync_catalog
+from ..services.catalog_sync import check_tradability, sync_catalog, type_history
 
 router = APIRouter(tags=["catalog"])
 
@@ -12,7 +12,7 @@ def client_for_state(st):
     key = st.settings.darker_market_api_key
     if not key:
         raise HTTPException(409, "还没有设置 DarkerDB API key，请先在设置页填写 / Set your DarkerDB API key first")
-    factory = getattr(st, "client_factory", None) or (lambda k: DarkerDBClient(k))
+    factory = getattr(st, "client_factory", None) or (lambda k: DarkerDBClient(k, quota_file=st.settings.data_dir / "quota.json"))
     return factory(key)
 
 
@@ -21,7 +21,7 @@ def _client(request: Request):
     key = st.settings.darker_market_api_key
     if not key:
         raise HTTPException(409, "还没有设置 DarkerDB API key，请先在设置页填写 / Set your DarkerDB API key first")
-    factory = getattr(st, "client_factory", None) or (lambda k: DarkerDBClient(k))
+    factory = getattr(st, "client_factory", None) or (lambda k: DarkerDBClient(k, quota_file=st.settings.data_dir / "quota.json"))
     return factory(key)
 
 
@@ -68,8 +68,23 @@ def start_trade_check(request: Request, body: CheckIn | None = None):
         raise HTTPException(409, "请先同步道具库 / sync the catalog first")
     job = st.jobs.create("catalog", "检查哪些道具能交易 / check which items trade")
     force = (body or CheckIn()).force
-    seasons = st.seasons.list()
-    season_start = seasons[-1]["start"] if seasons else None
     st.jobs.run_in_thread(job, lambda j: str(check_tradability(client, st.catalog, lambda s: st.jobs.append_log(j, s), force,
-                                                               progress=_progress(st.jobs, j), season_start=season_start)))
+                                                               progress=_progress(st.jobs, j))))
     return ok({"job_id": job.id})
+
+
+def latest_season_start(st) -> str | None:
+    import pandas as pd
+    starts = [s["start"] for s in st.seasons.list() if s.get("start")]
+    return max(starts, key=lambda x: pd.Timestamp(x)) if starts else None
+
+
+@router.post("/catalog/types/{archetype}/history")
+def one_type_history(archetype: str, request: Request):
+    """First listing date and this-season count for one type (up to 2 DarkerDB requests, then cached)."""
+    st = request.app.state
+    client = _client(request)
+    try:
+        return ok(type_history(client, st.catalog, archetype, latest_season_start(st)))
+    except KeyError:
+        raise HTTPException(404, "道具库里没有这个道具 / unknown item type")

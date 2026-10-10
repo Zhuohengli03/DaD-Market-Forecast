@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { useToast } from '../components/ui/Toast'
 import { itemName } from '../lib/labels'
+import { fmtCount, taskRunsPerMonth } from '../lib/quota'
 import { fmtInterval, ItemScheduleEditor } from './scheduler/ItemScheduleEditor'
 
 export default function Scheduler() {
@@ -30,6 +31,11 @@ export default function Scheduler() {
       </Card>
       <Card>
         <p className="text-xs text-[var(--muted)] mb-2">{t('scheduler.perItemHint', { v: fmtInterval(defaultSeconds, t) })}</p>
+        {(() => {
+          const perMonth = (sc.data?.tasks ?? []).reduce((n, tk) => n + taskRunsPerMonth(tk.schedule_type, tk.schedule_value), 0)
+          const quota = setup.data?.monthly_quota ?? 10000
+          return <p className={`text-xs mb-2 ${perMonth > quota ? 'text-[var(--bad)] font-medium' : 'text-[var(--muted)]'}`}>{t('scheduler.month', { n: fmtCount(perMonth), quota: fmtCount(quota) })}{perMonth > quota ? ` ${t('scheduler.monthOver')}` : ''}</p>
+        })()}
         <table className="w-full text-sm"><thead className="text-left text-[var(--muted)]"><tr><th className="py-1">{t('scheduler.task')}</th><th>{t('scheduler.schedule')}</th><th></th></tr></thead>
           <tbody>{(sc.data?.tasks ?? []).map(tk => {
             const name = tk.item ?? tk.name

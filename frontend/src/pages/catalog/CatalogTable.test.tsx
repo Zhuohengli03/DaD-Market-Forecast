@@ -16,6 +16,7 @@ const rows = [
 
 function setup(track = vi.fn()) {
   vi.mocked(hooks.useTrackItem).mockReturnValue({ mutate: track, isPending: false } as never)
+  vi.mocked(hooks.useTypeHistory).mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
   render(<MemoryRouter><CatalogTable rows={rows as never} tracked={new Set(['id.item.iron_ores_2001'])} /></MemoryRouter>)
   return track
 }
