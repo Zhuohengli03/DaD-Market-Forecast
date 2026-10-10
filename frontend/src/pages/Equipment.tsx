@@ -24,13 +24,13 @@ function DailyChart({ days }: { days: EquipmentDay[] }) {
   const option = {
     animation: false, tooltip: { trigger: 'axis', valueFormatter: (v: number) => (v == null ? '–' : Number(v).toFixed(0)) },
     legend: { top: 0, data: [t('equipment.median'), t('equipment.soldMedian')] }, grid: { left: 56, right: 56, top: 32, bottom: 32 },
-    xAxis: { type: 'category', data: x }, yAxis: [{ type: 'value', scale: true }, { type: 'value', name: '#', splitLine: { show: false } }],
+    xAxis: { type: 'category', data: x }, yAxis: [{ type: 'value', scale: true }, { type: 'value', name: t('equipment.count'), splitLine: { show: false } }],
     series: [
       { name: 'low', type: 'line', data: days.map(d => d.low), lineStyle: { opacity: 0 }, stack: 'r', symbol: 'none', silent: true },
       { name: t('equipment.range'), type: 'line', data: days.map(d => d.high - d.low), lineStyle: { opacity: 0 }, stack: 'r', areaStyle: { color: '#2563eb', opacity: 0.08 }, symbol: 'none', silent: true },
       { name: t('equipment.median'), type: 'line', data: days.map(d => d.median), lineStyle: { color: '#2563eb', width: 2 } },
       { name: t('equipment.soldMedian'), type: 'line', data: days.map(d => d.sold_median), lineStyle: { color: '#16a34a', width: 2 }, connectNulls: true },
-      { name: '#', type: 'bar', yAxisIndex: 1, data: days.map(d => d.listings), itemStyle: { color: '#e5e7eb' } },
+      { name: t('equipment.count'), type: 'bar', yAxisIndex: 1, data: days.map(d => d.listings), itemStyle: { color: '#e5e7eb' } },
     ],
   }
   return <ReactECharts option={option} notMerge style={{ height: 300, width: '100%' }} />

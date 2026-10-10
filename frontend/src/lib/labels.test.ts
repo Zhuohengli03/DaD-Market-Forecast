@@ -24,3 +24,20 @@ it('shows only the matching half of bilingual server messages', () => {
   expect(localizeMessage('请先同步道具库 / sync the catalog first', 'en')).toBe('sync the catalog first')
   expect(localizeMessage('only one language', 'zh')).toBe('only one language')
 })
+
+import { paramValue, patchLabel } from './labels'
+import { fmtTs } from './format'
+
+it('translates parameter values, patch and season names', () => {
+  expect(paramValue('rarity', 'unique', i18n.t)).toBe('独特')
+  expect(paramValue('item_type', 'accessory', i18n.t)).toBe('饰品')
+  expect(paramValue('season_label', 'Season 9', i18n.t)).toBe('第 9 赛季')
+  expect(paramValue('has_model', true, i18n.t)).toBe('是')
+  expect(paramValue('gear_score', 30, i18n.t)).toBe('30')
+  expect(patchLabel('Early Access Season #11', i18n.t)).toBe('抢先体验第 11 赛季')
+  expect(i18n.t('param.has_model')).toBe('有 3D 模型')
+})
+
+it('formats times in Chinese when the interface is Chinese', () => {
+  expect(fmtTs('2026-10-09T06:42:00Z')).toMatch(/月/)
+})

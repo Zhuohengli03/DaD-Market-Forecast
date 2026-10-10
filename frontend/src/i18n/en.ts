@@ -44,6 +44,9 @@ export default {
   chart: { history: 'Hourly median', band: 'Interval', forecast: 'Forecast', actual: 'Later real price' },
   rarity: { poor: 'Poor', common: 'Common', uncommon: 'Uncommon', rare: 'Rare', epic: 'Epic', legendary: 'Legendary', unique: 'Unique', artifact: 'Artifact' },
   itemType: { weapon: 'Weapon', armor: 'Armor', accessory: 'Accessory', utility: 'Utility', misc: 'Misc' },
+  slot: {},
+  patch: { season: 'Early Access Season #{{n}}', seasonLabel: 'Season {{n}}' },
+  yes: 'Yes', no: 'No',
   param: {},
   models: { naive: 'Repeat last hour', seasonal_naive_24: 'Repeat yesterday', ets: 'Exponential smoothing', arima: 'ARIMA', ridge: 'Linear regression', hgb: 'Gradient boosting', rf: 'Random forest', ensemble: 'Weighted blend' },
   modelHelp: { naive: 'Baseline: price stays the same', seasonal_naive_24: 'Baseline: same as this time yesterday', ets: 'Smooths trend and the daily cycle', arima: 'Classic statistical time-series model', ridge: 'Linear model on past prices and volume', hgb: 'Tree model for non-linear patterns', rf: 'Average of many decision trees' },
@@ -62,7 +65,7 @@ export default {
   equipment: {
     title: 'Equipment market', intro: 'Pick an equipment type and rarity, add as many stat conditions as you like, each with a value range, and see the price trend and sales of matching listings. Data comes live from DarkerDB, from the start of the current season by default.',
     type: 'Equipment', pickType: 'Choose equipment', rarity: 'Rarity', anyRarity: 'Any rarity', addFilter: 'Add stat condition', stat: 'Stat {{n}}', min: 'Stat {{n}} min', max: 'Stat {{n}} max', remove: 'Remove condition',
-    pickStat: 'Choose a stat', base: ' (base)', observed: 'Seen {{min}} – {{max}} in recent listings', soldOnly: 'Sold only', depth: 'How many', depthOption: 'Newest {{n}} (~{{s}} s)', run: 'Search',
+    count: 'Listings', pickStat: 'Choose a stat', base: ' (base)', observed: 'Seen {{min}} – {{max}} in recent listings', soldOnly: 'Sold only', depth: 'How many', depthOption: 'Newest {{n}} (~{{s}} s)', run: 'Search',
     soldNote: '“Sold” is DarkerDB’s inference: a listing that disappeared before it expired. The game does not publish sales.',
     result: '{{count}} listings from {{from}} to {{to}}', truncated: 'Only the newest {{count}} were fetched; raise “How many” to see older ones.', none: 'No listings match; try wider ranges.',
     chartTitle: 'Daily unit price', median: 'Listing median', soldMedian: 'Sold median', range: 'Low–high', table: 'Listings',

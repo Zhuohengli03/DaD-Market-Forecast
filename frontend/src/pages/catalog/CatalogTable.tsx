@@ -6,16 +6,23 @@ import type { CatalogType, CatalogVariant } from '../../api/types'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { useToast } from '../../components/ui/Toast'
-import { itemName, paramLabel, rarityLabel, typeLabel } from '../../lib/labels'
+import { itemName, paramLabel, paramValue, rarityLabel, typeLabel } from '../../lib/labels'
+
+// in Chinese, list the Chinese name and description before the English ones
+const ZH_FIRST = ['name_zh', 'flavor_zh']
 
 function Params({ raw }: { raw: Record<string, unknown> }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const entries = Object.entries(raw)
+  const ordered = i18n.language.startsWith('zh')
+    ? [...entries.filter(([k]) => ZH_FIRST.includes(k)), ...entries.filter(([k]) => !ZH_FIRST.includes(k))]
+    : entries
   return (
     <dl className="grid grid-cols-[minmax(160px,max-content)_1fr] gap-x-6 gap-y-1 text-xs">
-      {Object.entries(raw).map(([k, v]) => (
+      {ordered.map(([k, v]) => (
         <Fragment key={k}>
           <dt className="text-[var(--muted)]" title={k}>{paramLabel(k, t)}{paramLabel(k, t) !== k && <span className="ml-1 font-mono text-[10px] opacity-60">{k}</span>}</dt>
-          <dd>{v !== null && typeof v === 'object' ? <pre className="font-mono whitespace-pre-wrap">{JSON.stringify(v, null, 2)}</pre> : String(v)}</dd>
+          <dd>{v !== null && typeof v === 'object' ? <pre className="font-mono whitespace-pre-wrap">{JSON.stringify(v, null, 2)}</pre> : paramValue(k, v, t)}</dd>
         </Fragment>
       ))}
     </dl>
