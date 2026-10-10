@@ -74,3 +74,29 @@ def test_main_reports_missing_key(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
     assert col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path)]) == 2
     assert "Settings" in capsys.readouterr().out
+
+
+def test_main_is_incremental_from_latest_stored(tmp_path, monkeypatch):
+    import src.api.collect as col
+    from src.api.storage import CsvStorage
+    CsvStorage(tmp_path / "iron_ore.csv").insert([_row(1)])
+    seen = {}
+
+    class FakeClient:
+        def __init__(self, key):
+            pass
+
+        def find_item_id(self, name):
+            return "id.item.iron_ores_2001"
+
+        def iter_market(self, item_id, since=None, limit=50, sort="created_at:desc", max_pages=None):
+            seen["since"], seen["sort"] = since, sort
+            yield []
+
+    monkeypatch.setenv("DARKER_MARKET_API_KEY", "k")
+    monkeypatch.delenv("DB_USER", raising=False)
+    monkeypatch.setattr(col, "DarkerDBClient", FakeClient)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
+    col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path)])
+    assert seen["since"] == _row(1)["created_at"]
+    assert seen["sort"] == "created_at:asc"     # resume oldest-first so a page budget never leaves a gap

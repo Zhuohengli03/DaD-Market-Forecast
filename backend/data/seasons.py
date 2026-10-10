@@ -87,6 +87,24 @@ class SeasonStore:
             raise KeyError(season_id)
         self._write([s for s in seasons if s["id"] != season_id])
 
+    def import_records(self, records: list[dict], replace: bool = False) -> tuple[int, int]:
+        """Add seasons with given ids. replace=True swaps the whole list; otherwise overlapping ones are skipped."""
+        current = [] if replace else self._read()
+        added = skipped = 0
+        for r in records:
+            if any(s["id"] == r["id"] for s in current):
+                skipped += 1
+                continue
+            try:
+                clean = self._validate(SeasonIn(name=r["name"], start=r["start"], end=r["end"], note=r.get("note", "")), current)
+            except SeasonError:
+                skipped += 1
+                continue
+            current.append({"id": r["id"], **clean})
+            added += 1
+        self._write(current)
+        return added, skipped
+
     def to_pipeline(self) -> list[Season]:
         return [Season(s["id"], s["name"], _ts(s["start"]), _ts(s["end"])) for s in self.list()]
 

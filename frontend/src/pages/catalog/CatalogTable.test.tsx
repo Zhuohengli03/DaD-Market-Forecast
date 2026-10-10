@@ -7,7 +7,7 @@ import { CatalogTable } from './CatalogTable'
 vi.mock('../../api/hooks')
 
 const rows = [
-  { id: 'id.item.gold_ore_1001', name: 'Gold Ore', rarity: 'common', item_type: 'Misc', market: { name: 'Gold Ore', listings: 12, sold: 3, min_price_per_unit: 30, median_price_per_unit: 41, last_seen: '2026-10-01T00:00:00Z' }, raw: { id: 'id.item.gold_ore_1001', name: 'Gold Ore', rarity: 'common', vendor_price: 5, primary: { weight: 0.5 } } },
+  { id: 'id.item.gold_ore_1001', name: 'Gold Ore', rarity: 'common', item_type: 'Misc', is_tradable: true, icon_url: 'https://cdn.darkerdb.com/codex/abc', market: { name: 'Gold Ore', listings: 12, sold: 3, min_price_per_unit: 30, median_price_per_unit: 41, last_seen: '2026-10-01T00:00:00Z' }, raw: { id: 'id.item.gold_ore_1001', name: 'Gold Ore', rarity: 'common', vendor_price: 5, primary: { weight: 0.5 } } },
   { id: 'id.item.arming_sword_2001', name: 'Arming Sword', rarity: 'uncommon', slot_type: 'Weapon', market: null, raw: { id: 'id.item.arming_sword_2001', name: 'Arming Sword' } },
 ]
 
@@ -16,6 +16,8 @@ it('lists items with market stats, shows every raw parameter, and tracks', () =>
   vi.mocked(hooks.useTrackItem).mockReturnValue({ mutate: track, isPending: false } as never)
   render(<CatalogTable rows={rows as never} tracked={new Set(['id.item.arming_sword_2001'])} />)
   expect(screen.getByText('41.00')).toBeInTheDocument()
+  expect(document.querySelector('img')?.getAttribute('src')).toBe('https://cdn.darkerdb.com/codex/abc')
+  expect(screen.getByText('可交易')).toBeInTheDocument()
   expect(screen.getByText('已追踪')).toBeInTheDocument()
   fireEvent.click(screen.getByText('Gold Ore'))
   expect(screen.getByText('vendor_price')).toBeInTheDocument()

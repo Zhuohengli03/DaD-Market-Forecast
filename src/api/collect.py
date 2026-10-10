@@ -28,7 +28,8 @@ def record_key(row: dict) -> str:
 
 
 def collect_pages(client, item_id: str, item_name: str, since: str | None, seen: set[str],
-                  max_pages: int = 200, max_empty_pages: int = 3, log: Logger = print) -> list[dict]:
+                  max_pages: int = 200, max_empty_pages: int = 3, log: Logger = print,
+                  sort: str = "created_at:desc") -> list[dict]:
     """Walk the market cursor, returning normalized rows not already in `seen`.
 
     Stops early after `max_empty_pages` consecutive pages without new rows (listings are
@@ -36,7 +37,7 @@ def collect_pages(client, item_id: str, item_name: str, since: str | None, seen:
     """
     new_rows: list[dict] = []
     empty_streak = 0
-    for page_no, page in enumerate(client.iter_market(item_id, since=since, max_pages=max_pages), start=1):
+    for page_no, page in enumerate(client.iter_market(item_id, since=since, max_pages=max_pages, sort=sort), start=1):
         added = 0
         for raw in page:
             try:
@@ -101,9 +102,15 @@ def main(argv: list[str] | None = None) -> int:
     storage = open_storage(item_slug(args.item), Path(args.data_dir), log)
     try:
         seen = storage.existing_keys()
-        log(f"{len(seen)} listings already stored")
+        # incremental: only ask for listings newer than what is stored. v2 listing ids differ from v1 ids,
+        # so re-fetching an already stored period would duplicate it.
+        since = args.since or storage.latest_created_at()
+        log(f"{len(seen)} listings already stored; fetching listings since {since or 'the beginning'}")
         try:
-            rows = collect_pages(client, item_id, args.item, args.since, seen, max_pages=args.max_pages, log=log)
+            # resuming: walk oldest-first from the newest stored listing, so stopping at the page budget leaves
+            # no gap (the next run continues). First run: take the newest pages.
+            sort = "created_at:asc" if since else "created_at:desc"
+            rows = collect_pages(client, item_id, args.item, since, seen, max_pages=args.max_pages, log=log, sort=sort)
         except DarkerDBError as exc:
             log(f"DarkerDB API error: {exc}")
             return 2

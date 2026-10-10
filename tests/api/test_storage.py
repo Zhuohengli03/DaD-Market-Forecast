@@ -19,3 +19,10 @@ def test_csv_storage_appends_and_dedupes(tmp_path):
     rows = list(csv.DictReader(path.open()))
     assert [r["item_id"] for r in rows] == ["1", "2", "3"]
     assert set(rows[0]) == {"item_id", "item", "quantity", "price_per_unit", "price", "has_sold", "created_at", "insert_time"}
+
+
+def test_csv_storage_reports_latest_timestamp(tmp_path):
+    s = CsvStorage(tmp_path / "x.csv")
+    assert s.latest_created_at() is None
+    s.insert([_row(1, "2026-01-01T00:00:00Z"), _row(2, "2026-01-03T00:00:00Z"), _row(3, "2026-01-02T00:00:00Z")])
+    assert s.latest_created_at() == "2026-01-03T00:00:00Z"

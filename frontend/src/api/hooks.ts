@@ -54,6 +54,7 @@ export function useSeasonMutations() {
     add: useMutation({ mutationFn: (s: SeasonInput) => api.post<Season>('/seasons', s).then(r => r.data), onSuccess: done }),
     update: useMutation({ mutationFn: ({ id, ...s }: SeasonInput & { id: string }) => api.put<Season>(`/seasons/${id}`, s).then(r => r.data), onSuccess: done }),
     remove: useMutation({ mutationFn: (id: string) => api.del(`/seasons/${id}`), onSuccess: done }),
+    importSeasons: useMutation({ mutationFn: (body: { replace: boolean }) => api.post<{ added: number; skipped: number }>('/seasons/import', body).then(r => r.data), onSuccess: done }),
   }
 }
 export function useDeleteRun() {

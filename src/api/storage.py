@@ -56,6 +56,13 @@ class CsvStorage:
         with self.path.open(newline="", encoding="utf-8") as fh:
             return {record_key(r["item_id"], r["created_at"]) for r in csv.DictReader(fh)}
 
+    def latest_created_at(self) -> str | None:
+        if not self.path.exists():
+            return None
+        with self.path.open(newline="", encoding="utf-8") as fh:
+            stamps = [r["created_at"] for r in csv.DictReader(fh) if r.get("created_at")]
+        return max(stamps) if stamps else None
+
     def insert(self, rows: list[dict]) -> int:
         with _FileLock(self.path.with_suffix(self.path.suffix + ".lock")):
             return self._insert_locked(rows)
@@ -97,6 +104,13 @@ class PostgresStorage:
         keys = {record_key(a, b) for a, b in cur.fetchall()}
         cur.close()
         return keys
+
+    def latest_created_at(self) -> str | None:
+        cur = self.db.connector.cursor()
+        cur.execute(f"SELECT MAX(created_at::timestamptz) FROM {self.db.items}")
+        value = cur.fetchone()[0]
+        cur.close()
+        return value.strftime("%Y-%m-%dT%H:%M:%SZ") if value else None
 
     def insert(self, rows: list[dict]) -> int:
         if not rows:

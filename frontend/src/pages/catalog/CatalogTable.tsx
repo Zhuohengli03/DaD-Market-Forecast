@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button'
 import { useToast } from '../../components/ui/Toast'
 import { fmtNum } from '../../lib/format'
 
-const ICON = (id: string) => `https://api.darkerdb.com/v2/items/${encodeURIComponent(id)}/icon?size=48&dpr=2`
+const ICON = (r: CatalogRow) => r.icon_url || `https://api.darkerdb.com/v2/items/${encodeURIComponent(r.id)}/icon?size=48&dpr=2`
 const typeOf = (r: CatalogRow) => r.item_type || r.slot_type || r.weapon_type || r.armor_type || r.hand_type || ''
 
 function Params({ raw }: { raw: Record<string, unknown> }) {
@@ -39,9 +39,9 @@ export function CatalogTable({ rows, tracked }: { rows: CatalogRow[]; tracked: S
         <tbody>{rows.map(r => (
           <Fragment key={r.id}>
             <tr className="border-t border-[var(--line)] hover:bg-gray-50">
-              <td className="px-3 py-1.5"><img src={ICON(r.id)} alt="" width={32} height={32} loading="lazy" onError={e => { (e.target as HTMLImageElement).style.visibility = 'hidden' }} /></td>
+              <td className="px-3 py-1.5"><img src={ICON(r)} alt="" width={32} height={32} loading="lazy" onError={e => { (e.target as HTMLImageElement).style.visibility = 'hidden' }} /></td>
               <td className="px-3 py-1.5"><button type="button" className="font-medium text-left hover:underline" onClick={() => setOpen(o => (o === r.id ? null : r.id))}>{r.name}</button><div className="text-xs text-[var(--muted)] font-mono">{r.id}</div></td>
-              <td className="px-3 py-1.5">{r.rarity && <Badge>{r.rarity}</Badge>}</td>
+              <td className="px-3 py-1.5"><div className="flex gap-1 flex-wrap">{r.rarity && <Badge>{r.rarity}</Badge>}{r.is_tradable === true && <Badge tone="ok">{t('catalog.tradableBadge')}</Badge>}{r.is_tradable === false && <Badge>{t('catalog.notTradableBadge')}</Badge>}</div></td>
               <td className="px-3 py-1.5">{typeOf(r)}</td>
               <td className="px-3 py-1.5 text-right tabular-nums">{r.gear_score ?? ''}</td>
               <td className="px-3 py-1.5 text-right tabular-nums">{r.vendor_price ?? ''}</td>

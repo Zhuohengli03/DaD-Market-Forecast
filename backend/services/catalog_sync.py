@@ -17,7 +17,8 @@ def sync_catalog(client, store: CatalogStore, log: Logger) -> int:
         body = client.get("/patches/current").get("body")
         if isinstance(body, list):
             body = body[0] if body else None
-        patch = body.get("id") or body.get("version_raw") if isinstance(body, dict) else (str(body) if body else None)
+        patch = (body.get("title") or body.get("id") or body.get("version_raw") or body.get("slug")) \
+            if isinstance(body, dict) else (str(body) if body else None)
         log(f"current game patch: {patch}")
     except Exception as exc:  # the patch label is informational; never fail the sync for it
         log(f"could not read current patch ({type(exc).__name__}); continuing")
