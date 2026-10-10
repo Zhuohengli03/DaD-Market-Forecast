@@ -71,6 +71,16 @@ class ItemsStore:
                 return it
         raise KeyError(f"item {name!r} is not tracked")
 
+    def untrack_many(self, names: list[str]) -> int:
+        """Stop tracking several items in one write; returns how many were removed. Collected data is kept."""
+        cfg = self.read()
+        drop = set(names)
+        kept = [it for it in cfg["items"] if it["name"] not in drop]
+        removed = len(cfg["items"]) - len(kept)
+        if removed:
+            self.write({**cfg, "items": kept})
+        return removed
+
     def untrack(self, name: str) -> None:
         cfg = self.read()
         kept = [it for it in cfg["items"] if it["name"] != name]

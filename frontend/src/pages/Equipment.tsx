@@ -104,11 +104,12 @@ export default function Equipment() {
           <Button disabled={!type} loading={query.isPending} onClick={() => query.mutate(buildQuery(type, rarity, rows, soldOnly, depth, sort))}>{t('equipment.run')}</Button>
         </div>
         <p className="mt-2 text-xs text-[var(--muted)]">{t('equipment.soldNote')}</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">{t('equipment.cost', { n: depth })}</p>
         {sort.startsWith('price') && <p className="mt-1 text-xs text-[var(--muted)]">{t('equipment.priceSortNote', { n: depth * 50 })}</p>}
         {query.isError && <p role="alert" className="mt-2 text-sm text-[var(--bad)]">{(query.error as Error).message}</p>}
       </Card>
       {!type ? <EmptyState title={t('equipment.noType')} /> : res && (res.count === 0 ? <EmptyState title={t('equipment.none')} /> : <>
-        <p className="text-sm">{t('equipment.result', { count: res.count, from: fmtTs(res.covered_from), to: fmtTs(res.covered_to) })} {res.truncated && <span className="text-[var(--warn)]">{t('equipment.truncated', { count: res.count })}</span>}</p>
+        <p className="text-sm">{t('equipment.result', { count: res.count, from: fmtTs(res.covered_from), to: fmtTs(res.covered_to) })} {res.truncated && <span className="text-[var(--warn)]">{t('equipment.truncated', { count: res.count })}</span>} <span className="text-xs text-[var(--muted)]">{t('equipment.used', { n: res.credits_used ?? 0 })}</span></p>
         {res.daily.length > 0 && <Card title={t('equipment.chartTitle')}><DailyChart days={res.daily} /></Card>}
         <Card title={t('equipment.table')}>
           <div className="overflow-auto"><table className="w-full text-sm">

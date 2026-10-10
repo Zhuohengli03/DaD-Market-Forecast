@@ -95,6 +95,21 @@ def untrack(name: str, request: Request):
     return ok({"untracked": name})
 
 
+class BulkUntrackIn(BaseModel):
+    names: list[str] = Field(min_length=1, max_length=5000)
+
+
+@router.post("/items/untrack-bulk")
+def untrack_bulk(body: BulkUntrackIn, request: Request):
+    """Stop tracking many items at once. Listings already collected stay in the database."""
+    st = request.app.state
+    names = list(dict.fromkeys(body.names))
+    removed = st.items.untrack_many(names)
+    st.item_stats.invalidate()
+    st.scheduler.restart_if_running()
+    return ok({"removed": removed, "missing": len(names) - removed})
+
+
 _TIME = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 

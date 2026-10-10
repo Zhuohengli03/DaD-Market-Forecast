@@ -25,6 +25,16 @@ def _client(request: Request):
     return factory(key)
 
 
+def _counted(st, client, fn):
+    """Run a job body and record the DarkerDB credits its client spent, even if it fails."""
+    def run(job):
+        try:
+            return fn(job)
+        finally:
+            st.jobs.add_credits(job, getattr(client, "credits_used", 0))
+    return run
+
+
 def _progress(jobs, job):
     return lambda stage, done=None, total=None, **d: jobs.progress(job, stage, done, total, detail=d)
 
@@ -39,7 +49,9 @@ def catalog(request: Request, q: str = "", item_type: str = "", has_stats: bool 
 
 @router.get("/catalog/meta")
 def catalog_meta(request: Request):
-    return ok(request.app.state.catalog.meta())
+    from ..services.cost import check_cost, sync_cost
+    store = request.app.state.catalog
+    return ok({**store.meta(), "sync_cost": sync_cost(store), "check_cost": check_cost(store)})
 
 
 class CheckIn(BaseModel):
@@ -52,9 +64,11 @@ def start_sync(request: Request):
     client = _client(request)
     if st.jobs.find_active("catalog"):
         raise HTTPException(409, "道具库任务正在运行 / a catalog job is already running")
+    from ..services.cost import sync_cost
     job = st.jobs.create("catalog", "同步道具库 / sync item catalog")
-    st.jobs.run_in_thread(job, lambda j: str(sync_catalog(client, st.catalog, lambda s: st.jobs.append_log(j, s),
-                                                          progress=_progress(st.jobs, j))))
+    st.jobs.set_estimate(job, sync_cost(st.catalog))
+    st.jobs.run_in_thread(job, _counted(st, client, lambda j: str(sync_catalog(client, st.catalog, lambda s: st.jobs.append_log(j, s),
+                                                                               progress=_progress(st.jobs, j)))))
     return ok({"job_id": job.id})
 
 
@@ -66,10 +80,12 @@ def start_trade_check(request: Request, body: CheckIn | None = None):
         raise HTTPException(409, "道具库任务正在运行 / a catalog job is already running")
     if not st.catalog.count():
         raise HTTPException(409, "请先同步道具库 / sync the catalog first")
+    from ..services.cost import check_cost
     job = st.jobs.create("catalog", "检查哪些道具能交易 / check which items trade")
     force = (body or CheckIn()).force
-    st.jobs.run_in_thread(job, lambda j: str(check_tradability(client, st.catalog, lambda s: st.jobs.append_log(j, s), force,
-                                                               progress=_progress(st.jobs, j))))
+    st.jobs.set_estimate(job, len(st.catalog.types()) if force else check_cost(st.catalog))
+    st.jobs.run_in_thread(job, _counted(st, client, lambda j: str(check_tradability(client, st.catalog, lambda s: st.jobs.append_log(j, s), force,
+                                                                                    progress=_progress(st.jobs, j)))))
     return ok({"job_id": job.id})
 
 
@@ -85,6 +101,15 @@ def one_type_history(archetype: str, request: Request):
     st = request.app.state
     client = _client(request)
     try:
-        return ok(type_history(client, st.catalog, archetype, latest_season_start(st)))
+        info = type_history(client, st.catalog, archetype, latest_season_start(st))
+        return ok({**info, "credits_used": getattr(client, "credits_used", 0)})
     except KeyError:
         raise HTTPException(404, "道具库里没有这个道具 / unknown item type")
+
+
+@router.get("/catalog/types/{archetype}")
+def one_type(archetype: str, request: Request):
+    row = request.app.state.catalog.type_row(archetype)
+    if row is None:
+        raise HTTPException(404, "道具库里没有这个道具 / unknown item type")
+    return ok(row)

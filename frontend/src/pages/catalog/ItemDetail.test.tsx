@@ -1,0 +1,40 @@
+import { render, screen, fireEvent } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { vi } from 'vitest'
+import '../../i18n'
+import * as hooks from '../../api/hooks'
+import ItemDetail from './ItemDetail'
+
+vi.mock('../../api/hooks')
+vi.mock('../../components/ui/Toast', () => ({ useToast: () => ({ push: vi.fn() }) }))
+
+const v = (id: string, rarity: string, extra = {}) => ({ id, rarity, gear_score: 5, vendor_price: 3, icon_url: null, raw: { id, rarity, vendor_price: 3, ...extra } })
+const bandage = { archetype: 'id.item.bandage', name: 'Bandage', name_zh: '绷带', category: 'consumable', item_type: 'utility', has_stats: false, icon_url: 'https://x/b.png',
+  rarities: ['poor', 'common'], listings_total: 900, first_listed: '2024-09-06T10:00:00Z', season_listings: null, variants: [v('id.item.bandage_1001', 'poor'), v('id.item.bandage_2001', 'common', { duration: 4 })] }
+
+function mount(track = vi.fn(), history = vi.fn()) {
+  vi.mocked(hooks.useCatalogType).mockReturnValue({ data: bandage, isLoading: false } as never)
+  vi.mocked(hooks.useItems).mockReturnValue({ data: [{ name: 'Bandage (poor)', item_id: 'id.item.bandage_1001', season_rows: 42 }] } as never)
+  vi.mocked(hooks.useTrackItem).mockReturnValue({ mutate: track, isPending: false } as never)
+  vi.mocked(hooks.useTypeHistory).mockReturnValue({ mutate: history, isPending: false } as never)
+  render(<MemoryRouter initialEntries={['/catalog/id.item.bandage']}><Routes><Route path="/catalog/:archetype" element={<ItemDetail />} /></Routes></MemoryRouter>)
+}
+
+it('shows every detail of one item: names, listing counts, rarities and all parameters', () => {
+  mount()
+  expect(screen.getByRole('heading', { name: /绷带/ })).toBeInTheDocument()
+  expect(screen.getByText('900')).toBeInTheDocument()
+  expect(screen.getByText('2024-09-06')).toBeInTheDocument()
+  expect(screen.getByText('42')).toBeInTheDocument()                 // this season from local data
+  expect(screen.getByText('duration')).toBeInTheDocument()           // highest rarity's parameters shown first
+  expect(screen.getByRole('link', { name: '返回道具库' })).toHaveAttribute('href', '/catalog')
+})
+
+it('tracks another rarity and fetches season numbers on demand', () => {
+  const track = vi.fn(); const history = vi.fn()
+  mount(track, history)
+  fireEvent.click(screen.getByRole('button', { name: '追踪' }))
+  expect(track.mock.calls[0][0]).toBe('id.item.bandage_2001')
+  fireEvent.click(screen.getByRole('button', { name: /查询本赛季挂单和最早日期/ }))
+  expect(history.mock.calls[0][0]).toBe('id.item.bandage')
+})

@@ -5,6 +5,11 @@ import * as hooks from '../../api/hooks'
 import { AddItemsDialog } from './AddItemsDialog'
 
 vi.mock('../../api/hooks')
+
+// cost estimates and credits load in the background; tests that care set their own values
+beforeEach(() => {
+  for (const h of ['useScheduleEstimate', 'useItemsEstimate', 'useQuota', 'useCollectAllEstimate'] as const) vi.mocked(hooks[h]).mockReturnValue({ data: undefined } as never)
+})
 vi.mock('../../components/ui/Toast', () => ({ useToast: () => ({ push: vi.fn() }) }))
 
 const row = (arch: string, name: string, zh: string, category: string) => ({ archetype: arch, name, name_zh: zh, category, item_type: null, icon_url: null, has_stats: false, rarities: [], listings_total: 1, variants: [{ id: `${arch}_1001`, rarity: null, raw: {} }] })

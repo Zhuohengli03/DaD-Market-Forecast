@@ -25,6 +25,7 @@ class SmartScheduler:
         self._queued = set()              # task names waiting for or holding a run slot
         self._queued_lock = threading.Lock()
         self.setup_logging()
+        self._set_state("", None)   # a previous scheduler may have died mid-run: start with nothing collecting
         
     def setup_logging(self):
         """设置日志"""

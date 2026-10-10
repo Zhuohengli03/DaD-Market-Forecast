@@ -112,6 +112,14 @@ class CatalogStore:
             "variants": [{**{k: v.get(k) for k in VARIANT_FIELDS}, "raw": v} for v in variants],
         }
 
+    def type_row(self, archetype: str) -> dict | None:
+        """One type with all its variants and parameters, for the item detail page."""
+        variants = self.types().get(archetype)
+        if not variants:
+            return None
+        d = self.read()
+        return self._type_row(archetype, variants, d["trade_totals"], d["trade_info"])
+
     def visible_types(self) -> list[dict]:
         d = self.read()
         totals, info = d["trade_totals"], d["trade_info"]

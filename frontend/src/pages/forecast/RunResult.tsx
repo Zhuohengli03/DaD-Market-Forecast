@@ -11,9 +11,10 @@ import { useToast } from '../../components/ui/Toast'
 import { download, toCsv } from '../../lib/format'
 import { BacktestTable } from './BacktestTable'
 import { RunStatusBanner } from './RunStatusBanner'
+import { localizeWarning } from '../../lib/labels'
 
 export function RunResult({ runId, onDeleted }: { runId: string; onDeleted: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const run = useRun(runId)
   const [showRefs, setShowRefs] = useState(true)
   const [showActuals, setShowActuals] = useState(true)
@@ -36,7 +37,7 @@ export function RunResult({ runId, onDeleted }: { runId: string; onDeleted: () =
       </>}>
         <ForecastChart run={r} showRefs={showRefs} actuals={showActuals ? actuals.data : undefined} />
       </Card>
-      {r.warnings.length > 0 && <Card title={t('forecast.warnings')}><ul className="text-sm list-disc pl-5 text-[var(--warn)]">{r.warnings.map((w, i) => <li key={i}>{w}</li>)}</ul></Card>}
+      {r.warnings.length > 0 && <Card title={t('forecast.warnings')}><ul className="text-sm list-disc pl-5 text-[var(--warn)]">{r.warnings.map((w, i) => <li key={i}>{localizeWarning(w, i18n.language)}</li>)}</ul></Card>}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <Card title={t('forecast.backtest')}><BacktestTable run={r} /></Card>
         <Card title={t('forecast.perHorizon')}><HorizonErrorChart run={r} /></Card>

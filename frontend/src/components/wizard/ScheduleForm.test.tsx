@@ -6,6 +6,11 @@ import { ScheduleForm, splitSeconds, requestsPerMinute } from './ScheduleForm'
 
 vi.mock('../../api/hooks')
 
+// cost estimates and credits load in the background; tests that care set their own values
+beforeEach(() => {
+  for (const h of ['useScheduleEstimate', 'useItemsEstimate', 'useQuota', 'useCollectAllEstimate'] as const) vi.mocked(hooks[h]).mockReturnValue({ data: undefined } as never)
+})
+
 it('splits seconds into days/hours/minutes/seconds', () => {
   expect(splitSeconds(93784)).toEqual({ d: 1, h: 2, m: 3, s: 4 })
   expect(requestsPerMinute(30, 10)).toBe(20)

@@ -102,6 +102,7 @@ class DarkerDBClient:
         if quota_file is None and os.environ.get("DARKER_DATA_DIR"):
             quota_file = Path(os.environ["DARKER_DATA_DIR"]) / "quota.json"
         self._quota_file = Path(quota_file) if quota_file else None
+        self.credits_used = 0                # credits this client has spent (X-Credits-Cost, 1 when absent)
 
     def _throttle(self) -> None:
         """Go as fast as the key's plan allows: no waiting while quota remains, then 60s/limit spacing."""
@@ -127,6 +128,10 @@ class DarkerDBClient:
         except (TypeError, ValueError):
             pass
         self._record_credits(h)
+        try:
+            self.credits_used += int(h.get("x-credits-cost", 1))
+        except (TypeError, ValueError):
+            self.credits_used += 1
 
     def _record_credits(self, h: dict) -> None:
         """Save the plan's credits left so the app can show them (shared by the server and collectors)."""

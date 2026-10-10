@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useItems, useTrackBulk } from '../../api/hooks'
+import { useItems, useItemsEstimate, useTrackBulk } from '../../api/hooks'
+import { useDebounced } from '../../lib/useDebounced'
+import { fmtCount } from '../../lib/quota'
 import { ItemPicker, usePickOptions } from '../../components/ItemPicker'
 import { Button } from '../../components/ui/Button'
 import { useToast } from '../../components/ui/Toast'
@@ -13,6 +15,7 @@ export function AddItemsDialog({ onClose }: { onClose: () => void }) {
   const tracked = new Set((items.data ?? []).flatMap(i => [i.item_id, i.name]).filter(Boolean) as string[])
   const fresh = options.filter(o => !tracked.has(o.id))
   const [chosen, setChosen] = useState<string[]>([])
+  const estimate = useItemsEstimate(useDebounced(chosen, 400), 200)
   const add = () => bulk.mutate(chosen, {
     onSuccess: r => { toast.push(t('collect.added', { n: r.added })); onClose() },
     onError: e => toast.push((e as Error).message, 'error'),
@@ -24,7 +27,8 @@ export function AddItemsDialog({ onClose }: { onClose: () => void }) {
           <p className="text-sm text-[var(--muted)]">{t('collect.addIntro', { n: fresh.length })}</p></div>
         {loading ? <p className="text-sm">{t('common.loading')}</p> : !fresh.length ? <p className="text-sm">{options.length ? t('collect.allTracked') : t('collect.needCatalog')}</p>
           : <ItemPicker options={fresh} chosen={chosen} onChange={setChosen} height="max-h-[50vh]" />}
-        <div className="flex justify-end gap-2 border-t border-[var(--line)] pt-4">
+        <div className="flex justify-end items-center gap-2 border-t border-[var(--line)] pt-4">
+          {chosen.length > 0 && <span className="mr-auto text-xs text-[var(--muted)]">{t('collect.addCost', { n: fmtCount(estimate.data?.requests ?? chosen.length * 201) })}</span>}
           <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
           <Button disabled={!chosen.length} loading={bulk.isPending} onClick={add}>{t('collect.addN', { n: chosen.length })}</Button>
         </div>

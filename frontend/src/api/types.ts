@@ -1,5 +1,5 @@
 export interface QuotaInfo { credits_remaining: number | null; rate_limit: number | null; updated_at: string | null; monthly_quota: number }
-export interface TypeHistory { total: number | null; first: string | null; season: number | null; season_start: string | null }
+export interface TypeHistory { total: number | null; first: string | null; season: number | null; season_start: string | null; credits_used?: number }
 export interface ItemInfo { icon_url?: string | null; season_rows?: number | null; name: string; name_zh?: string | null; item_id?: string; file?: string; csv?: string; category: string; description: string; enabled: boolean; rows: number; first_ts: string | null; last_ts: string | null }
 export interface SeriesPoint { ts: string; median_price: number | null; min_price: number | null; max_price: number | null; p25: number | null; p75: number | null; listings: number; sold: number; volume: number }
 export interface SeriesResponse { item: string; resolution: Resolution; start: string | null; end: string | null; points: SeriesPoint[] }
@@ -10,7 +10,11 @@ export interface SeasonInput { name: string; start: string; end: string | null; 
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 export interface JobProgress { stage: string; done: number | null; total: number | null; detail: Record<string, unknown> }
 export type JobKind = 'forecast' | 'collect' | 'task' | 'catalog' | 'init'
-export interface Job { id: string; kind: JobKind; label: string; status: JobStatus; created_at: string; finished_at: string | null; error: string | null; result_ref: string | null; meta: Record<string, string>; progress: JobProgress | null }
+export interface Job { id: string; kind: JobKind; label: string; status: JobStatus; created_at: string; finished_at: string | null; error: string | null; result_ref: string | null; meta: Record<string, string>; progress: JobProgress | null; cost?: JobCost }
+export interface JobCost { estimate: number | null; used: number }
+export interface CollectAllEstimate { requests: number; items: number; unknown: number; per_item: Record<string, number> }
+export interface ScheduleEstimate { per_month: number; unknown: number; per_item: Record<string, { runs: number; per_run: number }> }
+export interface ItemsEstimate { requests: number; unknown: number; items: Record<string, number> }
 export interface ForecastInput { item: string; season_id: string; horizon_hours: number; models: string[]; coverage: number; backtest_origin_step?: number }
 export interface RunSummary { run_id: string; created_at: string; source: string; beats_baseline: boolean; skill_vs_naive: number; item: string; season_id: string; season_name: string; horizon_hours: number; selected: string; warnings: number }
 export interface ModelMetric { name: string; mae_h1: number | null; mae_h24: number | null; mae_mean: number | null; rmse_mean: number | null; mase_mean: number | null; direction_acc: number | null }
@@ -42,11 +46,11 @@ export interface DatabaseInput { host: string; port: number; database: string; u
 export interface MarketStats { name: string; listings: number; sold: number; min_price_per_unit: number; median_price_per_unit: number; last_seen: string }
 export interface CatalogVariant { id: string; rarity: string | null; gear_score?: number | null; vendor_price?: number | null; num_secondary_attributes?: number | null; icon_url?: string | null; raw: Record<string, unknown> }
 export interface CatalogType { archetype: string; name: string; name_zh?: string | null; category?: string | null; item_type: string | null; slot_type?: string | null; icon_url: string | null; has_stats: boolean; rarities: string[]; listings_total: number | null; first_listed?: string | null; season_listings?: number | null; variants: CatalogVariant[] }
-export interface CatalogMeta { patch: string | null; synced_at: string | null; items: number; types: number; types_total: number; trade_checked: number; trade_check_complete: boolean; trade_checked_at: string | null; with_stats: number; season_start?: string | null }
+export interface CatalogMeta { patch: string | null; synced_at: string | null; items: number; types: number; types_total: number; trade_checked: number; trade_check_complete: boolean; trade_checked_at: string | null; with_stats: number; season_start?: string | null; sync_cost?: number; check_cost?: number }
 export interface CatalogFacets { item_type: string[] }
 export interface EquipmentStat { key: string; kind: 'primary' | 'secondary'; name: string; label: string; label_zh?: string | null; percent: boolean; min: number; max: number; seen: number }
 export interface EquipmentListing { id: string; item_id: string | null; name: string | null; rarity: string | null; quantity: number; price: number; price_per_unit: number; has_sold: boolean; listing_state: string | null; created_at: string; attributes: Record<string, number> }
 export interface EquipmentDay { day: string; listings: number; sold: number; median: number; low: number; high: number; sold_median: number | null }
-export interface EquipmentResult { count: number; listings: EquipmentListing[]; daily: EquipmentDay[]; covered_from: string | null; covered_to: string | null; truncated: boolean; since?: string | null }
+export interface EquipmentResult { count: number; listings: EquipmentListing[]; daily: EquipmentDay[]; covered_from: string | null; covered_to: string | null; truncated: boolean; since?: string | null; credits_used?: number }
 export type EquipmentSort = 'created_at:desc' | 'created_at:asc' | 'price_per_unit:asc' | 'price_per_unit:desc'
 export interface EquipmentQueryBody { sort: EquipmentSort; archetype: string; rarity: string | null; sold_only: boolean; max_pages: number; filters: { kind: 'primary' | 'secondary'; name: string; min: number | null; max: number | null }[] }
