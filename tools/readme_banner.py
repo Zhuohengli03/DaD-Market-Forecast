@@ -1,7 +1,8 @@
-"""Draw the animated README banner: a price chart made of grid cells in Dark and Darker rarity colours,
-eaten by a gold snake. Pure SVG + CSS animation (works inside a README <img>), light and dark versions.
+"""Draw the animated README banner in a pixel-grid style: price history lights up column by column as if it
+were being collected, then a "now" line appears and the forecast fades in with its uncertainty band.
+Cells use Dark and Darker rarity colours. Pure SVG + CSS animation (works inside a README <img>).
 
-    python tools/readme_banner.py   ->  docs/assets/market-snake.svg, docs/assets/market-snake-dark.svg
+    python tools/readme_banner.py   ->  docs/assets/market-banner.svg, docs/assets/market-banner-dark.svg
 """
 from __future__ import annotations
 
@@ -9,94 +10,90 @@ import math
 from pathlib import Path
 
 COLS, ROWS = 44, 7
+HISTORY = 32                       # columns of history; the rest is forecast
 CELL, GAP, PAD = 11, 4, 6
-STEP_S = 0.055                     # seconds per cell the snake moves
-SNAKE = 7                          # body segments
 PITCH = CELL + GAP
+LOOP_S = 9.0                       # one full cycle
+T_HISTORY = (0.04, 0.50)           # history fills in during this share of the loop
+T_NOW = 0.53                       # the "now" divider appears
+T_FORECAST = (0.56, 0.72)          # forecast fades in
+T_FADE = (0.90, 0.98)              # everything fades before the loop restarts
 
 THEMES = {
-    "market-snake.svg": {
-        "empty": "#ebedf0",
+    "market-banner.svg": {
+        "empty": "#ebedf0", "now": "#57606a",
         # poor, common, uncommon, rare, epic, legendary, unique (bottom row to top)
         "rarity": ["#8c959f", "#c4ccd4", "#2da44e", "#0969da", "#8250df", "#e36209", "#bf8700"],
-        "snake": ("#b45309", "#f59e0b"),
     },
-    "market-snake-dark.svg": {
-        "empty": "#161b22",
+    "market-banner-dark.svg": {
+        "empty": "#161b22", "now": "#8b949e",
         "rarity": ["#6e7681", "#c9d1d9", "#3fb950", "#58a6ff", "#bc8cff", "#f0883e", "#e3b341"],
-        "snake": ("#fbbf24", "#d97706"),
     },
 }
 
 
-def price_heights() -> list[int]:
-    """A made-up but believable hourly price: daily swing, noise and a slow climb, as column heights 1..7."""
-    out = []
-    for c in range(COLS):
-        v = 3.4 + 1.9 * math.sin(c / 4.2) + 0.9 * math.sin(c / 1.6 + 1) + 0.045 * c
-        out.append(max(1, min(ROWS, round(v))))
-    return out
+def series() -> list[float]:
+    """A made-up but believable price: daily swing, noise and a slow climb, on a 1..7 scale."""
+    return [max(1.0, min(ROWS, 3.3 + 1.8 * math.sin(c / 4.0) + 0.8 * math.sin(c / 1.5 + 1) + 0.04 * c)) for c in range(COLS)]
 
 
-def route() -> list[tuple[int, int]]:
-    """Lead-in from the left, then column by column up and down (boustrophedon), then out to the right."""
-    path = [(-SNAKE - 1 + i, 0) for i in range(SNAKE + 1)]
-    for c in range(COLS):
-        rows = range(ROWS) if c % 2 == 0 else range(ROWS - 1, -1, -1)
-        path += [(c, r) for r in rows]
-    last = path[-1][1]
-    path += [(COLS + i, last) for i in range(SNAKE + 2)]
-    return path
+def forecast_band(c: int, mid: float) -> tuple[int, int, int]:
+    """Median level and low/high levels for a forecast column; the band widens further ahead."""
+    spread = 0.6 + 0.22 * (c - HISTORY)
+    lo, hi = max(1, round(mid - spread)), min(ROWS, round(mid + spread))
+    return lo, round(mid), hi
 
 
-def xy(col: int, row: int) -> tuple[float, float]:
-    return PAD + col * PITCH, PAD + row * PITCH
+def pct(x: float) -> str:
+    return f"{100 * x:.2f}%"
+
+
+def cell_anim(name: str, on: float, opacity: float) -> str:
+    """Hidden, pop in at `on`, hold, fade out near the end of the loop."""
+    return (f"@keyframes {name}{{0%,{pct(on)}{{opacity:0;transform:scale(.4)}}"
+            f"{pct(on + 0.025)}{{opacity:{opacity};transform:scale(1)}}"
+            f"{pct(T_FADE[0])}{{opacity:{opacity};transform:scale(1)}}{pct(T_FADE[1])},100%{{opacity:0;transform:scale(1)}}}}"
+            f".{name}{{animation:{name} {LOOP_S}s ease-out infinite;transform-box:fill-box;transform-origin:center}}")
 
 
 def build(theme: dict) -> str:
-    heights = price_heights()
-    path = route()
-    n = len(path)
-    total = n * STEP_S
-    pct = lambda i: 100 * i / (n - 1)
+    prices = series()
     w, h = PAD * 2 + COLS * PITCH - GAP, PAD * 2 + ROWS * PITCH - GAP
-    css, cells = [], []
-    order = {p: i for i, p in enumerate(path)}
+    css, back, front = [], [], []
     for c in range(COLS):
         for r in range(ROWS):
-            x, y = xy(c, r)
-            level = ROWS - 1 - r                      # 0 = bottom row
-            food = level < heights[c]
-            if not food:
-                cells.append(f'<rect x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2.5" fill="{theme["empty"]}"/>')
-                continue
-            color = theme["rarity"][level]
-            eaten = pct(order[(c, r)])
-            name = f"c{c}_{r}"
-            # the cell keeps its colour until the head arrives, stays eaten, and grows back as the loop restarts
-            css.append(f"@keyframes {name}{{0%,{max(eaten - 0.01, 0):.3f}%{{fill:{color}}}{eaten:.3f}%,97%{{fill:{theme['empty']}}}100%{{fill:{color}}}}}")
-            cells.append(f'<rect class="{name}" x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2.5" fill="{color}"/>')
-            css.append(f".{name}{{animation:{name} {total:.2f}s linear infinite}}")
-    frames = "".join(f"{pct(i):.3f}%{{transform:translate({xy(c, r)[0]}px,{xy(c, r)[1]}px)}}" for i, (c, r) in enumerate(path))
-    css.append(f"@keyframes snake{{{frames}}}")
-    head, tail = theme["snake"]
-    body = []
-    for k in range(SNAKE):
-        t = k / (SNAKE - 1)
-        size = CELL + 2 - 4 * t                     # head a little bigger, tail thinner
-        off = (CELL - size) / 2
-        color = mix(head, tail, t)
-        body.append(f'<rect class="s{k}" x="{off:.2f}" y="{off:.2f}" width="{size:.2f}" height="{size:.2f}" rx="{size / 2.6:.2f}" fill="{color}"/>')
-        # each segment follows the same path k steps behind the head (one full shorthand, so nothing resets the delay)
-        css.append(f".s{k}{{transform:translate(-100px,0);animation:snake {total:.2f}s linear {k * STEP_S:.3f}s infinite both}}")
-    title = "Darker Market: a price chart in Dark and Darker rarity colours, eaten by a snake"
+            back.append(f'<rect x="{PAD + c * PITCH}" y="{PAD + r * PITCH}" width="{CELL}" height="{CELL}" rx="2.5" fill="{theme["empty"]}"/>')
+    for c in range(COLS):
+        x = PAD + c * PITCH
+        if c < HISTORY:
+            top = round(prices[c])
+            for level in range(top):
+                # collected column by column, each one stacking up from the bottom
+                on = T_HISTORY[0] + (T_HISTORY[1] - T_HISTORY[0]) * (c + level / ROWS) / HISTORY
+                name = f"h{c}_{level}"
+                css.append(cell_anim(name, on, 1))
+                y = PAD + (ROWS - 1 - level) * PITCH
+                front.append(f'<rect class="{name}" x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2.5" fill="{theme["rarity"][level]}"/>')
+        else:
+            lo, mid, hi = forecast_band(c, prices[c])
+            on = T_FORECAST[0] + (T_FORECAST[1] - T_FORECAST[0]) * (c - HISTORY) / (COLS - HISTORY)
+            for level in range(lo - 1, hi):
+                name = f"f{c}_{level}"
+                median = level == mid - 1
+                css.append(cell_anim(name, on, 1 if median else 0.35))
+                y = PAD + (ROWS - 1 - level) * PITCH
+                color = theme["rarity"][level]
+                if median:   # the forecast itself: an outlined cell so it reads as "not yet real"
+                    front.append(f'<rect class="{name}" x="{x + 1}" y="{y + 1}" width="{CELL - 2}" height="{CELL - 2}" rx="2" fill="none" stroke="{color}" stroke-width="2"/>')
+                else:
+                    front.append(f'<rect class="{name}" x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2.5" fill="{color}"/>')
+    nx = PAD + HISTORY * PITCH - GAP / 2
+    css.append(f"@keyframes now{{0%,{pct(T_NOW)}{{opacity:0}}{pct(T_NOW + 0.02)},{pct(T_FADE[0])}{{opacity:1}}{pct(T_FADE[1])},100%{{opacity:0}}}}"
+               f".now{{animation:now {LOOP_S}s linear infinite}}")
+    front.append(f'<line class="now" x1="{nx}" y1="{PAD - 3}" x2="{nx}" y2="{h - PAD + 3}" stroke="{theme["now"]}" stroke-width="1.5" stroke-dasharray="3 3"/>')
+    title = "Darker Market: price history in Dark and Darker rarity colours fills in, then the forecast appears"
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}" role="img" aria-label="{title}">'
-            f"<title>{title}</title><style>{''.join(css)}</style>{''.join(cells)}{''.join(reversed(body))}</svg>\n")
-
-
-def mix(a: str, b: str, t: float) -> str:
-    pa, pb = [int(a[i:i + 2], 16) for i in (1, 3, 5)], [int(b[i:i + 2], 16) for i in (1, 3, 5)]
-    return "#" + "".join(f"{round(x + (y - x) * t):02x}" for x, y in zip(pa, pb))
+            f"<title>{title}</title><style>{''.join(css)}</style>{''.join(back)}{''.join(front)}</svg>\n")
 
 
 if __name__ == "__main__":

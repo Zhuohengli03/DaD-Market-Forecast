@@ -53,3 +53,14 @@ it('gets the latest data for the shown item and redraws when it is done', () => 
   expect(screen.getByText(/新增 12 条/)).toBeInTheDocument()
   expect(spy).toHaveBeenCalledWith({ queryKey: ['series'] })
 })
+
+it('when nothing new comes back, says how old DarkerDB\'s newest listing is', () => {
+  const mutate = vi.fn()
+  vi.mocked(hooks.useStartCollect).mockReturnValue({ mutate, isPending: false } as never)
+  mount()
+  vi.mocked(hooks.useItems).mockReturnValue({ data: [{ name: 'Gold Ore', name_zh: '金矿', rows: 30, last_ts: '2026-10-09T11:31:30Z' }] } as never)
+  fireEvent.click(screen.getByRole('button', { name: '获取最新数据' }))
+  vi.mocked(stream.useJobStream).mockReturnValue({ progress: { stage: 'done', done: null, total: null, detail: { new: 0 } }, status: 'succeeded', error: null, disconnected: false, resultRef: null })
+  act(() => mutate.mock.calls[0][1].onSuccess('job8'))
+  expect(screen.getByText(/DarkerDB 上还没有更新的挂单，它最新一条是 2026-10-09 11:31Z/)).toBeInTheDocument()
+})
