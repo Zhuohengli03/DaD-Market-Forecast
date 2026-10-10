@@ -40,7 +40,7 @@ export default function Catalog() {
       <Card actions={<>
         <Button size="sm" variant="ghost" disabled={!!noKey} loading={job.isPending} onClick={() => run('sync')}>{t('catalog.sync')}</Button>
         <Button size="sm" disabled={!!noKey || !meta.data?.items} loading={job.isPending} onClick={() => run('scan')}>{t('catalog.scan')}</Button></>}
-        title={`${meta.data?.items ?? 0} · ${t('catalog.tradableCount')}: ${meta.data?.tradable ?? 0}`}>
+        title={t('catalog.summary', { items: meta.data?.items ?? 0, tradable: meta.data?.tradable ?? 0 })}>
         <dl className="text-xs grid grid-cols-2 md:grid-cols-4 gap-2 text-[var(--muted)]">
           <div>{t('catalog.patch')}: <b className="text-[var(--ink)]">{meta.data?.patch ?? '–'}</b></div>
           <div>{t('catalog.syncedAt')}: <b className="text-[var(--ink)]">{fmtTs(meta.data?.synced_at)}</b></div>

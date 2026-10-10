@@ -1,4 +1,5 @@
 import ReactECharts from 'echarts-for-react'
+import { useTranslation } from 'react-i18next'
 import type { Actual, ForecastRun } from '../../api/types'
 import { fmtTs } from '../../lib/format'
 
@@ -14,6 +15,8 @@ export function referenceSeries(run: ForecastRun) {
 }
 
 export function ForecastChart({ run, showRefs, actuals }: { run: ForecastRun; showRefs: boolean; actuals?: Actual[] }) {
+  const { t } = useTranslation()
+  const N = { history: t('chart.history'), band: t('chart.band'), forecast: t('chart.forecast'), actual: t('chart.actual') }
   const histX = run.series_tail.map(p => p.ts)
   const fcX = run.forecast.map(p => p.ts)
   const x = [...histX, ...fcX]
@@ -22,14 +25,14 @@ export function ForecastChart({ run, showRefs, actuals }: { run: ForecastRun; sh
   const lower = run.forecast.map(p => p.lower), upper = run.forecast.map(p => p.upper)
   const actualMap = new Map((actuals ?? []).map(a => [a.ts, a.median_price]))
   const series: object[] = [
-    { name: 'history', type: 'line', data: pad(run.series_tail.map(p => p.median_price), 0, nF), symbol: 'none', lineStyle: { color: '#1f2937', width: 1.5 } },
-    { name: 'band', type: 'line', data: pad(lower.map(l => Math.max(0, l)), nH, 0), lineStyle: { opacity: 0 }, stack: 'ci', symbol: 'none', silent: true },
-    { name: 'band', type: 'line', data: pad(upper.map((u, i) => Math.max(0, u - Math.max(0, lower[i]))), nH, 0), lineStyle: { opacity: 0 }, stack: 'ci', areaStyle: { color: '#2563eb', opacity: 0.15 }, symbol: 'none', silent: true },
-    { name: 'forecast', type: 'line', data: pad(run.forecast.map(p => p.pred), nH, 0), symbol: 'none', lineStyle: { color: '#2563eb', width: 2, type: 'dashed' } },
+    { name: N.history, type: 'line', data: pad(run.series_tail.map(p => p.median_price), 0, nF), symbol: 'none', lineStyle: { color: '#1f2937', width: 1.5 } },
+    { name: N.band, type: 'line', data: pad(lower.map(l => Math.max(0, l)), nH, 0), lineStyle: { opacity: 0 }, stack: 'ci', symbol: 'none', silent: true },
+    { name: N.band, type: 'line', data: pad(upper.map((u, i) => Math.max(0, u - Math.max(0, lower[i]))), nH, 0), lineStyle: { opacity: 0 }, stack: 'ci', areaStyle: { color: '#2563eb', opacity: 0.15 }, symbol: 'none', silent: true },
+    { name: N.forecast, type: 'line', data: pad(run.forecast.map(p => p.pred), nH, 0), symbol: 'none', lineStyle: { color: '#2563eb', width: 2, type: 'dashed' } },
   ]
-  if (actualMap.size) series.push({ name: 'actual', type: 'line', data: pad(fcX.map(ts => actualMap.get(ts) ?? null), nH, 0), symbol: 'circle', symbolSize: 4, lineStyle: { color: '#16a34a', width: 1.5 } })
+  if (actualMap.size) series.push({ name: N.actual, type: 'line', data: pad(fcX.map(ts => actualMap.get(ts) ?? null), nH, 0), symbol: 'circle', symbolSize: 4, lineStyle: { color: '#16a34a', width: 1.5 } })
   if (showRefs) series.push(...referenceSeries(run))
-  const option = { animation: false, tooltip: { trigger: 'axis', valueFormatter: (v: number) => (v == null ? '–' : Number(v).toFixed(2)) }, legend: { top: 0 }, grid: { left: 56, right: 24, top: 36, bottom: 60 },
+  const option = { animation: false, tooltip: { trigger: 'axis', valueFormatter: (v: number) => (v == null ? '–' : Number(v).toFixed(2)) }, legend: { top: 0, data: series.map(s => (s as { name: string }).name).filter((n, i, a) => n !== N.band && a.indexOf(n) === i) }, grid: { left: 56, right: 24, top: 36, bottom: 60 },
     xAxis: { type: 'category', data: x, axisLabel: { formatter: (v: string) => fmtTs(v) } }, yAxis: { type: 'value', scale: true },
     dataZoom: [{ type: 'inside' }, { type: 'slider', bottom: 4 }], series }
   return <ReactECharts option={option} notMerge style={{ height: 420, width: '100%' }} />

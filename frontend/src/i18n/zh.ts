@@ -41,6 +41,7 @@ export default {
     metricHelp: { mae_mean: '预测价和真实价平均差多少', mase_mean: '小于 1 表示比沿用上一小时更准', direction_acc: '预测涨还是跌，说对的比例（价格不动的时刻不计）', mae_h1: '只看提前 1 小时的预测', mae_h24: '只看提前 24 小时的预测', rmse_mean: '对大误差惩罚更重的误差' },
     deleteRun: '已删除这次预测', runMissing: '这条预测记录不存在或已被删除', noSeasonForecast: '需要先设置赛季才能预测。',
   },
+  chart: { history: '历史中位价', band: '可信区间', forecast: '预测', actual: '后来的真实价格' },
   models: { naive: '沿用上一小时', seasonal_naive_24: '沿用昨天同一时刻', ets: '指数平滑', arima: 'ARIMA 时间序列', ridge: '线性回归', hgb: '梯度提升树', rf: '随机森林', ensemble: '多模型加权' },
   modelHelp: { naive: '基准：假设价格不变', seasonal_naive_24: '基准：假设和昨天同一时间一样', ets: '平滑趋势和每日周期', arima: '经典统计时间序列模型', ridge: '用过去的价格和成交量做线性预测', hgb: '能捕捉非线性关系的树模型', rf: '多棵决策树取平均' },
   catalog: {
@@ -50,6 +51,7 @@ export default {
     search: '搜索道具名或 ID', rarity: '稀有度', type: '类型', tradable: '交易情况', tradableYes: '本赛季有挂单', tradableNo: '没有挂单',
     name: '道具', listings: '挂单数', median: '中位单价', low: '最低单价', gearScore: '装备分', vendor: '商人收购价',
     track: '追踪', tracked: '已追踪', trackedOk: '已开始追踪 {{name}}', params: '全部参数',
+    summary: '共 {{items}} 个道具 · 本赛季有挂单的 {{tradable}} 个',
     empty: '道具库是空的。设置好 API key 后点"同步道具库"。', noMatch: '没有符合条件的道具',
   },
   collect: { title: '数据采集', intro: '点"立即采集"从 DarkerDB 拉取这个道具的最新挂单。数据存在本机（配置了 Postgres 就存数据库，否则存 data 目录下的 CSV）。', collectNow: '立即采集', recent: '采集记录', started: '已开始采集', untrack: '不再追踪', addFromCatalog: '从道具库添加道具', untracked: '已取消追踪 {{name}}' },

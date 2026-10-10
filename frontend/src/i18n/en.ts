@@ -41,6 +41,7 @@ export default {
     metricHelp: { mae_mean: 'Average distance between forecast and real price', mase_mean: 'Below 1 means better than repeating the last hour', direction_acc: 'Share of moves where the up/down call was right (flat hours ignored)', mae_h1: 'Only forecasts made 1 hour ahead', mae_h24: 'Only forecasts made 24 hours ahead', rmse_mean: 'Error that penalises big misses more' },
     deleteRun: 'Forecast deleted', runMissing: 'This forecast does not exist or was deleted', noSeasonForecast: 'Add a season before forecasting.',
   },
+  chart: { history: 'Hourly median', band: 'Interval', forecast: 'Forecast', actual: 'Later real price' },
   models: { naive: 'Repeat last hour', seasonal_naive_24: 'Repeat yesterday', ets: 'Exponential smoothing', arima: 'ARIMA', ridge: 'Linear regression', hgb: 'Gradient boosting', rf: 'Random forest', ensemble: 'Weighted blend' },
   modelHelp: { naive: 'Baseline: price stays the same', seasonal_naive_24: 'Baseline: same as this time yesterday', ets: 'Smooths trend and the daily cycle', arima: 'Classic statistical time-series model', ridge: 'Linear model on past prices and volume', hgb: 'Tree model for non-linear patterns', rf: 'Average of many decision trees' },
   catalog: {
@@ -50,6 +51,7 @@ export default {
     search: 'Search by name or ID', rarity: 'Rarity', type: 'Type', tradable: 'Trading', tradableYes: 'Listed this season', tradableNo: 'No listings',
     name: 'Item', listings: 'Listings', median: 'Median unit', low: 'Lowest unit', gearScore: 'Gear score', vendor: 'Vendor price',
     track: 'Track', tracked: 'Tracked', trackedOk: 'Now tracking {{name}}', params: 'All parameters',
+    summary: '{{items}} items · {{tradable}} listed this season',
     empty: 'The catalog is empty. Set your API key, then press "Sync catalog".', noMatch: 'No items match',
   },
   collect: { title: 'Collect data', intro: 'Pull the newest listings for an item from DarkerDB. Data stays on your machine (Postgres if configured, otherwise CSV files in data/).', collectNow: 'Collect now', recent: 'Collection history', started: 'Collection started', untrack: 'Stop tracking', addFromCatalog: 'Add items from the catalog', untracked: 'Stopped tracking {{name}}' },
