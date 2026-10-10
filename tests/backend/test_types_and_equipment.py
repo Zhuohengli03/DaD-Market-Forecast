@@ -184,3 +184,15 @@ def test_stat_labels_include_chinese(client, settings):
     client.app.state.client_factory = lambda key: Zh()
     stats = {s["key"]: s for s in client.get("/api/equipment/id.item.arming_sword/stats").json()["data"]["stats"]}
     assert stats["secondary_armor_penetration"]["label_zh"] == "护甲穿透"
+
+
+def test_tradability_check_reports_progress(settings):
+    store = _seed(settings)
+    seen = []
+
+    class C:
+        def get(self, path, params=None):
+            return {"body": [], "pagination": {"total": 1}}
+    check_tradability(C(), store, log=lambda s: None, progress=lambda stage, done=None, total=None, **d: seen.append((stage, done, total, d)))
+    assert seen[-1][0] == "done" and seen[-1][3] == {"checked": 4, "tradable": 4}
+    assert ("check", 4, 4, {}) in seen

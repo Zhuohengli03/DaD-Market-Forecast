@@ -23,7 +23,7 @@ def collector_argv(settings: Settings, entry: dict) -> list[str]:
 
 
 def collector_env(settings: Settings) -> dict[str, str]:
-    return {"DARKER_DATA_DIR": str(settings.data_dir)}
+    return {"DARKER_DATA_DIR": str(settings.data_dir), "DARKER_PROGRESS": "1"}
 
 
 def start_collection(state, item: str) -> Job:

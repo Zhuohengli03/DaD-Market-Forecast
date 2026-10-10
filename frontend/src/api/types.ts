@@ -6,7 +6,9 @@ export interface Listing { item_id: string; item: string; quantity: number; pric
 export interface Season { id: string; name: string; start: string; end: string | null; note: string }
 export interface SeasonInput { name: string; start: string; end: string | null; note: string }
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
-export interface Job { id: string; kind: 'forecast' | 'collect' | 'task'; label: string; status: JobStatus; created_at: string; finished_at: string | null; error: string | null; result_ref: string | null; meta: Record<string, string>; log_tail: string[] }
+export interface JobProgress { stage: string; done: number | null; total: number | null; detail: Record<string, unknown> }
+export type JobKind = 'forecast' | 'collect' | 'task' | 'catalog'
+export interface Job { id: string; kind: JobKind; label: string; status: JobStatus; created_at: string; finished_at: string | null; error: string | null; result_ref: string | null; meta: Record<string, string>; progress: JobProgress | null }
 export interface ForecastInput { item: string; season_id: string; horizon_hours: number; models: string[]; coverage: number; backtest_origin_step?: number }
 export interface RunSummary { run_id: string; created_at: string; source: string; beats_baseline: boolean; skill_vs_naive: number; item: string; season_id: string; season_name: string; horizon_hours: number; selected: string; warnings: number }
 export interface ModelMetric { name: string; mae_h1: number | null; mae_h24: number | null; mae_mean: number | null; rmse_mean: number | null; mase_mean: number | null; direction_acc: number | null }

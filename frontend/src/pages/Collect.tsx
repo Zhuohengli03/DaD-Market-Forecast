@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 import { useItems, useSetup, useStartCollect, useStatus, useUntrackItem } from '../api/hooks'
 import { useJobStream } from '../api/jobStream'
 import { JobList } from '../components/JobList'
-import { LogPanel } from '../components/LogPanel'
+import { ProgressPanel } from '../components/ProgressPanel'
 import { Notice } from '../components/Notice'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -38,7 +38,7 @@ export default function Collect() {
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
         <Card title={t('collect.recent')}><JobList kinds={['collect']} selected={jobId} onSelect={setJobId} /></Card>
-        <Card>{jobId ? <LogPanel lines={stream.lines} status={stream.status} disconnected={stream.disconnected} /> : <p className="text-sm text-[var(--muted)]">{t('common.log')}: –</p>}</Card>
+        <Card>{jobId ? <ProgressPanel kind="collect" status={stream.status} progress={stream.progress} error={stream.error} disconnected={stream.disconnected} /> : <p className="text-sm text-[var(--muted)]">{t('common.pickJob')}</p>}</Card>
       </div>
     </div>
   )

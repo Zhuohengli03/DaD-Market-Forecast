@@ -102,9 +102,11 @@ def _naive_selection(result, skill: float, reason: str):
 
 
 def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons: list[Season],
-                 source: str = "unknown", log: Logger | None = None) -> dict:
+                 source: str = "unknown", log: Logger | None = None, progress=None) -> dict:
     say = log or (lambda _s: None)
+    step = progress or (lambda *a, **k: None)
     season, model_names = _validate(request, seasons)
+    step("load")
     say(f"读取 {request.item} 在 {season.name} 的挂单")
     listings = load_listings(request.item, season.start, season.end)
     full_series = hourly_series(listings)
@@ -118,8 +120,11 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
             f"（{season.name}，共 {len(listings)} 条挂单）。请先多采集几天。")
     say(f"共 {len(series)} 个小时的数据，开始回测 {len(model_names)} 种方法")
 
+    step("backtest", 0, len(model_names))
     result = run_backtest(series, season.start, model_names, request.horizon_hours,
-                          origin_step=request.backtest_origin_step, log=say)
+                          origin_step=request.backtest_origin_step, log=say,
+                          on_model=lambda i, n, name: step("backtest", i, n, model=name))
+    step("select")
     warnings += list(result.warnings)
     warnings += [f"方法 {n} 运行失败：{err}" for n, err in result.failures.items()]
     metrics = summarize(result)
@@ -128,6 +133,7 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
 
     if selection.reason:
         warnings.append(f"显示基准预测：{selection.reason}")
+    step("fit", model=selection.name)
     try:
         point, importance = _fit_selected(selection, series, season.start, request.horizon_hours)
     except Exception as exc:
@@ -153,12 +159,14 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
             others.append((s.id, s.name, other, s.start))
     references = reference_curves(current_offset, request.horizon_hours, others)
 
+    step("references")
     tail = full_series.iloc[-TAIL_HOURS:]
     now = pd.Timestamp.now(tz="UTC")
     data_age_hours = float((now - last_ts) / pd.Timedelta(hours=1))
     if data_age_hours > STALE_HOURS:
         warnings.append(f"最新的挂单是 {data_age_hours:.0f} 小时前的，预测从那时起算，不是从现在。请先采集新数据。")
     run_id = f"{now:%Y%m%dT%H%M%S}-{_slug(request.item)}-{uuid.uuid4().hex[:6]}"
+    step("done", beats_baseline=selection.beats_baseline, selected=selection.name)
     return {
         "run_id": run_id,
         "created_at": now.isoformat(),

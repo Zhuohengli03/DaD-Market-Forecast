@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSeasons } from '../api/hooks'
 import { useJobStream } from '../api/jobStream'
-import { LogPanel } from '../components/LogPanel'
+import { ProgressPanel } from '../components/ProgressPanel'
 import { Notice } from '../components/Notice'
 import { Card } from '../components/ui/Card'
 import { useUrlState } from '../lib/urlState'
@@ -28,7 +28,7 @@ export default function Forecast() {
         <div><h1 className="text-xl font-semibold">{t('forecast.title')}</h1><p className="text-sm text-[var(--muted)] mt-1 max-w-3xl">{t('forecast.intro')}</p></div>
         {seasons.isSuccess && !seasons.data.length ? <Notice to="/settings" action={t('common.goSettings')}>{t('onboarding.noSeasons')}</Notice> :
           <Card><ForecastForm onStarted={id => { setJobId(id); setRunId('') }} /></Card>}
-        {jobId && <Card>{stream.status === 'failed' && stream.error && <div className="text-sm text-[var(--bad)] mb-2">{t('forecast.failed')}: {stream.error}</div>}<LogPanel lines={stream.lines} status={stream.status} disconnected={stream.disconnected} /></Card>}
+        {jobId && <Card><ProgressPanel kind="forecast" status={stream.status} progress={stream.progress} error={stream.error} disconnected={stream.disconnected} /></Card>}
         {runId && <RunResult runId={runId} onDeleted={() => setRunId('')} />}
       </div>
     </div>

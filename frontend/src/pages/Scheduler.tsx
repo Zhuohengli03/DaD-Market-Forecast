@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useScheduler, useSchedulerAction, useStartCollect } from '../api/hooks'
 import { useJobStream } from '../api/jobStream'
 import { JobList } from '../components/JobList'
-import { LogPanel } from '../components/LogPanel'
+import { ProgressPanel } from '../components/ProgressPanel'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -31,7 +31,7 @@ export default function Scheduler() {
       </Card>
       <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4">
         <Card title={t('common.jobs')}><JobList kinds={['collect', 'task']} selected={jobId} onSelect={setJobId} /></Card>
-        <Card>{jobId ? <LogPanel lines={stream.lines} status={stream.status} disconnected={stream.disconnected} /> : <p className="text-sm text-[var(--muted)]">{t('common.log')}: –</p>}</Card>
+        <Card>{jobId ? <ProgressPanel kind="collect" status={stream.status} progress={stream.progress} error={stream.error} disconnected={stream.disconnected} /> : <p className="text-sm text-[var(--muted)]">{t('common.pickJob')}</p>}</Card>
       </div>
     </div>
   )

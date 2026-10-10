@@ -1,7 +1,7 @@
 export default {
   app: { tagline: '暗黑地牢市场价格追踪与预测' },
   nav: { dashboard: '概览', market: '价格走势', forecast: '价格预测', catalog: '道具库', equipment: '装备行情', collect: '数据采集', scheduler: '定时采集', settings: '设置' },
-  common: { item: '道具', season: '赛季', start: '开始', end: '结束', resolution: '时间粒度', save: '保存', cancel: '取消', delete: '删除', add: '添加', loading: '加载中…', none: '暂无数据', error: '出了点问题', all: '全部', yes: '是', no: '否', download: '下载 CSV', jobs: '任务记录', log: '运行日志', prev: '上一页', next: '下一页', running: '个任务运行中', goSettings: '去设置', hours: '小时' },
+  common: { item: '道具', season: '赛季', start: '开始', end: '结束', resolution: '时间粒度', save: '保存', cancel: '取消', delete: '删除', add: '添加', loading: '加载中…', none: '暂无数据', error: '出了点问题', all: '全部', yes: '是', no: '否', download: '下载 CSV', jobs: '任务记录', pickJob: '点左侧的一条记录查看结果', prev: '上一页', next: '下一页', running: '个任务运行中', goSettings: '去设置', hours: '小时' },
   res: { '1h': '每小时', '4h': '每 4 小时', '1d': '每天' },
   apiKey: {
     title: '连接你的 DarkerDB 账号',
@@ -48,6 +48,14 @@ export default {
   patch: { season: '抢先体验第 {{n}} 赛季', seasonLabel: '第 {{n}} 赛季' },
   yes: '是', no: '否',
   param: { icon: '图标编号', model: '模型编号', has_model: '有 3D 模型', is_new: '本版本新增', patch_changed: '变动版本', patch_changed_name: '变动版本名称', is_changed: '本版本有改动', origin_id: '原始编号', wearing_delay_time: '穿戴耗时', id: '编号', archetype: '类型编号', slug: '别名', name: '名称', name_zh: '中文名称', flavor: '描述', flavor_zh: '中文描述', rarity: '稀有度', item_type: '类别', slot_type: '部位', armor_type: '护甲类型', hand_type: '持握方式', weapon_type: '武器类型', misc_type: '杂项类型', utility_type: '消耗品类型', gear_score: '装备分', vendor_price: '商人收购价', max_stack_size: '最大堆叠', inventory_width: '背包宽度', inventory_height: '背包高度', is_tradable: '可交易', is_droppable: '可丢弃', required_class: '职业限制', required_knowledge: '所需知识', num_primary_attributes: '基础属性数量', num_secondary_attributes: '可能词条数量', patch: '版本', patch_name: '版本名称', season: '赛季', season_label: '赛季名称', icon_url: '图标地址', model_url: '模型地址', experience: '经验值', adventure_points: '冒险点数', artifact_type: '神器类型', craft_set: '制作套装', is_craft_only: '仅可制作', primary_attributes: '基础属性', secondary_attributes: '可能出现的词条' },
+  progress: {
+    waiting: '准备中…', working: '处理中…', reconnecting: '连接中断，正在重新获取进度…',
+    status: { queued: '等待中', running: '进行中', succeeded: '已完成', failed: '失败' },
+    forecast: { load: '正在读取这个赛季的挂单数据', backtestStart: '正在用历史数据检验各方法', backtest: '正在用历史数据检验各方法（{{done}}/{{total}}：{{model}}）', select: '正在比较各方法的准确度', fit: '正在用完整数据训练「{{model}}」', references: '正在读取往届赛季同期价格', done: '预测完成' },
+    collect: { page: '正在从 DarkerDB 获取挂单：已看 {{page}} 页，新增 {{new}} 条', done: '采集完成：新增 {{new}} 条挂单', none: '采集完成：没有新挂单' },
+    catalog: { items: '正在下载道具资料：已获取 {{n}} 个', names: '正在获取中文名称', check: '正在检查哪些道具能交易：{{done}}/{{total}}', synced: '同步完成：{{items}} 个道具，{{types}} 种类型', checked: '检查完成：{{checked}} 种道具中有 {{tradable}} 种可交易' },
+    error: { auth: 'DarkerDB 拒绝了你的 API key，请到「设置」里重新填写。', api: 'DarkerDB 暂时无法访问，请稍后再试。', collect: '采集没有成功，请稍后再试。', task: '采集没有成功，请稍后再试。', forecast: '预测没有成功，请稍后再试。', catalog: '道具库任务没有成功，请稍后再试。' },
+  },
   models: { naive: '沿用上一小时', seasonal_naive_24: '沿用昨天同一时刻', ets: '指数平滑', arima: 'ARIMA 时间序列', ridge: '线性回归', hgb: '梯度提升树', rf: '随机森林', ensemble: '多模型加权' },
   modelHelp: { naive: '基准：假设价格不变', seasonal_naive_24: '基准：假设和昨天同一时间一样', ets: '平滑趋势和每日周期', arima: '经典统计时间序列模型', ridge: '用过去的价格和成交量做线性预测', hgb: '能捕捉非线性关系的树模型', rf: '多棵决策树取平均' },
   catalog: {

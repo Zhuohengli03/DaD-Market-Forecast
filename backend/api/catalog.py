@@ -17,6 +17,10 @@ def _client(request: Request):
     return factory(key)
 
 
+def _progress(jobs, job):
+    return lambda stage, done=None, total=None, **d: jobs.progress(job, stage, done, total, detail=d)
+
+
 @router.get("/catalog")
 def catalog(request: Request, q: str = "", item_type: str = "", has_stats: bool | None = None,
             page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=200)):
@@ -41,7 +45,8 @@ def start_sync(request: Request):
     if st.jobs.find_active("catalog"):
         raise HTTPException(409, "道具库任务正在运行 / a catalog job is already running")
     job = st.jobs.create("catalog", "同步道具库 / sync item catalog")
-    st.jobs.run_in_thread(job, lambda j: str(sync_catalog(client, st.catalog, lambda s: st.jobs.append_log(j, s))))
+    st.jobs.run_in_thread(job, lambda j: str(sync_catalog(client, st.catalog, lambda s: st.jobs.append_log(j, s),
+                                                          progress=_progress(st.jobs, j))))
     return ok({"job_id": job.id})
 
 
@@ -55,5 +60,6 @@ def start_trade_check(request: Request, body: CheckIn | None = None):
         raise HTTPException(409, "请先同步道具库 / sync the catalog first")
     job = st.jobs.create("catalog", "检查哪些道具能交易 / check which items trade")
     force = (body or CheckIn()).force
-    st.jobs.run_in_thread(job, lambda j: str(check_tradability(client, st.catalog, lambda s: st.jobs.append_log(j, s), force)))
+    st.jobs.run_in_thread(job, lambda j: str(check_tradability(client, st.catalog, lambda s: st.jobs.append_log(j, s), force,
+                                                               progress=_progress(st.jobs, j))))
     return ok({"job_id": job.id})

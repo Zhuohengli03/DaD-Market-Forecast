@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCatalog, useCatalogJob, useCatalogMeta, useItems, useSetup } from '../api/hooks'
 import { useJobStream } from '../api/jobStream'
-import { LogPanel } from '../components/LogPanel'
+import { ProgressPanel } from '../components/ProgressPanel'
 import { Notice } from '../components/Notice'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -51,7 +51,7 @@ export default function Catalog() {
           <div>{t('catalog.syncedAt')}: <b className="text-[var(--ink)]">{fmtTs(m?.synced_at)}</b></div>
           <div>{t('catalog.checkedAt')}: <b className="text-[var(--ink)]">{fmtTs(m?.trade_checked_at)}</b></div>
         </dl>
-        {jobId && <div className="mt-3"><LogPanel lines={stream.lines} status={stream.status} disconnected={stream.disconnected} /></div>}
+        {jobId && <div className="mt-3"><ProgressPanel kind="catalog" status={stream.status} progress={stream.progress} error={stream.error} disconnected={stream.disconnected} /></div>}
       </Card>
       <div className="flex flex-wrap gap-2 items-center text-sm">
         <input className={`${inputCls} w-64`} placeholder={t('catalog.search')} value={q} onChange={e => setQ(e.target.value)} aria-label={t('catalog.search')} />

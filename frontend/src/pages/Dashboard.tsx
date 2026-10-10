@@ -8,7 +8,7 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { Sparkline } from '../components/charts/Sparkline'
 import { fmtNum, fmtPct, fmtRelative, fmtTs } from '../lib/format'
 import { change24h } from '../lib/market'
-import { itemName } from '../lib/labels'
+import { itemName, localizeMessage } from '../lib/labels'
 
 function ItemCard({ item }: { item: ItemInfo }) {
   const { t, i18n } = useTranslation()
@@ -36,7 +36,7 @@ function ItemCard({ item }: { item: ItemInfo }) {
 }
 
 export default function Dashboard() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const items = useItems()
   const status = useStatus()
   return (
@@ -45,7 +45,7 @@ export default function Dashboard() {
       {items.isLoading ? <p>{t('common.loading')}</p> : !items.data?.length ? <EmptyState title={t('common.none')} /> :
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{items.data.map(i => <ItemCard key={i.name} item={i} />)}</div>}
       <Card title={t('dashboard.runningJobs')}>
-        {status.data?.jobs_running.length ? <ul className="text-sm space-y-1">{status.data.jobs_running.map(j => <li key={j.id} className="flex justify-between"><span>{j.label}</span><Badge tone="warn">{j.status}</Badge></li>)}</ul> : <p className="text-sm text-[var(--muted)]">{t('dashboard.noJobs')}</p>}
+        {status.data?.jobs_running.length ? <ul className="text-sm space-y-1">{status.data.jobs_running.map(j => <li key={j.id} className="flex justify-between"><span>{localizeMessage(j.label, i18n.language)}</span><Badge tone="warn">{t(`progress.status.${j.status}`)}</Badge></li>)}</ul> : <p className="text-sm text-[var(--muted)]">{t('dashboard.noJobs')}</p>}
       </Card>
     </div>
   )
