@@ -109,3 +109,9 @@ def test_one_catalog_type(client, settings):
     d = client.get("/api/catalog/types/id.item.bandage").json()["data"]
     assert d["name"] == "Bandage" and len(d["variants"]) == 2 and "raw" in d["variants"][0]
     assert client.get("/api/catalog/types/id.item.nope").status_code == 404
+
+
+def test_estimate_for_an_untracked_item_is_404(client):
+    r = client.get("/api/estimate/collect/Nope Ore")
+    assert r.status_code == 404 and "Nope Ore" in r.json()["error"]
+    assert client.get("/api/estimate/collect/Test Ore").status_code == 200

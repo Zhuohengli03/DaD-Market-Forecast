@@ -1,5 +1,5 @@
 """Request-cost estimates shown before the user starts anything that calls DarkerDB."""
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from ..schemas import ok
@@ -16,7 +16,11 @@ def estimate_collect_all(request: Request):
 @router.get("/estimate/collect/{name}")
 def estimate_collect(name: str, request: Request):
     st = request.app.state
-    return ok(cost.collect_estimate(st, st.items.get(name)))
+    try:
+        entry = st.items.get(name)
+    except KeyError:
+        raise HTTPException(404, f"没有追踪 {name} / {name} is not tracked")
+    return ok(cost.collect_estimate(st, entry))
 
 
 @router.get("/estimate/schedule")

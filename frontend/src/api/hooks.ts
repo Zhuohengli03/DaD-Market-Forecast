@@ -110,7 +110,7 @@ export function useInitialize() {
 
 export function useSetItemSchedule() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: ({ name, ...b }: ScheduleInput & { name: string }) => api.put<unknown>(`/items/${encodeURIComponent(name)}/schedule`, b).then(r => r.data),
+  return useMutation({ mutationFn: ({ name, ...b }: ScheduleInput & { name: string }) => api.put<unknown>(`/items/${name}/schedule`, b).then(r => r.data),
     onSuccess: () => { ['itemsConfig', 'items', 'scheduler'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
 }
 export interface BulkTrackResult { added: number; skipped: { has_stats: number; already_tracked: number; not_in_catalog: number } }
@@ -132,7 +132,7 @@ export function useSaveQuota() {
 }
 export function useTypeHistory() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: (archetype: string) => api.post<TypeHistory>(`/catalog/types/${encodeURIComponent(archetype)}/history`).then(r => r.data),
+  return useMutation({ mutationFn: (archetype: string) => api.post<TypeHistory>(`/catalog/types/${archetype}/history`).then(r => r.data),
     onSuccess: () => { ['catalog', 'quota'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
 }
 // cost estimates (DarkerDB credits), always rounded up by the server
@@ -143,7 +143,7 @@ export const useScheduleEstimate = (intervalSeconds?: number) => useQuery({ quer
 export const useItemsEstimate = (itemIds: string[], maxPages: number) => useQuery({ queryKey: ['estimate', 'items', itemIds, maxPages], enabled: itemIds.length > 0, staleTime: 60_000,
   queryFn: () => api.post<ItemsEstimate>('/estimate/items', { item_ids: itemIds, max_pages: maxPages }).then(r => r.data) })
 export const useCatalogType = (archetype: string) => useQuery({ queryKey: ['catalog', 'type', archetype], enabled: !!archetype,
-  queryFn: () => api.get<CatalogType>(`/catalog/types/${encodeURIComponent(archetype)}`).then(r => r.data) })
+  queryFn: () => api.get<CatalogType>(`/catalog/types/${archetype}`).then(r => r.data) })
 export function useUntrackBulk() {
   const qc = useQueryClient()
   return useMutation({ mutationFn: (names: string[]) => api.post<{ removed: number; missing: number }>('/items/untrack-bulk', { names }).then(r => r.data),
@@ -151,3 +151,5 @@ export function useUntrackBulk() {
 }
 export const useOverview = () => useQuery({ queryKey: ['overview'], refetchInterval: 60_000,
   queryFn: () => api.get<{ groups: OverviewGroup[] }>('/overview').then(r => r.data.groups) })
+export const useCollectEstimate = (name: string) => useQuery({ queryKey: ['estimate', 'collect', name], enabled: !!name, staleTime: 60_000,
+  queryFn: () => api.get<{ requests: number; known: boolean }>(`/estimate/collect/${name}`).then(r => r.data) })
