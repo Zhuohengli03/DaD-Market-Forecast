@@ -16,7 +16,7 @@ def _client_with_dist(project_root):
     (dist / "assets").mkdir(parents=True)
     (dist / "index.html").write_text("<div id=\"root\"></div>")
     (project_root / ".env").write_text("DB_PASSWORD=supersecret\n")
-    return TestClient(create_app(Settings(project_root=project_root, db_user="")))
+    return TestClient(create_app(Settings(project_root=project_root, db_user="")), headers={"X-Darker-Market": "1"})
 
 
 def test_spa_fallback_does_not_escape_dist(project_root):
@@ -55,7 +55,7 @@ def test_scheduler_terminated_on_shutdown(project_root):
     (project_root / "src" / "scheduler").mkdir(exist_ok=True)
     (project_root / "src" / "scheduler" / "start_scheduler.py").write_text("import time\nwhile True: time.sleep(0.1)\n")
     app = create_app(Settings(project_root=project_root, db_user=""))
-    with TestClient(app) as c:
+    with TestClient(app, headers={"X-Darker-Market": "1"}) as c:
         c.post("/api/scheduler/start")
         proc = app.state.scheduler._proc
         assert proc.poll() is None
@@ -66,7 +66,7 @@ def test_scheduler_terminated_on_shutdown(project_root):
 def test_status_caches_item_stats(project_root):
     calls = []
     app = create_app(Settings(project_root=project_root, db_user=""))
-    with TestClient(app) as c:
+    with TestClient(app, headers={"X-Darker-Market": "1"}) as c:
         real = app.state.repo.list_items
         app.state.repo.list_items = lambda: calls.append(1) or real()
         for _ in range(5):

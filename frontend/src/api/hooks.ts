@@ -75,7 +75,7 @@ export const useCatalog = (p: CatalogParams) => useQuery({
 export const useCatalogMeta = () => useQuery({ queryKey: ['catalogMeta'], queryFn: () => api.get<CatalogMeta>('/catalog/meta').then(r => r.data) })
 export function useCatalogJob() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: (kind: 'sync' | 'scan') => api.post<{ job_id: string }>(kind === 'sync' ? '/catalog/sync' : '/catalog/scan-market', kind === 'scan' ? {} : undefined).then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
+  return useMutation({ mutationFn: ({ kind, maxPages }: { kind: 'sync' | 'scan'; maxPages?: number }) => api.post<{ job_id: string }>(kind === 'sync' ? '/catalog/sync' : '/catalog/scan-market', kind === 'scan' ? { max_pages: maxPages ?? 40 } : undefined).then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
 }
 export function useTrackItem() {
   const qc = useQueryClient()

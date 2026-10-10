@@ -6,6 +6,7 @@ import { ApiError } from '../api/client'
 import { ApiKeyDialog } from './ApiKeyDialog'
 
 vi.mock('../api/hooks')
+beforeEach(() => sessionStorage.clear())
 
 function setup(configured: boolean, mutate = vi.fn()) {
   vi.mocked(hooks.useSetup).mockReturnValue({ data: { api_key_configured: configured, api_key_hint: null, data_source: 'csv', seasons: 0, tracked_items: 4, catalog_items: 0 }, isSuccess: true } as never)
@@ -31,6 +32,13 @@ it('submits the trimmed key and shows the server error inline', () => {
   fireEvent.click(screen.getByRole('button', { name: '验证并保存' }))
   expect(mutate.mock.calls[0][0]).toBe('abc')
   expect(screen.getByRole('alert')).toHaveTextContent('DarkerDB 拒绝了这个 key')
+})
+
+it('focuses the key field and closes on Escape', () => {
+  setup(false)
+  expect(screen.getByLabelText('API key')).toHaveFocus()
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
 it('can be dismissed for now', () => {

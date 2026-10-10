@@ -4,6 +4,7 @@
 
 *.log
 *.txt
+!requirements*.txt
 
 # Python 缓存 / Python cache
 *.pyc

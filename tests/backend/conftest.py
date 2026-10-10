@@ -38,5 +38,5 @@ def settings(project_root: Path) -> Settings:
 @pytest.fixture
 def client(settings: Settings) -> TestClient:
     app = create_app(settings)
-    with TestClient(app) as c:
+    with TestClient(app, headers={"X-Darker-Market": "1"}) as c:
         yield c

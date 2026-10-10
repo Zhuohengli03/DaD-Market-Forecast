@@ -20,7 +20,7 @@ The app opens a dialog. Create a key at https://darkerdb.com/dashboard/api-keys 
 **Settings → Seasons**: add the current season with its start time in UTC and an empty end. Add past seasons too if you have their data; they appear as dotted reference lines on forecasts.
 
 ## 5. Pick items / 选择道具
-**Item catalog → Sync catalog** downloads every item and its parameters (rarity, type, gear score, vendor price, attribute ranges, everything DarkerDB returns). **Scan this season's market** reads the newest listings since the season start (40 pages by default, about a minute at DarkerDB's 60 requests/min limit) and marks which items are trading. Press **Track** on the items you want.
+**Item catalog → Sync catalog** downloads every item and its parameters (rarity, type, gear score, vendor price, attribute ranges, everything DarkerDB returns). **Scan recent listings** reads back from the newest listings (2,000 by default, about a minute at DarkerDB's 60 requests/min limit; up to 15,000) without going past the current season start, and marks which items are trading. The page shows exactly which period the scan covered. Press **Track** on the items you want.
 
 ## 6. Collect and forecast / 采集与预测
 **Collect data → Collect now** fetches listings for one item. A forecast needs at least 72 continuous hours of data in the selected season, so collect for a few days (or turn on **Scheduled collection**) before forecasting a new item.

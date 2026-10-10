@@ -15,6 +15,9 @@ from datetime import datetime
 import logging
 from task_config import TASKS, SCHEDULER_CONFIG
 
+# collectors share one API key's rate limit, so they queue instead of running together
+_RUN_SLOTS = threading.BoundedSemaphore(SCHEDULER_CONFIG.get("max_concurrent_tasks", 1))
+
 class SmartScheduler:
     def __init__(self):
         self.running_tasks = {}
@@ -105,6 +108,7 @@ class SmartScheduler:
     def run_script_async(self, script_path, script_name="Unknown", args=None):
         """异步运行脚本（避免阻塞）"""
         def run():
+          with _RUN_SLOTS:
             logging.info(f"🔄 异步任务开始: {script_name}")
             logging.info(f"🔄 Async task started: {script_name}")
             success = self.run_script(script_path, script_name, args)

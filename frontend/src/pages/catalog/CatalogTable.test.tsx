@@ -14,7 +14,7 @@ const rows = [
 it('lists items with market stats, shows every raw parameter, and tracks', () => {
   const track = vi.fn()
   vi.mocked(hooks.useTrackItem).mockReturnValue({ mutate: track, isPending: false } as never)
-  render(<CatalogTable rows={rows as never} tracked={new Set(['Arming Sword'])} />)
+  render(<CatalogTable rows={rows as never} tracked={new Set(['id.item.arming_sword_2001'])} />)
   expect(screen.getByText('41.00')).toBeInTheDocument()
   expect(screen.getByText('已追踪')).toBeInTheDocument()
   fireEvent.click(screen.getByText('Gold Ore'))

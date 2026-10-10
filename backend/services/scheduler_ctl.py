@@ -30,6 +30,13 @@ class SchedulerController:
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
 
+    def restart_if_running(self) -> None:
+        """The scheduler reads tracked items at start; restart it so item or time changes take effect."""
+        self._tasks_cache = None
+        if self.running():
+            self.stop()
+            self.start()
+
     def stop(self) -> bool:
         if self.running():
             self._proc.terminate()

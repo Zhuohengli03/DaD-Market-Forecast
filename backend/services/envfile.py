@@ -24,6 +24,8 @@ def atomic_write(path: Path, text: str, mode: int | None = None) -> None:
 
 def upsert_env(path: Path, key: str, value: str) -> None:
     """Set KEY=value in a dotenv file, keeping every other line as is. The file is made owner-only."""
+    if any(c in str(value) + key for c in "\r\n\0"):
+        raise ValueError("dotenv values must be a single line")
     path = Path(path)
     lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
     out, done = [], False

@@ -48,7 +48,7 @@ export function CatalogTable({ rows, tracked }: { rows: CatalogRow[]; tracked: S
               <td className="px-3 py-1.5 text-right tabular-nums">{r.market?.listings ?? '–'}</td>
               <td className="px-3 py-1.5 text-right tabular-nums">{r.market ? fmtNum(r.market.min_price_per_unit) : '–'}</td>
               <td className="px-3 py-1.5 text-right tabular-nums font-medium">{r.market ? fmtNum(r.market.median_price_per_unit) : '–'}</td>
-              <td className="px-3 py-1.5 text-right">{tracked.has(r.name) ? <Badge tone="ok">{t('catalog.tracked')}</Badge> :
+              <td className="px-3 py-1.5 text-right">{tracked.has(r.id) ? <Badge tone="ok">{t('catalog.tracked')}</Badge> :
                 <Button size="sm" variant="ghost" onClick={() => track.mutate(r.id, { onSuccess: d => toast.push(t('catalog.trackedOk', { name: d.name })), onError: e => toast.push((e as Error).message, 'error') })}>{t('catalog.track')}</Button>}</td>
             </tr>
             {open === r.id && <tr className="bg-gray-50"><td></td><td colSpan={9} className="px-3 py-3"><div className="text-xs font-semibold mb-2">{t('catalog.params')}</div><Params raw={r.raw} /></td></tr>}

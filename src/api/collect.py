@@ -72,12 +72,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
-def table_slug(name: str) -> str:
-    import re
-    s = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_")
-    return s if s and not s[0].isdigit() else f"item_{s}"
-
-
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     from dotenv import load_dotenv
@@ -103,7 +97,8 @@ def main(argv: list[str] | None = None) -> int:
                 "or create one at https://darkerdb.com/dashboard/api-keys (scopes darkerdb.live + darkerdb.data).")
         return 2
 
-    storage = open_storage(table_slug(args.item), Path(args.data_dir), log)
+    from src.api.storage import item_slug
+    storage = open_storage(item_slug(args.item), Path(args.data_dir), log)
     try:
         seen = storage.existing_keys()
         log(f"{len(seen)} listings already stored")

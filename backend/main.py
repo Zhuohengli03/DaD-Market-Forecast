@@ -42,6 +42,7 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
         app.state.jobs.shutdown()
 
     app = FastAPI(title="Darker Market", lifespan=lifespan)
+    _add_guards(app, settings)
 
     @app.exception_handler(RequestValidationError)
     async def _validation(_: Request, exc: RequestValidationError):
@@ -72,6 +73,32 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
     _include_routers(app)
     _mount_frontend(app, settings)
     return app
+
+
+APP_HEADER = "X-Darker-Market"
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "[::1]", "testserver"]
+
+
+def _add_guards(app: FastAPI, settings: Settings) -> None:
+    """Block cross-site writes and DNS rebinding.
+
+    Every state-changing /api request must carry X-Darker-Market. Browsers only let other sites send a custom
+    header after a CORS preflight, and this server answers no preflight, so web pages elsewhere cannot trigger
+    jobs or change settings. The Host check stops DNS-rebinding pages from posing as localhost.
+    """
+    from starlette.middleware.trustedhost import TrustedHostMiddleware
+
+    @app.middleware("http")
+    async def require_app_header(request: Request, call_next):
+        if request.method not in SAFE_METHODS and request.url.path.startswith("/api/") \
+                and request.headers.get(APP_HEADER) != "1":
+            return JSONResponse(status_code=403, content=fail(
+                "跨站请求已拒绝 / cross-site request refused (missing X-Darker-Market header)"))
+        return await call_next(request)
+
+    if settings.host in ("127.0.0.1", "localhost", "::1"):
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=LOOPBACK_HOSTS)
 
 
 def _attach_services(app: FastAPI) -> None:

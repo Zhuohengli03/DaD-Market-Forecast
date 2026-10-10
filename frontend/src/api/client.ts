@@ -24,7 +24,8 @@ async function request<T>(method: string, path: string, body?: unknown, params?:
   try {
     res = await fetch('/api' + encodePath(path) + qs(params), {
       method,
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      // the backend refuses writes without this header, which other websites cannot send (CSRF guard)
+      headers: { 'X-Darker-Market': '1', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch (e) {

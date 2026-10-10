@@ -29,7 +29,8 @@ class Settings(BaseSettings):
     project_root: Path = Field(default=DEFAULT_ROOT)
     host: str = "127.0.0.1"  # single-user local app; set HOST=0.0.0.0 to expose on the LAN
     port: int = 5001
-    data_dir: Path | None = None
+    # env DARKER_DATA_DIR. Not DATA_DIR: older .env files use that for an unrelated export folder.
+    darker_data_dir: Path | None = None
     runs_dir: Path | None = None
     seasons_path: Path | None = None
     items_config_path: Path | None = None
@@ -40,13 +41,17 @@ class Settings(BaseSettings):
 
     def model_post_init(self, __context) -> None:
         root = self.project_root
-        self.data_dir = self.data_dir or root / "data"
+        self.darker_data_dir = self.darker_data_dir or root / "data"
         self.runs_dir = self.runs_dir or self.data_dir / "runs"
         self.seasons_path = self.seasons_path or self.data_dir / "seasons.json"
         self.items_config_path = self.items_config_path or self.data_dir / "items.json"
         self.catalog_path = self.catalog_path or self.data_dir / "catalog.json"
         self.env_path = self.env_path or root / ".env"
         self.frontend_dist = self.frontend_dist or root / "frontend" / "dist"
+
+    @property
+    def data_dir(self) -> Path:
+        return self.darker_data_dir
 
     @property
     def postgres_configured(self) -> bool:

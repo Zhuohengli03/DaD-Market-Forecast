@@ -27,6 +27,11 @@ ListingLoader = Callable[[str, pd.Timestamp, "pd.Timestamp | None"], pd.DataFram
 Logger = Callable[[str], None]
 
 
+def _slug(name: str) -> str:
+    import re
+    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "item"
+
+
 class InsufficientDataError(ValueError):
     pass
 
@@ -128,7 +133,7 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     except Exception as exc:
         warnings.append(f"{selection.name} failed on the full season ({type(exc).__name__}: {exc}); "
                         "falling back to the naive forecast")
-        selection = _naive_selection(result, selection.skill_vs_naive, "selected model failed to refit")
+        selection = _naive_selection(result, 0.0, "selected model failed to refit")
         point, importance = _fit_selected(selection, series, season.start, request.horizon_hours)
     resid = result.actuals - selection.predictions
     lo, hi = quantile_bounds(resid, request.coverage)
@@ -155,7 +160,7 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     if data_age_hours > STALE_HOURS:
         warnings.append(f"latest listing is {data_age_hours:.0f} hours old; the forecast starts from then, "
                         "not from now. Collect fresh data first.")
-    run_id = f"{now:%Y%m%dT%H%M%S}-{request.item.lower().replace(' ', '_')}-{uuid.uuid4().hex[:6]}"
+    run_id = f"{now:%Y%m%dT%H%M%S}-{_slug(request.item)}-{uuid.uuid4().hex[:6]}"
     return {
         "run_id": run_id,
         "created_at": now.isoformat(),

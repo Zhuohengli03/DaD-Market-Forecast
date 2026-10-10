@@ -10,6 +10,7 @@ import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
 import { inputCls } from '../components/ui/Field'
 import { useToast } from '../components/ui/Toast'
+import { useDebounced } from '../lib/useDebounced'
 import { fmtTs } from '../lib/format'
 import { CatalogTable } from './catalog/CatalogTable'
 
@@ -24,13 +25,15 @@ export default function Catalog() {
   const [tradable, setTradable] = useState<'' | 'true' | 'false'>(''); const [page, setPage] = useState(1)
   const [jobId, setJobId] = useState<string | null>(null)
   const stream = useJobStream(jobId)
-  useEffect(() => { setPage(1) }, [q, rarity, type, tradable])
+  const query = useDebounced(q, 300)
+  const [pagesBudget, setPagesBudget] = useState(40)
+  useEffect(() => { setPage(1) }, [query, rarity, type, tradable])
   useEffect(() => {
     if (stream.status === 'succeeded' || stream.status === 'failed') { qc.invalidateQueries({ queryKey: ['catalog'] }); qc.invalidateQueries({ queryKey: ['catalogMeta'] }) }
   }, [stream.status, qc])
-  const cat = useCatalog({ q: q || undefined, rarity: rarity || undefined, item_type: type || undefined, tradable: tradable === '' ? undefined : tradable === 'true', page, page_size: PAGE })
-  const tracked = new Set((items.data ?? []).map(i => i.name))
-  const run = (kind: 'sync' | 'scan') => job.mutate(kind, { onSuccess: setJobId, onError: e => toast.push((e as Error).message, 'error') })
+  const cat = useCatalog({ q: query || undefined, rarity: rarity || undefined, item_type: type || undefined, tradable: tradable === '' ? undefined : tradable === 'true', page, page_size: PAGE })
+  const tracked = new Set((items.data ?? []).map(i => i.item_id ?? i.name))
+  const run = (kind: 'sync' | 'scan') => job.mutate({ kind, maxPages: pagesBudget }, { onSuccess: setJobId, onError: e => toast.push((e as Error).message, 'error') })
   const pages = Math.max(1, Math.ceil((cat.data?.total ?? 0) / PAGE))
   const noKey = setup.data && !setup.data.api_key_configured
   return (
@@ -39,13 +42,15 @@ export default function Catalog() {
       {noKey && <Notice to="/settings" action={t('common.goSettings')}>{t('onboarding.noKey')}</Notice>}
       <Card actions={<>
         <Button size="sm" variant="ghost" disabled={!!noKey} loading={job.isPending} onClick={() => run('sync')}>{t('catalog.sync')}</Button>
+        <select className={inputCls} value={pagesBudget} onChange={e => setPagesBudget(Number(e.target.value))} aria-label={t('catalog.budget')} title={t('catalog.budgetHint')}>
+          {[40, 120, 300].map(n => <option key={n} value={n}>{t('catalog.budgetOption', { n: n * 50, min: Math.ceil(n * 1.1 / 60) })}</option>)}</select>
         <Button size="sm" disabled={!!noKey || !meta.data?.items} loading={job.isPending} onClick={() => run('scan')}>{t('catalog.scan')}</Button></>}
         title={t('catalog.summary', { items: meta.data?.items ?? 0, tradable: meta.data?.tradable ?? 0 })}>
         <dl className="text-xs grid grid-cols-2 md:grid-cols-4 gap-2 text-[var(--muted)]">
           <div>{t('catalog.patch')}: <b className="text-[var(--ink)]">{meta.data?.patch ?? '–'}</b></div>
           <div>{t('catalog.syncedAt')}: <b className="text-[var(--ink)]">{fmtTs(meta.data?.synced_at)}</b></div>
           <div>{t('catalog.scannedAt')}: <b className="text-[var(--ink)]">{fmtTs(meta.data?.market_scanned_at)}</b></div>
-          <div>{t('catalog.since')}: <b className="text-[var(--ink)]">{fmtTs(meta.data?.market_since)}</b></div>
+          <div>{t('catalog.coverage')}: <b className="text-[var(--ink)]">{meta.data?.market_covered_from ? t('catalog.coverageValue', { from: fmtTs(meta.data.market_covered_from), to: fmtTs(meta.data.market_covered_to), n: meta.data.market_listings_read }) : '–'}</b></div>
         </dl>
         {jobId && <div className="mt-3"><LogPanel lines={stream.lines} status={stream.status} disconnected={stream.disconnected} /></div>}
       </Card>

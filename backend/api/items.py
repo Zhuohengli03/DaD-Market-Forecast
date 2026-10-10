@@ -36,6 +36,7 @@ def track(body: TrackIn, request: Request):
     except ValueError as exc:
         raise HTTPException(409, str(exc))
     st.item_stats.invalidate()
+    st.scheduler.restart_if_running()
     return ok(entry)
 
 
@@ -47,4 +48,5 @@ def untrack(name: str, request: Request):
     except KeyError as exc:
         raise HTTPException(404, str(exc))
     st.item_stats.invalidate()
+    st.scheduler.restart_if_running()
     return ok({"untracked": name})

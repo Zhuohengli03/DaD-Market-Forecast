@@ -58,7 +58,7 @@ def _app(project_root, validator):
 def test_put_valid_key_writes_env(project_root):
     seen = []
     app = _app(project_root, lambda k: seen.append(k))
-    with TestClient(app) as c:
+    with TestClient(app, headers={"X-Darker-Market": "1"}) as c:
         app.state.key_validator = lambda k: seen.append(k)
         r = c.put("/api/setup/api-key", json={"api_key": "  abcd1234wxyz  "})
         assert r.status_code == 200 and r.json()["data"]["api_key_hint"] == "…wxyz"
@@ -71,7 +71,7 @@ def test_put_rejected_key_is_422_and_not_saved(project_root):
     def bad(k):
         raise DarkerDBError(401, "A valid DarkerDB API key is required")
     app = _app(project_root, bad)
-    with TestClient(app) as c:
+    with TestClient(app, headers={"X-Darker-Market": "1"}) as c:
         app.state.key_validator = bad
         r = c.put("/api/setup/api-key", json={"api_key": "nope"})
         assert r.status_code == 422 and "DarkerDB" in r.json()["error"]
@@ -82,10 +82,20 @@ def test_put_key_network_failure_is_502(project_root):
     def down(k):
         raise OSError("connection refused")
     app = _app(project_root, down)
-    with TestClient(app) as c:
+    with TestClient(app, headers={"X-Darker-Market": "1"}) as c:
         app.state.key_validator = down
         assert c.put("/api/setup/api-key", json={"api_key": "k"}).status_code == 502
 
 
 def test_put_empty_key_is_422(client):
     assert client.put("/api/setup/api-key", json={"api_key": "   "}).status_code == 422
+
+
+def test_legacy_data_dir_variable_is_ignored(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", "/somewhere/else")
+    env = tmp_path / ".env"
+    env.write_text("DATA_DIR=/another/place\n")
+    s = Settings(project_root=tmp_path, _env_file=str(env))
+    assert s.data_dir == tmp_path / "data"
+    monkeypatch.setenv("DARKER_DATA_DIR", str(tmp_path / "custom"))
+    assert Settings(project_root=tmp_path, _env_file=None).data_dir == tmp_path / "custom"
