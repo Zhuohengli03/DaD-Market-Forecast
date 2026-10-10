@@ -46,8 +46,7 @@ def track(body: TrackIn, request: Request):
     if len(variants) > 1:  # several rarities of one type: the rarity is part of the tracked name
         name = f"{name} ({raw.get('rarity')})"
     try:
-        entry = st.items.track(name, body.item_id, body.category or str(raw.get("item_type", "")),
-                               str(raw.get("rarity", "")))
+        entry = st.items.track(name, body.item_id, body.category or str(raw.get("item_type", "")))
     except ValueError as exc:
         raise HTTPException(409, str(exc))
     st.item_stats.invalidate()

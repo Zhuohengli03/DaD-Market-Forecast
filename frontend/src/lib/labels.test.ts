@@ -41,3 +41,7 @@ it('translates parameter values, patch and season names', () => {
 it('formats times in Chinese when the interface is Chinese', () => {
   expect(fmtTs('2026-10-09T06:42:00Z')).toMatch(/月/)
 })
+
+it('has Chinese names for every category DarkerDB uses', () => {
+  for (const c of ['food', 'soul_heart', 'ore', 'drink', 'hunting_loot']) expect(i18n.t(`category.${c}`)).toMatch(/[\u4e00-\u9fff]/)
+})

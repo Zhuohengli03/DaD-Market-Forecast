@@ -75,7 +75,7 @@ export default {
     catalog: { items: '正在下载道具资料：已获取 {{n}} 个', names: '正在获取中文名称', check: '正在检查哪些道具能交易：{{done}}/{{total}}', synced: '同步完成：{{items}} 个道具，{{types}} 种类型', checked: '检查完成：{{checked}} 种道具中有 {{tradable}} 种可交易' },
     error: { noData: '这个道具在所选赛季还没有数据，请先采集。', auth: 'DarkerDB 拒绝了你的 API key，请到「设置」里重新填写。', api: 'DarkerDB 暂时无法访问，请稍后再试。', collect: '采集没有成功，请稍后再试。', task: '采集没有成功，请稍后再试。', forecast: '预测没有成功，请稍后再试。', catalog: '道具库任务没有成功，请稍后再试。' },
   },
-  category: { ore: '矿石', ingot: '锭', powder: '粉末', gem: '宝石', drink: '药水饮品', herb: '药草', wood: '木材', consumable: '消耗品', throwable: '投掷物', light_source: '照明', treasure: '宝物', gold: '金币', hunting_loot: '狩猎战利品', currency: '货币', arrow: '箭', bolt: '弩矢', ball: '弹丸', sling_stone: '投石', trap: '陷阱', mining: '采矿工具', wood_cutting: '伐木工具', campfire_kit: '营火', weapon: '武器', armor: '防具', utility: '消耗品', misc: '杂项' },
+  category: { food: '食物', soul_heart: '灵魂之心', ore: '矿石', ingot: '锭', powder: '粉末', gem: '宝石', drink: '药水饮品', herb: '药草', wood: '木材', consumable: '消耗品', throwable: '投掷物', light_source: '照明', treasure: '宝物', gold: '金币', hunting_loot: '狩猎战利品', currency: '货币', arrow: '箭', bolt: '弩矢', ball: '弹丸', sling_stone: '投石', trap: '陷阱', mining: '采矿工具', wood_cutting: '伐木工具', campfire_kit: '营火', weapon: '武器', armor: '防具', utility: '消耗品', misc: '杂项' },
   models: { naive: '沿用上一小时', seasonal_naive_24: '沿用昨天同一时刻', ets: '指数平滑', arima: 'ARIMA 时间序列', ridge: '线性回归', hgb: '梯度提升树', rf: '随机森林', ensemble: '多模型加权' },
   modelHelp: { naive: '基准：假设价格不变', seasonal_naive_24: '基准：假设和昨天同一时间一样', ets: '平滑趋势和每日周期', arima: '经典统计时间序列模型', ridge: '用过去的价格和成交量做线性预测', hgb: '能捕捉非线性关系的树模型', rf: '多棵决策树取平均' },
   catalog: {
