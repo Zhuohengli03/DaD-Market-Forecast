@@ -36,7 +36,7 @@ secrets.py
 .DS_Store
 Thumbs.db
 # forecast run outputs
-runs/
+/runs/
 
 # frontend build/test artifacts
 frontend/node_modules/
@@ -46,8 +46,8 @@ frontend/playwright-report/
 *.tsbuildinfo
 
 # user state (seasons, tracked items, catalog, runs, collected CSVs)
-data/
-seasons.json
+/data/
+/seasons.json
 
 # coverage output
 .coverage
