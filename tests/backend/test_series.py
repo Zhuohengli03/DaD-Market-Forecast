@@ -22,3 +22,4 @@ def test_series_unknown_item_and_season(client):
     assert client.get("/api/series/Ghost").status_code == 404
     assert client.get("/api/series/Test Ore", params={"season_id": "nope"}).status_code == 404
     assert client.get("/api/series/bad;name").status_code == 422
+    assert client.get("/api/series/Lich's Hood").status_code == 404

@@ -1,72 +1,50 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-定时任务配置文件
-在这里配置需要定时运行的任务
-"""
+"""Scheduled tasks: one collection run per enabled tracked item.
 
+Tracked items live in data/items.json (created on first start from items_config.json). Each item may set
+"schedule": "HH:MM" (daily, local time); the default is 23:00. Add or remove items in the web app's Catalog
+or Settings page instead of editing this file.
+"""
+from __future__ import annotations
+
+import json
 import os
+from pathlib import Path
 
-# 获取项目根目录（从src/scheduler/向上两级到项目根）
-CURRENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_TIME = "23:00"
 
-# 任务配置
-TASKS = [
-    {
-        "name": "Iron Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Iron_Ore_API.py"),
-        "schedule_type": "daily",  # daily, hourly, interval, weekly
-        "schedule_value": "23:00",  # 时间或间隔
-        "enabled": True,
-        "description": "每日晚上23点运行Iron Ore数据收集"
-    },
-    {
-        "name": "Gold Ore API", 
-        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Gold_Ore_API.py"),
-        "schedule_type": "daily",
-        "schedule_value": "23:00",
-        "enabled": True,
-        "description": "每日晚上23点运行Gold Ore数据收集"
-    },
-    {
-        "name": "Cobalt Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Cobalt_Ore_API.py"),
-        "schedule_type": "daily",
-        "schedule_value": "23:00",
-        "enabled": True,  # 已启用
-        "description": "每日晚上23点运行Cobalt Ore数据收集"
-    },
-    {
-        "name": "Copper Ore API",
-        "script_path": os.path.join(CURRENT_DIR, "src", "api", "Copper_Ore_API.py"),
-        "schedule_type": "daily",
-        "schedule_value": "13:50",
-        "enabled": True,
-        "description": "每日下午13点44分运行Copper Ore数据收集"
-    },
-    # 可以添加更多任务...
-    # {
-    #     "name": "Machine Learning Analysis",
-    #     "script_path": os.path.join(CURRENT_DIR, "Machine_learning_analysis.py"),
-    #     "schedule_type": "weekly",
-    #     "schedule_value": ("monday", "09:00"),
-    #     "enabled": False,
-    #     "description": "每周一早上9点运行机器学习分析"
-    # },
-    # {
-    #     "name": "Data Backup",
-    #     "script_path": os.path.join(CURRENT_DIR, "backup_data.py"),
-    #     "schedule_type": "interval",
-    #     "schedule_value": 60,  # 每60分钟
-    #     "enabled": False,
-    #     "description": "每60分钟备份一次数据"
-    # }
-]
 
-# 调度器配置
+def tasks_from_items(items_path: Path, project_root: Path = PROJECT_ROOT) -> list[dict]:
+    items_path = Path(items_path)
+    if not items_path.exists():
+        items_path = Path(project_root) / "items_config.json"
+    if not items_path.exists():
+        return []
+    items = json.loads(items_path.read_text(encoding="utf-8")).get("items", [])
+    tasks = []
+    for it in items:
+        if not it.get("enabled", True):
+            continue
+        args = ["--item", it["name"]] + (["--item-id", it["item_id"]] if it.get("item_id") else [])
+        tasks.append({
+            "name": f"Collect {it['name']}",
+            "item": it["name"],
+            "script_path": str(Path(project_root) / "src" / "api" / "collect.py"),
+            "args": args,
+            "schedule_type": "daily",
+            "schedule_value": it.get("schedule", DEFAULT_TIME),
+            "enabled": True,
+            "description": f"每天 {it.get('schedule', DEFAULT_TIME)} 采集 {it['name']} / daily collection",
+        })
+    return tasks
+
+
+TASKS = tasks_from_items(Path(os.getenv("DARKER_ITEMS_CONFIG", PROJECT_ROOT / "data" / "items.json")))
+
 SCHEDULER_CONFIG = {
     "log_file": "scheduler.log",
     "log_level": "INFO",
-    "check_interval": 1,  # 检查间隔（秒）
-    "max_concurrent_tasks": 3,  # 最大并发任务数
+    "check_interval": 1,
+    "max_concurrent_tasks": 3,
 }

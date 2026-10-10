@@ -34,7 +34,7 @@ class SmartScheduler:
             ]
         )
     
-    def run_script(self, script_path, script_name="Unknown"):
+    def run_script(self, script_path, script_name="Unknown", args=None):
         """运行指定的Python脚本"""
         try:
             logging.info(f"🚀 开始运行脚本: {script_name} ({script_path})")
@@ -55,7 +55,7 @@ class SmartScheduler:
             
             # 运行脚本
             result = subprocess.run(
-                [sys.executable, script_path],
+                [sys.executable, script_path, *(args or [])],
                 capture_output=True,
                 text=True,
                 cwd=project_root  # 使用项目根目录作为工作目录
@@ -102,12 +102,12 @@ class SmartScheduler:
                 del self.running_tasks[script_name]
             return False
     
-    def run_script_async(self, script_path, script_name="Unknown"):
+    def run_script_async(self, script_path, script_name="Unknown", args=None):
         """异步运行脚本（避免阻塞）"""
         def run():
             logging.info(f"🔄 异步任务开始: {script_name}")
             logging.info(f"🔄 Async task started: {script_name}")
-            success = self.run_script(script_path, script_name)
+            success = self.run_script(script_path, script_name, args)
             if success:
                 logging.info(f"🎉 异步任务完成: {script_name}")
                 logging.info(f"🎉 Async task completed: {script_name}")
@@ -129,6 +129,7 @@ class SmartScheduler:
         
         script_path = task_config["script_path"]
         script_name = task_config["name"]
+        args = task_config.get("args", [])
         schedule_type = task_config["schedule_type"]
         schedule_value = task_config["schedule_value"]
         
@@ -142,7 +143,8 @@ class SmartScheduler:
                 schedule.every().day.at(schedule_value).do(
                     self.run_script_async, 
                     script_path=script_path, 
-                    script_name=script_name
+                    script_name=script_name,
+                    args=args
                 )
                 logging.info(f"📅 已添加每日任务: {script_name} 在 {schedule_value}")
                 
@@ -150,7 +152,8 @@ class SmartScheduler:
                 schedule.every().hour.do(
                     self.run_script_async, 
                     script_path=script_path, 
-                    script_name=script_name
+                    script_name=script_name,
+                    args=args
                 )
                 logging.info(f"⏰ 已添加每小时任务: {script_name}")
                 
@@ -158,7 +161,8 @@ class SmartScheduler:
                 schedule.every(schedule_value).minutes.do(
                     self.run_script_async, 
                     script_path=script_path, 
-                    script_name=script_name
+                    script_name=script_name,
+                    args=args
                 )
                 logging.info(f"🔄 已添加间隔任务: {script_name} 每 {schedule_value} 分钟")
                 
@@ -167,7 +171,8 @@ class SmartScheduler:
                 getattr(schedule.every(), day.lower()).at(time_str).do(
                     self.run_script_async, 
                     script_path=script_path, 
-                    script_name=script_name
+                    script_name=script_name,
+                    args=args
                 )
                 logging.info(f"📆 已添加每周任务: {script_name} 在 {day} {time_str}")
                 

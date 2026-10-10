@@ -142,13 +142,13 @@ class JobManager:
                 self._set_status(job, "failed", error=f"{type(exc).__name__}: {exc}")
         threading.Thread(target=target, daemon=True, name=f"job-{job.id}").start()
 
-    def run_process(self, job: Job, argv: list[str], cwd: Path) -> None:
+    def run_process(self, job: Job, argv: list[str], cwd: Path, env: dict[str, str] | None = None) -> None:
         def target():
             self._set_status(job, "running")
             try:
                 proc = subprocess.Popen(argv, cwd=str(cwd), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                         text=True, encoding="utf-8", errors="replace", bufsize=1,
-                                        env={**os.environ, "PYTHONUNBUFFERED": "1"})
+                                        env={**os.environ, **(env or {}), "PYTHONUNBUFFERED": "1"})
                 with self._lock:
                     self._procs[job.id] = proc
                 for line in iter(proc.stdout.readline, ""):

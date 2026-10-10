@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
-ITEM_NAME_RE = r"^[A-Za-z0-9 ]{1,64}$"
+ITEM_NAME_RE = r"^[\w][\w '’\-():,.&]{0,79}$"
 
 
 def ok(data: Any, meta: dict | None = None) -> dict:
@@ -40,6 +40,7 @@ class ItemConfigEntry(BaseModel):
     file: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_]+\.py$")
     csv: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_]+\.csv$")
     category: str = "ore"
+    schedule: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
     description: str = ""
     enabled: bool = True
 
