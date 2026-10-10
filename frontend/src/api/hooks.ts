@@ -164,13 +164,34 @@ export function useSaveNetwork() {
   return useMutation({ mutationFn: (b: { lan: boolean; port: number }) => api.put<NetworkState>('/setup/network', b).then(r => r.data), onSuccess: d => qc.setQueryData(['network'], d) })
 }
 export const useRestart = () => useMutation({ mutationFn: () => api.post<{ restarting: boolean }>('/setup/restart').then(r => r.data) })
+/** Change some tracked items in the cached list at once (no reload of every item); returns the previous list. */
+function patchItems(qc: ReturnType<typeof useQueryClient>, names: string[], patch: Partial<ItemInfo>) {
+  const prev = qc.getQueryData<ItemInfo[]>(['items'])
+  const wanted = new Set(names)
+  if (prev) qc.setQueryData<ItemInfo[]>(['items'], prev.map(i => (wanted.has(i.name) ? { ...i, ...patch } : i)))
+  return prev
+}
+
+// ticks show at once; the save runs in the background and is undone if it fails
 export function useSetScheduled() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: (b: { names: string[]; scheduled: boolean }) => api.put<{ changed: number }>('/items/scheduled', b).then(r => r.data),
-    onSuccess: () => { ['items', 'itemsConfig', 'scheduler', 'estimate'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
+  return useMutation({
+    mutationFn: (b: { names: string[]; scheduled: boolean }) => api.put<{ changed: number }>('/items/scheduled', b).then(r => r.data),
+    onMutate: async b => { await qc.cancelQueries({ queryKey: ['items'] }); return { prev: patchItems(qc, b.names, { scheduled: b.scheduled }) } },
+    onError: (_e, _b, ctx) => { if (ctx?.prev) qc.setQueryData(['items'], ctx.prev) },
+    onSettled: () => { ['estimate', 'scheduler'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) },
+  })
 }
 export function useSetScheduleBulk() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: (b: ScheduleInput & { names: string[] }) => api.put<{ changed: number }>('/items/schedule-bulk', b).then(r => r.data),
-    onSuccess: () => { ['items', 'itemsConfig', 'scheduler', 'estimate'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
+  return useMutation({
+    mutationFn: (b: ScheduleInput & { names: string[] }) => api.put<{ changed: number }>('/items/schedule-bulk', b).then(r => r.data),
+    onMutate: async b => {
+      await qc.cancelQueries({ queryKey: ['items'] })
+      const schedule = b.mode === 'default' ? undefined : b.mode === 'interval' ? { mode: 'interval' as const, seconds: b.seconds } : { mode: 'daily' as const, times: b.times }
+      return { prev: patchItems(qc, b.names, { schedule }) }
+    },
+    onError: (_e, _b, ctx) => { if (ctx?.prev) qc.setQueryData(['items'], ctx.prev) },
+    onSettled: () => { ['estimate', 'scheduler', 'itemsConfig'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) },
+  })
 }
