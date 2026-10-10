@@ -21,7 +21,7 @@ it('orders navigation by workflow: get data first, then analyse, settings last',
   expect(links).toEqual(['概览', '道具库', '数据采集', '定时采集', '价格走势', '价格预测', '装备行情', '设置'])
   expect(within(nav).getByText('① 获取数据')).toBeInTheDocument()
   expect(within(nav).getByText('② 查看与分析')).toBeInTheDocument()
-  expect(screen.getByText('还没有请求记录，用一次后显示')).toBeInTheDocument()
+  expect(screen.getByText('还没有用过 DarkerDB，用一次后显示')).toBeInTheDocument()
 })
 
 it('shows DarkerDB credits under Settings', () => {

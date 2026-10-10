@@ -28,7 +28,7 @@ it('opens on items without data and collects just those', () => {
   render(<MemoryRouter initialEntries={['/collect?filter=nodata']}><Collect /></MemoryRouter>)
   expect(screen.getByRole('tab', { name: '没有数据（2）' })).toHaveAttribute('aria-selected', 'true')
   expect(screen.queryByText('金矿')).not.toBeInTheDocument()
-  expect(screen.getByText('预计最多 402 次请求（剩余 5,000 次）')).toBeInTheDocument()
+  expect(screen.getByText('预计最多消耗 402 次 DarkerDB 额度（剩余 5,000 次）')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: '采集这些（2 个）' }))
   expect(mutate.mock.calls[0][0]).toEqual(['Iron Ore', 'Cobalt Ore'])
 })
