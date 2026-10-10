@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Activity, BarChart3, Database, Download, LayoutDashboard, Package, Settings, Clock, Swords } from 'lucide-react'
+import { Activity, BarChart3, FileText, Database, Download, LayoutDashboard, Package, Settings, Clock, Swords } from 'lucide-react'
 import { useStatus } from '../../api/hooks'
 import { RunningTasks } from '../RunningTasks'
 import { setLang } from '../../i18n'
@@ -17,6 +17,7 @@ const GROUPS = [
   { key: 'analyse', items: [
     { to: '/market', key: 'market', icon: BarChart3 },
     { to: '/forecast', key: 'forecast', icon: Activity },
+    { to: '/reports', key: 'reports', icon: FileText },
     { to: '/equipment', key: 'equipment', icon: Swords },
   ] },
 ] as const

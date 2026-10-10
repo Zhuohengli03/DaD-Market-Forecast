@@ -12,6 +12,7 @@ import Settings from './pages/Settings'
 import Catalog from './pages/Catalog'
 import ItemDetail from './pages/catalog/ItemDetail'
 import Equipment from './pages/Equipment'
+import Reports from './pages/Reports'
 import { SetupWizard } from './components/wizard/SetupWizard'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 10_000 } } })
@@ -27,6 +28,7 @@ export default function App() {
               <Route index element={<Dashboard />} />
               <Route path="/market" element={<Market />} />
               <Route path="/forecast" element={<Forecast />} />
+              <Route path="/reports" element={<Reports />} />
               <Route path="/catalog" element={<Catalog />} />
               <Route path="/catalog/:archetype" element={<ItemDetail />} />
               <Route path="/equipment" element={<Equipment />} />

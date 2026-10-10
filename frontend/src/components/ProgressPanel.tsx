@@ -23,6 +23,8 @@ export function describe(kind: JobKind, p: JobProgress | null, t: (k: string, o?
     case 'catalog:names': return t('progress.catalog.names')
     case 'catalog:check': return t('progress.catalog.check', { done: p.done, total: p.total })
     case 'catalog:done': return d.tradable !== undefined ? t('progress.catalog.checked', { checked: n('checked'), tradable: n('tradable') }) : t('progress.catalog.synced', { items: n('items'), types: n('types') })
+    case 'report:writing': return t('progress.report.writing', { n: n('items') })
+    case 'report:done': return t('progress.report.done')
     default: return t('progress.working')
   }
 }

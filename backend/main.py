@@ -15,7 +15,7 @@ from .settings import Settings
 
 log = logging.getLogger("darker_market")
 
-ROUTER_MODULES = ("setup", "catalog", "equipment", "items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config", "quota", "estimate", "overview", "network")
+ROUTER_MODULES = ("setup", "catalog", "equipment", "items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config", "quota", "estimate", "overview", "network", "reports")
 
 
 def _format_validation(exc: RequestValidationError) -> str:
@@ -129,6 +129,8 @@ def _attach_services(app: FastAPI) -> None:
     st.catalog = CatalogStore(st.settings.catalog_path)
     st.key_validator = lambda k: default_key_validator(k, quota_file=st.settings.data_dir / "quota.json")
     st.runs = RunStore(st.settings.runs_dir)
+    from .services.report import ReportStore
+    st.reports = ReportStore(st.settings.reports_dir)
     st.jobs = JobManager()
     st.scheduler = SchedulerController(st.settings, st.jobs)
     st.item_stats = _TtlCache(lambda: st.repo.list_items(), ttl=60.0)

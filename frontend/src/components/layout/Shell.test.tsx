@@ -18,7 +18,7 @@ it('orders navigation by workflow: get data first, then analyse, settings last',
   mount({ source: 'csv', jobs_running: [] })
   const nav = screen.getByRole('navigation')
   const links = within(nav).getAllByRole('link').map(a => a.textContent)
-  expect(links).toEqual(['概览', '道具库', '数据采集', '定时采集', '价格走势', '价格预测', '装备行情', '设置'])
+  expect(links).toEqual(['概览', '道具库', '数据采集', '定时采集', '价格走势', '价格预测', '行情报告', '装备行情', '设置'])
   expect(within(nav).getByText('① 获取数据')).toBeInTheDocument()
   expect(within(nav).getByText('② 查看与分析')).toBeInTheDocument()
   expect(screen.getByText('还没有用过 DarkerDB，用一次后显示')).toBeInTheDocument()

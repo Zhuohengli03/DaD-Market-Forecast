@@ -9,7 +9,7 @@ export interface Season { id: string; name: string; start: string; end: string |
 export interface SeasonInput { name: string; start: string; end: string | null; note: string }
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 export interface JobProgress { stage: string; done: number | null; total: number | null; detail: Record<string, unknown> }
-export type JobKind = 'forecast' | 'collect' | 'task' | 'catalog' | 'init'
+export type JobKind = 'forecast' | 'collect' | 'task' | 'catalog' | 'init' | 'report'
 export interface Job { id: string; kind: JobKind; label: string; status: JobStatus; created_at: string; finished_at: string | null; error: string | null; result_ref: string | null; meta: Record<string, string>; progress: JobProgress | null; cost?: JobCost }
 export interface JobCost { estimate: number | null; used: number }
 export interface CollectAllEstimate { requests: number; items: number; unknown: number; per_item: Record<string, number> }
@@ -56,3 +56,9 @@ export type EquipmentSort = 'created_at:desc' | 'created_at:asc' | 'price_per_un
 export interface EquipmentQueryBody { sort: EquipmentSort; archetype: string; rarity: string | null; sold_only: boolean; max_pages: number; filters: { kind: 'primary' | 'secondary'; name: string; min: number | null; max: number | null }[] }
 export interface OverviewVariant { name: string; label: string; label_en: string; rarity: string | null; rows: number; season_rows: number; last_ts: string | null; latest: number | null; change24: number | null; spark: (number | null)[] }
 export interface OverviewGroup { key: string; archetype: string | null; name: string; name_zh: string | null; category: string | null; icon_url: string | null; rows: number; season_rows: number; variants: OverviewVariant[] }
+export interface LLMSettings { configured: boolean; key_hint: string | null; model: string; region: 'cn' | 'intl' | 'us'; workspace: string; price_in: number | null; price_out: number | null; base_url: string }
+export interface ReportItemFact { name: string; name_zh: string | null; median: number; prev_median: number | null; change_pct: number | null; low: number; high: number; listings: number; sold: number; volatility_pct: number; forecast: { beats_baseline: boolean; change_pct: number | null; horizon_hours: number } | null }
+export interface ReportPeriod { start: string; end: string; days: number }
+export interface ReportSummary { id: string; created_at: string; period: ReportPeriod; season: { id: string; name: string }; model: string; usage: { prompt_tokens: number; completion_tokens: number }; cost: number | null; items: number; unmatched: number }
+export interface Report extends Omit<ReportSummary, 'unmatched' | 'items'> { public: string; body: string; unmatched: string[]; facts: { items: ReportItemFact[]; skipped: string[]; movers: { up: { name: string; change_pct: number }[]; down: { name: string; change_pct: number }[] } }; edited?: boolean }
+export interface ReportEstimate { scope?: 'ticked' | 'all' | 'chosen'; items: number; skipped: number; period: ReportPeriod; prompt_tokens: number; completion_tokens: number; cost: number | null }

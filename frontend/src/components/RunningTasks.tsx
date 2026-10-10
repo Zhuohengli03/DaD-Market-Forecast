@@ -16,6 +16,7 @@ export function RunningTasks({ compact = false }: { compact?: boolean }) {
   if (s.forecast) lines.push([t('running.forecast'), t('running.n', { n: s.forecast })])
   if (s.equipment) lines.push([t('running.equipment'), t('running.querying')])
   if (s.catalog) lines.push([t('running.catalog'), t('running.n', { n: s.catalog })])
+  if (s.report) lines.push([t('running.report'), t('running.writing')])
   return (
     <ul className={compact ? 'space-y-0.5' : 'text-sm space-y-1'} aria-label={t('dashboard.runningJobs')}>
       {lines.map(([area, what]) => (

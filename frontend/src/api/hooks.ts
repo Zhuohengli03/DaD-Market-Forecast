@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, CollectAllEstimate, ItemsEstimate, OverviewGroup, QuotaInfo, RunSummary, ScheduleEstimate, ScheduleInput, TypeHistory, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
+import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, CollectAllEstimate, ItemsEstimate, LLMSettings, OverviewGroup, Report, ReportEstimate, ReportSummary, QuotaInfo, RunSummary, ScheduleEstimate, ScheduleInput, TypeHistory, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
 
 export const useStatus = () => useQuery({ queryKey: ['status'], queryFn: () => api.get<StatusResponse>('/status').then(r => r.data), refetchInterval: 5000 })
 export const useItems = () => useQuery({ queryKey: ['items'], queryFn: () => api.get<ItemInfo[]>('/items').then(r => r.data) })
@@ -194,4 +194,29 @@ export function useSetScheduleBulk() {
     onError: (_e, _b, ctx) => { if (ctx?.prev) qc.setQueryData(['items'], ctx.prev) },
     onSettled: () => { ['estimate', 'scheduler', 'itemsConfig'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) },
   })
+}
+// AI market reports (Alibaba Cloud Bailian)
+export const useLLM = () => useQuery({ queryKey: ['llm'], queryFn: () => api.get<LLMSettings>('/setup/llm').then(r => r.data) })
+export function useSaveLLM() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (b: { api_key?: string; model: string; region: string; workspace: string; price_in: number | null; price_out: number | null }) => api.put<LLMSettings>('/setup/llm', b).then(r => r.data),
+    onSuccess: d => qc.setQueryData(['llm'], d) })
+}
+export const useTestLLM = () => useMutation({ mutationFn: () => api.post<{ reply: string; tokens: number }>('/setup/llm/test').then(r => r.data) })
+export const useReports = () => useQuery({ queryKey: ['reports'], queryFn: () => api.get<ReportSummary[]>('/reports').then(r => r.data) })
+export const useReport = (id: string | null) => useQuery({ queryKey: ['reports', id], enabled: !!id, queryFn: () => api.get<Report>(`/reports/${id}`).then(r => r.data) })
+export const useReportEstimate = (days: number, enabled: boolean) => useQuery({ queryKey: ['reports', 'estimate', days], enabled, staleTime: 30_000, retry: false,
+  queryFn: () => api.post<ReportEstimate>('/reports/estimate', { days }).then(r => r.data) })
+export function useCreateReport() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (days: number) => api.post<{ job_id: string }>('/reports', { days }).then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
+}
+export function useEditReport() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: ({ id, ...b }: { id: string; public: string; body: string }) => api.put<Report>(`/reports/${id}`, b).then(r => r.data),
+    onSuccess: d => { qc.setQueryData(['reports', d.id], d); qc.invalidateQueries({ queryKey: ['reports'], exact: true }) } })
+}
+export function useDeleteReport() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (id: string) => api.del(`/reports/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['reports'] }) })
 }
