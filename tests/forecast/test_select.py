@@ -42,3 +42,23 @@ def test_falls_back_to_naive_when_nothing_beats_it():
     r = _result({"naive": naive, "worse": worse}, actual)
     sel = select_model(r, summarize(r))
     assert sel.name == "naive" and not sel.beats_baseline and sel.skill_vs_naive <= 0
+
+
+def test_small_margin_is_not_claimed_as_beating_baseline():
+    rng = np.random.default_rng(0)
+    actual = np.zeros((50, 4))
+    naive = rng.normal(0, 1, (50, 4))
+    almost = naive * 0.99                                   # 1% better: within noise
+    r = _result({"naive": naive, "almost": almost}, actual)
+    sel = select_model(r, summarize(r))
+    assert sel.name == "naive" and not sel.beats_baseline and 0 < sel.skill_vs_naive < 0.02
+
+
+def test_too_few_origins_is_not_claimed():
+    rng = np.random.default_rng(0)
+    actual = np.zeros((3, 4))
+    naive = rng.normal(0, 3, (3, 4))
+    good = rng.normal(0, 0.1, (3, 4))
+    r = _result({"naive": naive, "good": good}, actual)
+    sel = select_model(r, summarize(r))
+    assert sel.name == "naive" and not sel.beats_baseline and "origins" in sel.reason

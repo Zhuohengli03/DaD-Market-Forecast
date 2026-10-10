@@ -24,7 +24,7 @@ def plan_origins(n: int, horizon: int, step: int, min_origins: int = 5,
     origins = origins_for(h)
     if len(origins) < min_origins:
         shrunk = min(horizon, max(min_horizon, n - start - (min_origins - 1) * step))
-        if shrunk < horizon and len(origins_for(shrunk)) >= min_origins:
+        if shrunk < horizon and len(origins_for(shrunk)) > len(origins):
             warnings.append(
                 f"evaluation horizon shrunk from {horizon}h to {shrunk}h to obtain "
                 f"{min_origins} backtest origins (series has {n} hours)")
@@ -102,8 +102,10 @@ def summarize(result: BacktestResult) -> list[ModelMetrics]:
         mae = float(np.nanmean(np.abs(err)))
         rmse = float(np.sqrt(np.nanmean(err ** 2)))
         last = result.last_values[:, None]
-        scored = ~np.isnan(result.actuals)
-        direction = np.where(scored, np.sign(pred - last) == np.sign(result.actuals - last), np.nan)
+        actual_dir, pred_dir = np.sign(result.actuals - last), np.sign(pred - last)
+        # a step counts only when both the price and the forecast actually moved
+        scored = ~np.isnan(result.actuals) & (actual_dir != 0) & (pred_dir != 0)
+        direction = np.where(scored, actual_dir == pred_dir, np.nan)
         out.append(ModelMetrics(
             name=name,
             mae_h1=float(per_h[0]),
@@ -111,7 +113,7 @@ def summarize(result: BacktestResult) -> list[ModelMetrics]:
             mae_mean=mae,
             rmse_mean=rmse,
             mase_mean=mae / naive_mae if naive_mae and not np.isnan(naive_mae) else float("nan"),
-            direction_acc=float(np.nanmean(direction)),
+            direction_acc=float(np.nanmean(direction)) if scored.any() else float("nan"),
             per_horizon_mae=tuple(float(v) for v in per_h),
         ))
     return sorted(out, key=lambda m: m.mae_mean)

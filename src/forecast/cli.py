@@ -71,9 +71,14 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     print(f"selected: {out['selected']['name']}  beats baseline: {out['beats_baseline']}  "
           f"skill vs naive: {out['skill_vs_naive']:+.1%}")
+    def f(v, spec):
+        return "–".rjust(int(spec.split(".")[0][1:])) if v is None else format(v, spec)
+
     print("model              mae_mean   mase   dir_acc")
     for m in out["backtest"]["models"]:
-        print(f"{m['name']:<18} {m['mae_mean']:>8.3f} {m['mase_mean']:>6.2f} {m['direction_acc']:>8.2f}")
+        print(f"{m['name']:<18} {f(m['mae_mean'], '>8.3f')} {f(m['mase_mean'], '>6.2f')} {f(m['direction_acc'], '>8.2f')}")
+    if out.get("baseline_reason"):
+        print(f"why naive: {out['baseline_reason']}")
     last = min(23, len(out["forecast"]) - 1)
     print(f"next 24h: {out['forecast'][0]['pred']:.2f} -> {out['forecast'][last]['pred']:.2f}")
     for w in out["warnings"]:

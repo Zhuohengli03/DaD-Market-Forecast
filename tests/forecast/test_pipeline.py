@@ -82,3 +82,40 @@ def test_invalid_requests(frames, bad):
 def test_forecast_bounds_never_negative(frames):
     out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, S2])
     assert all(f["lower"] >= 0 and f["upper"] >= f["lower"] for f in out["forecast"])
+
+
+def test_refit_failure_falls_back_to_naive(frames, monkeypatch):
+    import src.forecast.pipeline as pl
+    real = pl.make_model
+
+    def flaky(name):
+        m = real(name)
+        if name == "ridge":
+            orig_fit = m.fit
+            def fit(series, start):
+                if len(series) >= 240:          # only the final refit sees the whole season
+                    raise RuntimeError("singular on full data")
+                return orig_fit(series, start)
+            m.fit = fit
+        return m
+    monkeypatch.setattr(pl, "make_model", flaky)
+    from src.forecast.select import Selection
+    monkeypatch.setattr(pl, "select_model", lambda r, m: Selection("ridge", (("ridge", 1.0),), True, 0.3,
+                                                                    r.predictions["ridge"], ""))
+    out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, S2])
+    assert out["selected"]["name"] == "naive" and out["beats_baseline"] is False
+    assert any("singular" in w for w in out["warnings"])
+
+
+def test_stale_data_is_flagged(frames):
+    out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, S2])
+    assert out["data_age_hours"] > 24 * 200            # synthetic data is from Jan 2026
+    assert any("hours old" in w for w in out["warnings"])
+
+
+def test_origin_step_is_respected(frames):
+    out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",), backtest_origin_step=3),
+                       _loader(frames), [S1, S2])
+    out6 = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",), backtest_origin_step=6),
+                        _loader(frames), [S1, S2])
+    assert out["backtest"]["origins"] > out6["backtest"]["origins"]

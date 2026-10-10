@@ -33,7 +33,7 @@ def test_backtest_shapes_and_seasonal_beats_naive(synthetic_series, season_start
     assert m["naive"].mase_mean == pytest.approx(1.0)
     assert len(m["naive"].per_horizon_mae) == 24
     assert m["naive"].mae_h1 == pytest.approx(m["naive"].per_horizon_mae[0])
-    assert 0 <= m["naive"].direction_acc <= 1
+    assert np.isnan(m["naive"].direction_acc) and 0 <= m["seasonal_naive_24"].direction_acc <= 1
 
 
 def test_summary_sorted_by_mae(synthetic_series, season_start):
@@ -72,3 +72,18 @@ def test_filled_hours_are_not_scored(synthetic_series, season_start):
             if not observed[o + j]:
                 assert np.isnan(r.actuals[i, j])
     assert any("filled" in w for w in r.warnings)
+
+
+def test_direction_accuracy_ignores_ties():
+    actual = np.array([[11.0, 9.0, 10.0]])
+    r = BacktestResult(3, (0,), actual, np.array([10.0]),
+                       {"naive": np.full((1, 3), 10.0), "m": np.array([[12.0, 8.0, 12.0]])}, {}, ())
+    m = {x.name: x for x in summarize(r)}
+    assert np.isnan(m["naive"].direction_acc)          # naive never predicts a direction
+    assert m["m"].direction_acc == 1.0                 # the flat third step is not scored
+
+
+def test_plan_origins_prefers_more_origins_even_below_minimum():
+    origins, h, warns = plan_origins(n=100, horizon=48, step=6, min_origins=5)
+    long_origins = list(range(60, 100 - 48 + 1, 6))
+    assert len(origins) > len(long_origins) and h < 48

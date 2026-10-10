@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib
+import logging
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -10,6 +12,8 @@ from fastapi.responses import JSONResponse
 
 from .schemas import fail, ok
 from .settings import Settings
+
+log = logging.getLogger("darker_market")
 
 ROUTER_MODULES = ("setup", "catalog", "items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config")
 
@@ -49,7 +53,10 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
 
     @app.exception_handler(Exception)
     async def _unhandled(_: Request, exc: Exception):
-        return JSONResponse(status_code=500, content=fail(f"{type(exc).__name__}: {exc}"))
+        ref = uuid.uuid4().hex[:8]
+        log.exception("unhandled error ref=%s", ref)
+        return JSONResponse(status_code=500, content=fail(
+            f"服务器内部错误，请查看后端终端日志（ref {ref}） / Internal error, see the backend log (ref {ref})"))
 
     @app.get("/api/status")
     def status(request: Request):

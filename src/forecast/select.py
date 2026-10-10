@@ -8,6 +8,8 @@ import numpy as np
 from .backtest import BacktestResult, ModelMetrics
 
 _EPS = 1e-9
+MIN_SKILL = 0.02    # below this the win is within selection noise
+MIN_ORIGINS = 5     # fewer backtest origins cannot support a claim
 
 
 @dataclass(frozen=True)
@@ -17,6 +19,7 @@ class Selection:
     beats_baseline: bool
     skill_vs_naive: float
     predictions: np.ndarray  # backtest predictions of the selected model/ensemble
+    reason: str = ""          # why naive was kept, when it was
 
 
 def _mae(result: BacktestResult, pred: np.ndarray) -> float:
@@ -41,6 +44,12 @@ def select_model(result: BacktestResult, metrics: list[ModelMetrics], top_k: int
             members = tuple((m.name, float(wi)) for m, wi in zip(candidates, w))
 
     skill = 1.0 - mae / naive_mae if naive_mae > 0 else 0.0
-    if skill <= 0:
-        return Selection("naive", (("naive", 1.0),), False, float(skill), result.predictions["naive"])
+    naive_pred = result.predictions["naive"]
+    if len(result.origins) < MIN_ORIGINS:
+        return Selection("naive", (("naive", 1.0),), False, float(skill), naive_pred,
+                         f"only {len(result.origins)} backtest origins; at least {MIN_ORIGINS} are needed to trust a winner")
+    if skill <= MIN_SKILL:
+        why = "no model beat repeating the last hour" if skill <= 0 else \
+            f"best model ({name}) was only {skill:.1%} better, within noise (needs > {MIN_SKILL:.0%})"
+        return Selection("naive", (("naive", 1.0),), False, float(skill), naive_pred, why)
     return Selection(name, members, True, float(skill), pred)

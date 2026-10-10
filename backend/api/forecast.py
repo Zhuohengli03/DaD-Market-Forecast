@@ -22,7 +22,8 @@ def start_forecast(body: ForecastIn, request: Request):
         season = st.seasons.get(body.season_id)
     except KeyError:
         raise HTTPException(404, f"season {body.season_id} not found")
-    req = ForecastRequest(body.item, body.season_id, body.horizon_hours, tuple(body.models), body.coverage)
+    req = ForecastRequest(body.item, body.season_id, body.horizon_hours, tuple(body.models), body.coverage,
+                          body.backtest_origin_step)
     job = st.jobs.create("forecast", f"{body.item} · {season['name']} · {body.horizon_hours}h",
                          meta={"item": body.item, "season_id": body.season_id})
     repo, seasons, runs, jm = st.repo, st.seasons, st.runs, st.jobs

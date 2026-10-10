@@ -33,8 +33,9 @@ class Job:
     meta: dict = field(default_factory=dict)
     _log: deque = field(default_factory=lambda: deque(maxlen=2000), repr=False)
 
-    def log_tail(self, n: int = 200) -> list[str]:
-        return list(self._log)[-n:]
+    def log_tail(self, n: int | None = 200) -> list[str]:
+        lines = list(self._log)
+        return lines if n is None else lines[-n:]
 
     def to_dict(self) -> dict:
         return {"id": self.id, "kind": self.kind, "label": self.label, "status": self.status,
@@ -43,7 +44,8 @@ class Job:
 
 
 class JobManager:
-    def __init__(self):
+    def __init__(self, max_jobs: int = 200):
+        self._max_jobs = max_jobs
         self._jobs: dict[str, Job] = {}
         self._subs: dict[str, list[queue.Queue]] = {}
         self._procs: dict[str, subprocess.Popen] = {}
@@ -54,6 +56,10 @@ class JobManager:
         job = Job(id=uuid.uuid4().hex[:12], kind=kind, label=label, meta=meta or {})
         with self._lock:
             self._jobs[job.id] = job
+            finished = sorted((j for j in self._jobs.values() if j.status in TERMINAL), key=lambda j: j.created_at)
+            for old in finished[: max(0, len(self._jobs) - self._max_jobs)]:
+                del self._jobs[old.id]
+                self._subs.pop(old.id, None)
         return job
 
     def get(self, job_id: str) -> Job:
@@ -102,7 +108,7 @@ class JobManager:
         with self._lock:
             job = self._jobs[job_id]
             self._subs.setdefault(job_id, []).append(q)
-            for line in job.log_tail():      # replay history so late subscribers see it
+            for line in job.log_tail(None):  # replay full history so late subscribers see it
                 q.put(("log", line))
             q.put(("status", job.status))
             if job.status in TERMINAL:
