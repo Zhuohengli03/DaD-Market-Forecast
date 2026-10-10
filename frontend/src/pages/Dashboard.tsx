@@ -7,18 +7,18 @@ import { Badge } from '../components/ui/Badge'
 import { EmptyState } from '../components/ui/EmptyState'
 import { Sparkline } from '../components/charts/Sparkline'
 import { fmtNum, fmtPct, fmtRelative, fmtTs } from '../lib/format'
+import { change24h } from '../lib/market'
 
 function ItemCard({ item }: { item: ItemInfo }) {
   const { t } = useTranslation()
-  const end = item.last_ts ?? undefined
-  const start = end ? new Date(new Date(end).getTime() - 48 * 3.6e6).toISOString() : undefined
+  const last = item.last_ts ? new Date(item.last_ts).getTime() : null
+  // the API range end is exclusive, so extend one hour past the newest listing
+  const end = last !== null ? new Date(last + 3.6e6).toISOString() : undefined
+  const start = last !== null ? new Date(last - 48 * 3.6e6).toISOString() : undefined
   const series = useSeries(item.name, { start, end, resolution: '1h' }, !!end)
   const pts = series.data?.points ?? []
   const prices = pts.map(p => p.median_price)
-  const valid = prices.filter((v): v is number => v !== null)
-  const latest = valid.at(-1) ?? null
-  const dayAgo = valid.length > 24 ? valid[valid.length - 25] : valid[0] ?? null
-  const change = latest !== null && dayAgo ? latest / dayAgo - 1 : null
+  const { latest, change } = change24h(pts)
   return (
     <Link to={`/market?item=${encodeURIComponent(item.name)}`} className="block">
       <Card className="hover:shadow-md transition">
@@ -27,7 +27,7 @@ function ItemCard({ item }: { item: ItemInfo }) {
           <div><div className="text-xs text-[var(--muted)]">{t('dashboard.latest')}</div><div className="text-2xl font-semibold">{fmtNum(latest)}</div></div>
           <div className="text-right"><div className="text-xs text-[var(--muted)]">{t('dashboard.change24')}</div><div className={`font-medium ${change === null ? '' : change >= 0 ? 'text-[var(--good)]' : 'text-[var(--bad)]'}`}>{fmtPct(change)}</div></div>
         </div>
-        <div className="mt-2"><Sparkline values={prices} /></div>
+        <div className="mt-2">{pts.length ? <Sparkline values={prices} /> : <p className="text-xs text-[var(--muted)] h-10">{t('dashboard.noData')}</p>}</div>
         <div className="text-xs text-[var(--muted)] mt-2">{t('dashboard.lastSeen')}: {fmtTs(item.last_ts)} ({fmtRelative(item.last_ts)})</div>
       </Card>
     </Link>

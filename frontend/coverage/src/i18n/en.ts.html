@@ -1,0 +1,274 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for src/i18n/en.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/i18n</a> en.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>0/0</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line low'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export default {
+  app: { tagline: 'Dark and Darker market price tracker and forecaster' },
+  nav: { dashboard: 'Overview', market: 'Price history', forecast: 'Forecast', catalog: 'Item catalog', collect: 'Collect data', scheduler: 'Scheduled collection', settings: 'Settings' },
+  common: { item: 'Item', season: 'Season', start: 'Start', end: 'End', resolution: 'Granularity', save: 'Save', cancel: 'Cancel', delete: 'Delete', add: 'Add', loading: 'Loading…', none: 'No data yet', error: 'Something went wrong', all: 'All', yes: 'Yes', no: 'No', download: 'Download CSV', jobs: 'Job history', log: 'Log', prev: 'Previous page', next: 'Next page', running: 'running', goSettings: 'Open settings', hours: 'hours' },
+  res: { '1h': 'Hourly', '4h': 'Every 4h', '1d': 'Daily' },
+  apiKey: {
+    title: 'Connect your DarkerDB account',
+    why: 'All data comes from DarkerDB. Collecting prices and syncing the item catalog need your own API key. The key is stored only in the .env file of this project on your machine.',
+    steps: 'Log in to {{site}}, create a key with the darkerdb.live (market) and darkerdb.data (items) scopes, and paste it below.',
+    site: 'the darkerdb.com dashboard',
+    label: 'API key', placeholder: 'Paste your key', show: 'Show', hide: 'Hide',
+    save: 'Verify and save', later: 'Not now', saved: 'API key verified and saved',
+    current: 'Current key: {{hint}}', missing: 'No API key yet: collecting and catalog sync are unavailable.', change: 'Change key', set: 'Set key',
+  },
+  onboarding: {
+    noSeasons: 'No seasons yet. Forecasts only train inside one season, so add the current season start in Settings.',
+    noItems: 'You are not tracking any items yet. Pick some from the item catalog.',
+    noKey: 'No DarkerDB API key yet.',
+  },
+  dashboard: { title: 'Overview', latest: 'Latest hourly median', change24: 'vs 24h ago', lastSeen: 'Latest listing', rows: 'listings', runningJobs: 'Running jobs', noJobs: 'Nothing running', noData: 'No data for this item yet. Collect it on the Collect data page.' },
+  market: {
+    title: 'Price history', intro: 'Each hour shows the median unit price of all listings; the shaded band holds the middle half of listings. Drag the slider to zoom, or use the brush tool to select a range and see its stats.',
+    listings: 'Listings', sold: 'Sold', minQty: 'Min qty', maxQty: 'Max qty', price: 'Unit price', total: 'Total', qty: 'Qty', time: 'Listed at',
+    page: 'Page {{page}} of {{pages}}, {{total}} listings', emptyListings: 'No listings match these filters', customRange: 'Custom range',
+    range: '{{hours}} buckets selected: low {{low}} · median {{median}} · high {{high}} · {{listings}} listings', clearRange: 'Clear selection',
+    legend: { median: 'Median', band: 'Middle 50%', min: 'Lowest', max: 'Highest', volume: 'Volume', listings: 'Listings' },
+  },
+  forecast: {
+    title: 'Forecast', intro: 'Predicts the hourly median price from this season’s history. Every run first replays history to test each method against simply repeating the last hour, and only uses a model when it is clearly more accurate.',
+    horizon: 'How far ahead', coverage: 'Interval confidence', coverageHint: 'Chance the shaded band contains the real price', models: 'Methods to compare', baselineHint: 'Baselines always run',
+    advanced: 'Advanced', originStep: 'Backtest spacing', originStepHint: 'Hours between backtest runs; smaller is slower but steadier',
+    start: 'Run forecast', history: 'Past forecasts', noRuns: 'No forecasts yet',
+    beats: 'The model beats the baseline', notBeats: 'Nothing was clearly better than the baseline, so the baseline forecast is shown',
+    skill: 'Lower error than repeating the last hour', selected: 'Using', origins: 'based on {{n}} backtests',
+    stale: 'The newest data is {{days}} days old, so the forecast starts from then. Collect fresh data first.',
+    backtest: 'Backtest scores (lower is better)', evalHorizon: 'Backtest length', coverageActual: 'Band hit rate',
+    perHorizon: 'Does error grow with distance?', importance: 'What the model relies on',
+    references: 'Overlay past seasons', actuals: 'Overlay later real prices', warnings: 'Notes',
+    pending: 'Started; see the log below', failed: 'Forecast failed', disconnected: 'Log stream lost; refreshing periodically…',
+    model: 'Method', mae: 'Avg error', maeH1: 'Error 1h ahead', maeH24: 'Error 24h ahead', mase: 'vs baseline', dir: 'Up/down hit rate', rmse: 'RMS error',
+    metricHelp: { mae_mean: 'Average distance between forecast and real price', mase_mean: 'Below 1 means better than repeating the last hour', direction_acc: 'Share of moves where the up/down call was right (flat hours ignored)', mae_h1: 'Only forecasts made 1 hour ahead', mae_h24: 'Only forecasts made 24 hours ahead', rmse_mean: 'Error that penalises big misses more' },
+    deleteRun: 'Forecast deleted', runMissing: 'This forecast does not exist or was deleted', noSeasonForecast: 'Add a season before forecasting.',
+  },
+  models: { naive: 'Repeat last hour', seasonal_naive_24: 'Repeat yesterday', ets: 'Exponential smoothing', arima: 'ARIMA', ridge: 'Linear regression', hgb: 'Gradient boosting', rf: 'Random forest', ensemble: 'Weighted blend' },
+  modelHelp: { naive: 'Baseline: price stays the same', seasonal_naive_24: 'Baseline: same as this time yesterday', ets: 'Smooths trend and the daily cycle', arima: 'Classic statistical time-series model', ridge: 'Linear model on past prices and volume', hgb: 'Tree model for non-linear patterns', rf: 'Average of many decision trees' },
+  catalog: {
+    title: 'Item catalog', intro: 'Syncs every item and all of its parameters from DarkerDB. "Scan market" reads this season’s newest listings to mark which items are trading and at what price. Track an item to collect and forecast it.',
+    sync: 'Sync catalog', scan: 'Scan this season’s market', syncing: 'Syncing…',
+    patch: 'Game patch', syncedAt: 'Last synced', scannedAt: 'Last scanned', since: 'Scanned from', tradableCount: 'Items with listings this season',
+    search: 'Search by name or ID', rarity: 'Rarity', type: 'Type', tradable: 'Trading', tradableYes: 'Listed this season', tradableNo: 'No listings',
+    name: 'Item', listings: 'Listings', median: 'Median unit', low: 'Lowest unit', gearScore: 'Gear score', vendor: 'Vendor price',
+    track: 'Track', tracked: 'Tracked', trackedOk: 'Now tracking {{name}}', params: 'All parameters',
+    empty: 'The catalog is empty. Set your API key, then press "Sync catalog".', noMatch: 'No items match',
+  },
+  collect: { title: 'Collect data', intro: 'Pull the newest listings for an item from DarkerDB. Data stays on your machine (Postgres if configured, otherwise CSV files in data/).', collectNow: 'Collect now', recent: 'Collection history', started: 'Collection started', untrack: 'Stop tracking', addFromCatalog: 'Add items from the catalog', untracked: 'Stopped tracking {{name}}' },
+  scheduler: { title: 'Scheduled collection', intro: 'When on, every tracked item is collected once a day at its set time. Keep this app running.', status: 'Scheduled collection', on: 'On', off: 'Off', startBtn: 'Turn on', stopBtn: 'Turn off', task: 'Item', schedule: 'Daily at', runNow: 'Collect now' },
+  settings: {
+    title: 'Settings', apiKey: 'DarkerDB API key', seasons: 'Seasons', seasonsIntro: 'Each Dark and Darker season resets the market, so prices from different seasons must not be mixed. Enter each season’s start (UTC); leave the end empty for the current one.',
+    seasonName: 'Name', seasonStart: 'Start (UTC)', seasonEnd: 'End (UTC, empty if ongoing)', note: 'Note',
+    items: 'Tracked items', itemsIntro: 'Disable an item or change its daily collection time. Add new items from the catalog.', itemName: 'Name', itemId: 'DarkerDB ID', category: 'Category', description: 'Description', enabled: 'Enabled', scheduleTime: 'Collect at',
+    dataSource: 'Storage', dataSourcePg: 'Postgres database', dataSourceCsv: 'CSV files on this machine (data/)', python: 'Python interpreter', language: 'Language', saved: 'Saved',
+  },
+}
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-10-10T00:12:49.946Z
+            </div>
+        <script src="../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
+    </body>
+</html>
+    

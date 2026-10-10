@@ -13,6 +13,6 @@ it('shows a not-found state and clears the selection when the run is gone', () =
   vi.mocked(hooks.useDeleteRun).mockReturnValue({ mutate: vi.fn() } as never)
   const onDeleted = vi.fn()
   render(<QueryClientProvider client={new QueryClient()}><RunResult runId="x" onDeleted={onDeleted} /></QueryClientProvider>)
-  expect(screen.getByText('这条运行记录不存在或已被删除')).toBeInTheDocument()
+  expect(screen.getByText('这条预测记录不存在或已被删除')).toBeInTheDocument()
   expect(onDeleted).toHaveBeenCalled()
 })

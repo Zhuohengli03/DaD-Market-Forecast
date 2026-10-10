@@ -42,3 +42,35 @@ def test_collect_pages_normalizes_and_skips_bad_rows():
 def test_parse_args_defaults():
     a = parse_args(["--item", "Gold Ore"])
     assert a.item == "Gold Ore" and a.max_pages == 200 and a.since is None and not a.probe
+
+
+def test_main_without_postgres_writes_csv_and_dedupes(tmp_path, monkeypatch):
+    import csv as _csv
+    import src.api.collect as col
+
+    class FakeClient:
+        def __init__(self, key):
+            assert key == "k"
+
+        def find_item_id(self, name):
+            return "id.item.iron_ore_1001"
+
+        def iter_market(self, item_id, since=None, limit=50, sort="created_at:desc", max_pages=None):
+            yield [_row(1), _row(2)]
+
+    monkeypatch.setenv("DARKER_MARKET_API_KEY", "k")
+    monkeypatch.delenv("DB_USER", raising=False)
+    monkeypatch.setattr(col, "DarkerDBClient", FakeClient)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
+    assert col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path)]) == 0
+    assert col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path)]) == 0
+    rows = list(_csv.DictReader((tmp_path / "iron_ore.csv").open()))
+    assert [r["item_id"] for r in rows] == ["1", "2"]
+
+
+def test_main_reports_missing_key(tmp_path, monkeypatch, capsys):
+    import src.api.collect as col
+    monkeypatch.setenv("DARKER_MARKET_API_KEY", "")
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
+    assert col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path)]) == 2
+    assert "Settings" in capsys.readouterr().out

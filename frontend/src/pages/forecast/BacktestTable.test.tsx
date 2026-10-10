@@ -15,7 +15,8 @@ const run = {
 it('lists baselines first and marks the selected model', () => {
   render(<BacktestTable run={run} />)
   const rows = screen.getAllByRole('row').slice(1)
-  expect(rows[0]).toHaveTextContent('naive'); expect(rows[1]).toHaveTextContent('seasonal_naive_24'); expect(rows[2]).toHaveTextContent('ridge')
+  expect(rows[0]).toHaveTextContent('沿用上一小时'); expect(rows[1]).toHaveTextContent('沿用昨天同一时刻'); expect(rows[2]).toHaveTextContent('线性回归')
   expect(rows[2].className).toMatch(/bg-blue-50/)
-  expect(screen.getByText(/arima/)).toHaveTextContent('LinAlgError')
+  expect(screen.getByText(/ARIMA/)).toHaveTextContent('LinAlgError')
+  expect(screen.getByText('平均误差')).toHaveAttribute('title', '预测价和真实价平均差多少')
 })

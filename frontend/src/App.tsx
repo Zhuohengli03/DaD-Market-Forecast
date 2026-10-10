@@ -9,6 +9,8 @@ import Forecast from './pages/Forecast'
 import Collect from './pages/Collect'
 import Scheduler from './pages/Scheduler'
 import Settings from './pages/Settings'
+import Catalog from './pages/Catalog'
+import { ApiKeyDialog } from './components/ApiKeyDialog'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 10_000 } } })
 
@@ -17,11 +19,13 @@ export default function App() {
     <QueryClientProvider client={qc}>
       <ToastProvider>
         <BrowserRouter>
+          <ApiKeyDialog />
           <Routes>
             <Route element={<Shell />}>
               <Route index element={<Dashboard />} />
               <Route path="/market" element={<Market />} />
               <Route path="/forecast" element={<Forecast />} />
+              <Route path="/catalog" element={<Catalog />} />
               <Route path="/collect" element={<Collect />} />
               <Route path="/scheduler" element={<Scheduler />} />
               <Route path="/settings" element={<Settings />} />

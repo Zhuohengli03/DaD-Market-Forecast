@@ -23,8 +23,8 @@ export function ForecastChart({ run, showRefs, actuals }: { run: ForecastRun; sh
   const actualMap = new Map((actuals ?? []).map(a => [a.ts, a.median_price]))
   const series: object[] = [
     { name: 'history', type: 'line', data: pad(run.series_tail.map(p => p.median_price), 0, nF), symbol: 'none', lineStyle: { color: '#1f2937', width: 1.5 } },
-    { name: 'band', type: 'line', data: pad(lower, nH, 0), lineStyle: { opacity: 0 }, stack: 'ci', symbol: 'none', silent: true },
-    { name: 'band', type: 'line', data: pad(upper.map((u, i) => u - lower[i]), nH, 0), lineStyle: { opacity: 0 }, stack: 'ci', areaStyle: { color: '#2563eb', opacity: 0.15 }, symbol: 'none', silent: true },
+    { name: 'band', type: 'line', data: pad(lower.map(l => Math.max(0, l)), nH, 0), lineStyle: { opacity: 0 }, stack: 'ci', symbol: 'none', silent: true },
+    { name: 'band', type: 'line', data: pad(upper.map((u, i) => Math.max(0, u - Math.max(0, lower[i]))), nH, 0), lineStyle: { opacity: 0 }, stack: 'ci', areaStyle: { color: '#2563eb', opacity: 0.15 }, symbol: 'none', silent: true },
     { name: 'forecast', type: 'line', data: pad(run.forecast.map(p => p.pred), nH, 0), symbol: 'none', lineStyle: { color: '#2563eb', width: 2, type: 'dashed' } },
   ]
   if (actualMap.size) series.push({ name: 'actual', type: 'line', data: pad(fcX.map(ts => actualMap.get(ts) ?? null), nH, 0), symbol: 'circle', symbolSize: 4, lineStyle: { color: '#16a34a', width: 1.5 } })
