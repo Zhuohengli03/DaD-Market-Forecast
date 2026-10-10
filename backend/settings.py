@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     db_password: str = ""
     db_port: int = 5432
     db_connect_timeout: int = 3
+    db_disabled: bool = False  # Postgres paused in the wizard; settings kept so switching back is one click
 
     darker_market_api_key: str = ""
 
@@ -59,7 +60,7 @@ class Settings(BaseSettings):
 
     @property
     def postgres_configured(self) -> bool:
-        return bool(self.db_user)
+        return bool(self.db_user) and not self.db_disabled
 
     @property
     def default_items_path(self) -> Path:

@@ -147,3 +147,23 @@ it('puts the most useful categories first and translates them', () => {
   const chips = screen.getAllByRole('button').map(b => b.textContent ?? '').filter(t => t.startsWith('全选') && !/^全选（/.test(t))
   expect(chips).toEqual(['全选矿石（2）', '全选箭（1）'])
 })
+
+it('never switches storage on a radio click; asks for confirmation and keeps Postgres settings', () => {
+  const pgSetup = { ...base, environment: { ...base.environment, storage: 'postgres', db_host: 'localhost', db_database: 'darkerdb',
+    db_saved: { host: 'localhost', port: 5432, database: 'darkerdb', user: 'zhuo' } } }
+  mount(pgSetup as never)
+  const db = vi.mocked(hooks.useDatabaseSetup).mock.results.at(-1)!.value as { clear: { mutate: ReturnType<typeof vi.fn> } }
+  fireEvent.click(screen.getByLabelText('内置数据库（推荐）'))
+  expect(db.clear.mutate).not.toHaveBeenCalled()
+  expect(screen.getByText(/Postgres 里的数据不会删除/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: '改用内置数据库' }))
+  expect(db.clear.mutate).toHaveBeenCalled()
+})
+
+it('prefills the saved Postgres connection when switching back', () => {
+  const paused = { ...base, environment: { ...base.environment, storage: 'sqlite', db_saved: { host: 'db.local', port: 5433, database: 'market', user: 'zhuo' } } }
+  mount(paused as never)
+  fireEvent.click(screen.getByLabelText('Postgres 数据库'))
+  expect(screen.getByLabelText('地址')).toHaveValue('db.local')
+  expect(screen.getByLabelText('用户名')).toHaveValue('zhuo')
+})

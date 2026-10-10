@@ -31,7 +31,10 @@ def environment(st) -> dict:
     return {"python_version": f"{v.major}.{v.minor}.{v.micro}", "python_ok": (v.major, v.minor) >= (3, 10),
             "storage": st.repo.source_name(), "data_dir": str(st.settings.data_dir),
             "db_host": st.settings.db_host if st.settings.postgres_configured else None,
-            "db_database": st.settings.db_database if st.settings.postgres_configured else None}
+            "db_database": st.settings.db_database if st.settings.postgres_configured else None,
+            # saved connection (without password) to prefill the form when switching back to Postgres
+            "db_saved": {"host": st.settings.db_host, "port": st.settings.db_port, "database": st.settings.db_database,
+                         "user": st.settings.db_user} if st.settings.db_user else None}
 
 
 def probe_postgres(**dsn) -> None:
@@ -129,10 +132,11 @@ def put_database(body: DatabaseIn, request: Request):
         raise HTTPException(422, "连接不上这个 Postgres 数据库，请检查地址、端口、库名、用户名和密码。 / "
                                  "Could not connect to this Postgres database; check host, port, database, user and password.")
     for k, v in (("DB_HOST", body.host), ("DB_PORT", str(body.port)), ("DB_DATABASE", body.database),
-                 ("DB_USER", body.user), ("DB_PASSWORD", body.password)):
+                 ("DB_USER", body.user), ("DB_PASSWORD", body.password), ("DB_DISABLED", "0")):
         upsert_env(st.settings.env_path, k, v)
     s = st.settings
     s.db_host, s.db_port, s.db_database, s.db_user, s.db_password = body.host, body.port, body.database, body.user, body.password
+    s.db_disabled = False
     _use_repo(st)
     return ok(setup_state(request))
 
@@ -140,8 +144,9 @@ def put_database(body: DatabaseIn, request: Request):
 @router.delete("/setup/database")
 def delete_database(request: Request):
     st = request.app.state
-    upsert_env(st.settings.env_path, "DB_USER", "")
-    st.settings.db_user = ""
+    # pause, never erase: the Postgres data and connection settings stay, so the user can switch back
+    upsert_env(st.settings.env_path, "DB_DISABLED", "1")
+    st.settings.db_disabled = True
     _use_repo(st)
     return ok(setup_state(request))
 

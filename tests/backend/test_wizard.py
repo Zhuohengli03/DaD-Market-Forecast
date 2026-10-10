@@ -90,13 +90,20 @@ def test_database_setup_tests_connection_and_falls_back(client, monkeypatch, pro
     monkeypatch.setattr(setup_api, "probe_postgres", lambda **kw: None)
     real = setup_api.make_repository
     fake_pg = type("R", (), {"source_name": lambda self: "postgres", "list_items": lambda self: []})()
-    monkeypatch.setattr(setup_api, "make_repository", lambda s, log=print: fake_pg if s.db_user else real(s, log))
+    monkeypatch.setattr(setup_api, "make_repository", lambda s, log=print: fake_pg if s.postgres_configured else real(s, log))
     r = client.put("/api/setup/database", json={"host": "localhost", "port": 5432, "database": "d", "user": "u", "password": "p"})
     assert r.status_code == 200 and r.json()["data"]["environment"]["storage"] == "postgres"
     env = (project_root / ".env").read_text()
     assert "DB_USER=u" in env and "DB_PASSWORD=p" in env
     r = client.delete("/api/setup/database")
-    assert r.json()["data"]["environment"]["storage"] == "sqlite" and "DB_USER=\n" in (project_root / ".env").read_text()
+    env_after = (project_root / ".env").read_text()
+    assert r.json()["data"]["environment"]["storage"] == "sqlite"
+    # switching to the built-in database pauses Postgres; it never erases the connection settings
+    assert "DB_USER=u" in env_after and "DB_DISABLED=1" in env_after
+    e = r.json()["data"]["environment"]
+    assert e["db_saved"] == {"host": "localhost", "port": 5432, "database": "d", "user": "u"}
+    r = client.put("/api/setup/database", json={"host": "localhost", "port": 5432, "database": "d", "user": "u", "password": "p"})
+    assert r.json()["data"]["environment"]["storage"] == "postgres" and "DB_DISABLED=0" in (project_root / ".env").read_text()
 
 
 def test_initialize_runs_every_step_and_reports_per_item(client, project_root, settings):
