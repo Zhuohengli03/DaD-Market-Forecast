@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import queue
 import subprocess
@@ -31,6 +32,7 @@ class Job:
     error: str | None = None
     result_ref: str | None = None
     meta: dict = field(default_factory=dict)
+    progress: dict | None = None
     _log: deque = field(default_factory=lambda: deque(maxlen=2000), repr=False)
 
     def log_tail(self, n: int | None = 200) -> list[str]:
@@ -40,7 +42,8 @@ class Job:
     def to_dict(self) -> dict:
         return {"id": self.id, "kind": self.kind, "label": self.label, "status": self.status,
                 "created_at": self.created_at, "finished_at": self.finished_at, "error": self.error,
-                "result_ref": self.result_ref, "meta": self.meta, "log_tail": self.log_tail()}
+                "result_ref": self.result_ref, "meta": self.meta, "progress": self.progress}
+        # raw log lines stay server-side (troubleshooting); the UI shows structured progress only
 
 
 class JobManager:
@@ -85,9 +88,15 @@ class JobManager:
             q.put((event, data))
 
     def append_log(self, job: Job, line: str) -> None:
-        with self._lock:  # same lock as subscribe() so a replayed line is never also delivered live
+        with self._lock:
             job._log.append(line)
-            self._publish(job, "log", line)
+
+    def progress(self, job: Job, stage: str, done: int | None = None, total: int | None = None,
+                 detail: dict | None = None, **kw) -> None:
+        """Structured progress for the UI: a stage code, optional done/total counts and details."""
+        with self._lock:
+            job.progress = {"stage": stage, "done": done, "total": total, "detail": {**(detail or {}), **kw}}
+            self._publish(job, "progress", json.dumps(job.progress, ensure_ascii=False))
 
     def _set_status(self, job: Job, status: str, error: str | None = None, result_ref: str | None = None) -> None:
         with self._lock:
@@ -108,8 +117,8 @@ class JobManager:
         with self._lock:
             job = self._jobs[job_id]
             self._subs.setdefault(job_id, []).append(q)
-            for line in job.log_tail(None):  # replay full history so late subscribers see it
-                q.put(("log", line))
+            if job.progress is not None:  # late subscribers start from the current progress
+                q.put(("progress", json.dumps(job.progress, ensure_ascii=False)))
             q.put(("status", job.status))
             if job.status in TERMINAL:
                 q.put(_SENTINEL)
@@ -158,7 +167,16 @@ class JobManager:
                 with self._lock:
                     self._procs[job.id] = proc
                 for line in iter(proc.stdout.readline, ""):
-                    self.append_log(job, line.rstrip("\n"))
+                    line = line.rstrip("\n")
+                    if line.startswith("@@"):  # structured progress from the child process
+                        try:
+                            obj = json.loads(line[2:])
+                            self.progress(job, obj.pop("stage", "running"), obj.pop("done", None),
+                                          obj.pop("total", None), detail=obj)
+                            continue
+                        except (ValueError, AttributeError):
+                            pass
+                    self.append_log(job, line)
                 code = proc.wait()
                 if code == 0:
                     self._set_status(job, "succeeded")

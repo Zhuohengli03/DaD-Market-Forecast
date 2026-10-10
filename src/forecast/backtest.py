@@ -49,7 +49,8 @@ class BacktestResult:
 
 def run_backtest(series: pd.DataFrame, season_start: pd.Timestamp, model_names: list[str] | tuple[str, ...],
                  horizon: int, origin_step: int = 6, min_origins: int = 5,
-                 log: Logger | None = None, observed: np.ndarray | None = None) -> BacktestResult:
+                 log: Logger | None = None, observed: np.ndarray | None = None,
+                 on_model: Callable[[int, int, str], None] | None = None) -> BacktestResult:
     """`observed` marks hours with real listings; forward-filled hours are excluded from scoring."""
     y = series["median_price"].to_numpy(dtype=float)
     if observed is None and "observed" in series.columns:
@@ -64,7 +65,7 @@ def run_backtest(series: pd.DataFrame, season_start: pd.Timestamp, model_names: 
     last_values = np.array([y[o - 1] for o in origins])
     predictions: dict[str, np.ndarray] = {}
     failures: dict[str, str] = {}
-    for name in model_names:
+    for idx, name in enumerate(model_names, start=1):
         rows = []
         try:
             for o in origins:
@@ -72,10 +73,14 @@ def run_backtest(series: pd.DataFrame, season_start: pd.Timestamp, model_names: 
             predictions[name] = np.stack(rows)
             if log:
                 log(f"回测 {name}：完成 {len(origins)} 次")
+            if on_model:
+                on_model(idx, len(model_names), name)
         except Exception as exc:  # one bad model must not sink the run
             failures[name] = f"{type(exc).__name__}: {exc}"
             if log:
                 log(f"回测 {name}：失败 {failures[name]}")
+            if on_model:
+                on_model(idx, len(model_names), name)
     return BacktestResult(h, tuple(origins), actuals, last_values, predictions, failures, tuple(warnings))
 
 

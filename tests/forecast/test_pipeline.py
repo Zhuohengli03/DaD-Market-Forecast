@@ -136,3 +136,13 @@ def test_refit_fallback_reports_zero_skill(frames, monkeypatch):
     monkeypatch.setattr(pl, "select_model", lambda r, m: Selection("ridge", (("ridge", 1.0),), True, 0.3, r.predictions["ridge"], ""))
     out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, S2])
     assert out["selected"]["name"] == "naive" and out["skill_vs_naive"] == 0.0
+
+
+def test_progress_callback_reports_stages(frames):
+    events = []
+    run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, S2],
+                 progress=lambda stage, done=None, total=None, **d: events.append((stage, done, total)))
+    stages = [e[0] for e in events]
+    assert stages[0] == "load" and stages[-1] == "done"
+    bt = [e for e in events if e[0] == "backtest"]
+    assert bt[-1][1] == bt[-1][2] == 3          # naive, seasonal_naive_24, ridge

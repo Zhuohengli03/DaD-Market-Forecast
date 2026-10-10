@@ -106,21 +106,20 @@ def test_internal_errors_do_not_leak_details(client):
     assert r.status_code == 500 and "hunter2" not in r.text and "ref" in r.json()["error"]
 
 
-def test_late_subscriber_gets_full_log_and_old_jobs_are_evicted():
+def test_late_subscriber_gets_current_progress_and_old_jobs_are_evicted():
     jm = JobManager(max_jobs=3)
     job = jm.create("t", "x")
     for i in range(500):
-        jm.append_log(job, f"l{i}")
+        jm.progress(job, "collect", i + 1, 500)
     jm._set_status(job, "succeeded")
     q = jm.subscribe(job.id)
-    lines = []
+    events = []
     while True:
         item = q.get_nowait()
         if item is None:
             break
-        if item[0] == "log":
-            lines.append(item[1])
-    assert len(lines) == 500
+        events.append(item[0])
+    assert events == ["progress", "status"]
     for _ in range(5):
         j = jm.create("t", "y"); jm._set_status(j, "succeeded")
     assert len(jm.list()) == 3

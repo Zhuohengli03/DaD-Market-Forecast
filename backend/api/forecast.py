@@ -30,7 +30,8 @@ def start_forecast(body: ForecastIn, request: Request):
 
     def work(j):
         result = run_forecast(req, repo.fetch_all, seasons.to_pipeline(), source=repo.source_name(),
-                              log=lambda line: jm.append_log(j, line))
+                              log=lambda line: jm.append_log(j, line),
+                              progress=lambda stage, done=None, total=None, **d: jm.progress(j, stage, done, total, detail=d))
         return runs.save(result)
 
     jm.run_in_thread(job, work)

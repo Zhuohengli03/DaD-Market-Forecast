@@ -1,3 +1,4 @@
+import json
 from src.api.collect import collect_pages, parse_args
 
 
@@ -100,3 +101,27 @@ def test_main_is_incremental_from_latest_stored(tmp_path, monkeypatch):
     col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path)])
     assert seen["since"] == _row(1)["created_at"]
     assert seen["sort"] == "created_at:asc"     # resume oldest-first so a page budget never leaves a gap
+
+
+def test_collector_emits_progress_lines_when_asked(tmp_path, monkeypatch, capsys):
+    import src.api.collect as col
+
+    class FakeClient:
+        def __init__(self, key):
+            pass
+
+        def find_item_id(self, name):
+            return "id.item.iron_ores_2001"
+
+        def iter_market(self, item_id, since=None, limit=50, sort="created_at:desc", max_pages=None):
+            yield [_row(1), _row(2)]
+
+    monkeypatch.setenv("DARKER_MARKET_API_KEY", "k")
+    monkeypatch.setenv("DARKER_PROGRESS", "1")
+    monkeypatch.delenv("DB_USER", raising=False)
+    monkeypatch.setattr(col, "DarkerDBClient", FakeClient)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
+    col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path), "--max-pages", "5"])
+    lines = [json.loads(l[2:]) for l in capsys.readouterr().out.splitlines() if l.startswith("@@")]
+    assert lines[0]["stage"] == "collect" and lines[0]["done"] == 1 and lines[0]["total"] == 5
+    assert lines[-1] == {"stage": "done", "new": 2}

@@ -1,7 +1,7 @@
 export default {
   app: { tagline: 'Dark and Darker market price tracker and forecaster' },
   nav: { dashboard: 'Overview', market: 'Price history', forecast: 'Forecast', catalog: 'Item catalog', equipment: 'Equipment market', collect: 'Collect data', scheduler: 'Scheduled collection', settings: 'Settings' },
-  common: { item: 'Item', season: 'Season', start: 'Start', end: 'End', resolution: 'Granularity', save: 'Save', cancel: 'Cancel', delete: 'Delete', add: 'Add', loading: 'Loading…', none: 'No data yet', error: 'Something went wrong', all: 'All', yes: 'Yes', no: 'No', download: 'Download CSV', jobs: 'Job history', log: 'Log', prev: 'Previous page', next: 'Next page', running: 'running', goSettings: 'Open settings', hours: 'hours' },
+  common: { item: 'Item', season: 'Season', start: 'Start', end: 'End', resolution: 'Granularity', save: 'Save', cancel: 'Cancel', delete: 'Delete', add: 'Add', loading: 'Loading…', none: 'No data yet', error: 'Something went wrong', all: 'All', yes: 'Yes', no: 'No', download: 'Download CSV', jobs: 'Job history', pickJob: 'Pick an entry on the left to see its result', prev: 'Previous page', next: 'Next page', running: 'running', goSettings: 'Open settings', hours: 'hours' },
   res: { '1h': 'Hourly', '4h': 'Every 4h', '1d': 'Daily' },
   apiKey: {
     title: 'Connect your DarkerDB account',
@@ -48,6 +48,14 @@ export default {
   patch: { season: 'Early Access Season #{{n}}', seasonLabel: 'Season {{n}}' },
   yes: 'Yes', no: 'No',
   param: {},
+  progress: {
+    waiting: 'Getting ready…', working: 'Working…', reconnecting: 'Connection lost, fetching progress again…',
+    status: { queued: 'Waiting', running: 'Running', succeeded: 'Done', failed: 'Failed' },
+    forecast: { load: 'Reading this season’s listings', backtestStart: 'Testing each method on past data', backtest: 'Testing each method on past data ({{done}}/{{total}}: {{model}})', select: 'Comparing how accurate each method was', fit: 'Training “{{model}}” on all data', references: 'Reading the same period of past seasons', done: 'Forecast ready' },
+    collect: { page: 'Fetching listings from DarkerDB: {{page}} pages read, {{new}} new', done: 'Collection finished: {{new}} new listings', none: 'Collection finished: no new listings' },
+    catalog: { items: 'Downloading item data: {{n}} so far', names: 'Fetching Chinese names', check: 'Checking which items trade: {{done}}/{{total}}', synced: 'Sync finished: {{items}} items in {{types}} types', checked: 'Check finished: {{tradable}} of {{checked}} item types are tradable' },
+    error: { auth: 'DarkerDB rejected your API key. Enter it again in Settings.', api: 'DarkerDB is not reachable right now. Try again later.', collect: 'Collection did not succeed. Try again later.', task: 'Collection did not succeed. Try again later.', forecast: 'The forecast did not succeed. Try again later.', catalog: 'The catalog task did not succeed. Try again later.' },
+  },
   models: { naive: 'Repeat last hour', seasonal_naive_24: 'Repeat yesterday', ets: 'Exponential smoothing', arima: 'ARIMA', ridge: 'Linear regression', hgb: 'Gradient boosting', rf: 'Random forest', ensemble: 'Weighted blend' },
   modelHelp: { naive: 'Baseline: price stays the same', seasonal_naive_24: 'Baseline: same as this time yesterday', ets: 'Smooths trend and the daily cycle', arima: 'Classic statistical time-series model', ridge: 'Linear model on past prices and volume', hgb: 'Tree model for non-linear patterns', rf: 'Average of many decision trees' },
   catalog: {

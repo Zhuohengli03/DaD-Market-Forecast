@@ -15,3 +15,5 @@
 }
 html, body, #root { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: Inter, "Noto Sans SC", system-ui, sans-serif; }
+
+@keyframes progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }

@@ -51,7 +51,8 @@ def test_process_job_streams_stdout(client, project_root):
                    project_root)
     done = _wait(client, job.id)
     assert done["status"] == "succeeded"
-    assert client.get(f"/api/jobs/{job.id}").json()["data"]["log_tail"] == ["line 0", "line 1", "line 2"]
+    assert jm.get(job.id).log_tail() == ["line 0", "line 1", "line 2"]          # server-side only
+    assert "log_tail" not in client.get(f"/api/jobs/{job.id}").json()["data"]
 
 
 def test_sse_events_end_on_completion(client, project_root):
@@ -65,7 +66,7 @@ def test_sse_events_end_on_completion(client, project_root):
         for line in r.iter_lines():
             if line.startswith("event:"):
                 events.append(line.split(":", 1)[1].strip())
-    assert "log" in events and events[-1] == "status"
+    assert "log" not in events and events[-1] == "status"
 
 
 def test_jobs_list_and_404(client):

@@ -16,7 +16,8 @@ def test_collect_runs_script(client):
     r = client.post("/api/collect/Test Ore")
     assert r.status_code == 202
     job = _wait(client, r.json()["data"]["job_id"])
-    assert job["status"] == "succeeded" and job["log_tail"][-1] == "line 2"
+    assert job["status"] == "succeeded" and "log_tail" not in job
+    assert client.app.state.jobs.get(job["id"]).log_tail()[-1] == "line 2"   # kept server-side
 
 
 def test_collect_same_item_twice_409(client):
