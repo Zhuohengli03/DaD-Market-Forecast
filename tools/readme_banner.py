@@ -1,99 +1,103 @@
-"""Draw the animated README banner in a pixel-grid style: price history lights up column by column as if it
-were being collected, then a "now" line appears and the forecast fades in with its uncertainty band.
-Cells use Dark and Darker rarity colours. Pure SVG + CSS animation (works inside a README <img>).
+"""Draw the README animation: a price line draws itself with volume underneath, a "now" marker appears, then a
+dashed forecast with its uncertainty band. Gold tones to match the cover. Pure SVG + CSS (works in a README <img>).
 
-    python tools/readme_banner.py   ->  docs/assets/market-banner.svg, docs/assets/market-banner-dark.svg
+    python tools/readme_banner.py   ->  docs/assets/market-chart.svg, docs/assets/market-chart-dark.svg
 """
 from __future__ import annotations
 
 import math
 from pathlib import Path
 
-COLS, ROWS = 44, 7
-HISTORY = 32                       # columns of history; the rest is forecast
-CELL, GAP, PAD = 11, 4, 6
-PITCH = CELL + GAP
-LOOP_S = 9.0                       # one full cycle
-T_HISTORY = (0.04, 0.50)           # history fills in during this share of the loop
-T_NOW = 0.53                       # the "now" divider appears
-T_FORECAST = (0.56, 0.72)          # forecast fades in
-T_FADE = (0.90, 0.98)              # everything fades before the loop restarts
+W, H = 760, 200
+LEFT, RIGHT, TOP, BOTTOM = 16, 16, 18, 46       # chart area margins; volume bars live in the bottom margin
+HISTORY, FUTURE = 60, 20                         # points of history and of forecast
+LOOP = 9.0
 
 THEMES = {
-    "market-banner.svg": {
-        "empty": "#ebedf0", "now": "#57606a",
-        # poor, common, uncommon, rare, epic, legendary, unique (bottom row to top)
-        "rarity": ["#8c959f", "#c4ccd4", "#2da44e", "#0969da", "#8250df", "#e36209", "#bf8700"],
-    },
-    "market-banner-dark.svg": {
-        "empty": "#161b22", "now": "#8b949e",
-        "rarity": ["#6e7681", "#c9d1d9", "#3fb950", "#58a6ff", "#bc8cff", "#f0883e", "#e3b341"],
-    },
+    "market-chart.svg": {"line": "#a16207", "area": "#ca8a04", "band": "#ca8a04", "grid": "#e5e7eb",
+                         "vol": "#d6d3d1", "now": "#78716c"},
+    "market-chart-dark.svg": {"line": "#e3b341", "area": "#e3b341", "band": "#e3b341", "grid": "#21262d",
+                              "vol": "#30363d", "now": "#8b949e"},
 }
 
 
 def series() -> list[float]:
-    """A made-up but believable price: daily swing, noise and a slow climb, on a 1..7 scale."""
-    return [max(1.0, min(ROWS, 3.3 + 1.8 * math.sin(c / 4.0) + 0.8 * math.sin(c / 1.5 + 1) + 0.04 * c)) for c in range(COLS)]
+    """A believable hourly price: daily swing, noise and a slow climb (deterministic)."""
+    return [100 + 9 * math.sin(i / 6.5) + 4 * math.sin(i / 2.3 + 1) + 2.5 * math.sin(i * 1.7) + 0.35 * i
+            for i in range(HISTORY + FUTURE)]
 
 
-def forecast_band(c: int, mid: float) -> tuple[int, int, int]:
-    """Median level and low/high levels for a forecast column; the band widens further ahead."""
-    spread = 0.6 + 0.22 * (c - HISTORY)
-    lo, hi = max(1, round(mid - spread)), min(ROWS, round(mid + spread))
-    return lo, round(mid), hi
+def scale(values):
+    lo, hi = min(values) - 6, max(values) + 8
+    xs = lambda i: LEFT + (W - LEFT - RIGHT) * i / (HISTORY + FUTURE - 1)
+    ys = lambda v: TOP + (H - TOP - BOTTOM) * (1 - (v - lo) / (hi - lo))
+    return xs, ys
+
+
+def length(points) -> float:
+    return sum(math.dist(a, b) for a, b in zip(points, points[1:]))
 
 
 def pct(x: float) -> str:
-    return f"{100 * x:.2f}%"
+    return f"{100 * x:.1f}%"
 
 
-def cell_anim(name: str, on: float, opacity: float) -> str:
-    """Hidden, pop in at `on`, hold, fade out near the end of the loop."""
-    return (f"@keyframes {name}{{0%,{pct(on)}{{opacity:0;transform:scale(.4)}}"
-            f"{pct(on + 0.025)}{{opacity:{opacity};transform:scale(1)}}"
-            f"{pct(T_FADE[0])}{{opacity:{opacity};transform:scale(1)}}{pct(T_FADE[1])},100%{{opacity:0;transform:scale(1)}}}}"
-            f".{name}{{animation:{name} {LOOP_S}s ease-out infinite;transform-box:fill-box;transform-origin:center}}")
-
-
-def build(theme: dict) -> str:
-    prices = series()
-    w, h = PAD * 2 + COLS * PITCH - GAP, PAD * 2 + ROWS * PITCH - GAP
-    css, back, front = [], [], []
-    for c in range(COLS):
-        for r in range(ROWS):
-            back.append(f'<rect x="{PAD + c * PITCH}" y="{PAD + r * PITCH}" width="{CELL}" height="{CELL}" rx="2.5" fill="{theme["empty"]}"/>')
-    for c in range(COLS):
-        x = PAD + c * PITCH
-        if c < HISTORY:
-            top = round(prices[c])
-            for level in range(top):
-                # collected column by column, each one stacking up from the bottom
-                on = T_HISTORY[0] + (T_HISTORY[1] - T_HISTORY[0]) * (c + level / ROWS) / HISTORY
-                name = f"h{c}_{level}"
-                css.append(cell_anim(name, on, 1))
-                y = PAD + (ROWS - 1 - level) * PITCH
-                front.append(f'<rect class="{name}" x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2.5" fill="{theme["rarity"][level]}"/>')
-        else:
-            lo, mid, hi = forecast_band(c, prices[c])
-            on = T_FORECAST[0] + (T_FORECAST[1] - T_FORECAST[0]) * (c - HISTORY) / (COLS - HISTORY)
-            for level in range(lo - 1, hi):
-                name = f"f{c}_{level}"
-                median = level == mid - 1
-                css.append(cell_anim(name, on, 1 if median else 0.35))
-                y = PAD + (ROWS - 1 - level) * PITCH
-                color = theme["rarity"][level]
-                if median:   # the forecast itself: an outlined cell so it reads as "not yet real"
-                    front.append(f'<rect class="{name}" x="{x + 1}" y="{y + 1}" width="{CELL - 2}" height="{CELL - 2}" rx="2" fill="none" stroke="{color}" stroke-width="2"/>')
-                else:
-                    front.append(f'<rect class="{name}" x="{x}" y="{y}" width="{CELL}" height="{CELL}" rx="2.5" fill="{color}"/>')
-    nx = PAD + HISTORY * PITCH - GAP / 2
-    css.append(f"@keyframes now{{0%,{pct(T_NOW)}{{opacity:0}}{pct(T_NOW + 0.02)},{pct(T_FADE[0])}{{opacity:1}}{pct(T_FADE[1])},100%{{opacity:0}}}}"
-               f".now{{animation:now {LOOP_S}s linear infinite}}")
-    front.append(f'<line class="now" x1="{nx}" y1="{PAD - 3}" x2="{nx}" y2="{h - PAD + 3}" stroke="{theme["now"]}" stroke-width="1.5" stroke-dasharray="3 3"/>')
-    title = "Darker Market: price history in Dark and Darker rarity colours fills in, then the forecast appears"
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}" role="img" aria-label="{title}">'
-            f"<title>{title}</title><style>{''.join(css)}</style>{''.join(back)}{''.join(front)}</svg>\n")
+def build(t: dict) -> str:
+    v = series()
+    last = v[HISTORY - 1]
+    edges = [last + 0.12 * k + 2.2 * math.sin(k / 3.5) + sgn * 0.75 * k for k in range(FUTURE + 1) for sgn in (1, -1)]
+    xs, ys = scale(v[:HISTORY] + edges)
+    hist = [(xs(i), ys(v[i])) for i in range(HISTORY)]
+    # forecast: a smoothed continuation, its band widening further ahead
+    last = v[HISTORY - 1]
+    # forecasts are smooth: a gentle drift with a soft daily wave, and a band that widens further ahead
+    mid = [last + 0.12 * k + 2.2 * math.sin(k / 3.5) for k in range(FUTURE + 1)]
+    fc = [(xs(HISTORY - 1 + k), ys(m)) for k, m in enumerate(mid)]
+    up = [(xs(HISTORY - 1 + k), ys(m + 0.75 * k)) for k, m in enumerate(mid)]
+    dn = [(xs(HISTORY - 1 + k), ys(m - 0.75 * k)) for k, m in enumerate(mid)]
+    poly = lambda pts: " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+    base = H - BOTTOM
+    hl, fl = length(hist), length(fc)
+    nx = hist[-1][0]
+    # timeline (share of the loop)
+    draw_end, now_at, fc_start, fc_end, fade = 0.36, 0.40, 0.44, 0.62, 0.90
+    css = [
+        f"@keyframes draw{{0%{{stroke-dashoffset:{hl:.0f}}}{pct(draw_end)},100%{{stroke-dashoffset:0}}}}",
+        f".hist{{stroke-dasharray:{hl:.0f};animation:draw {LOOP}s ease-in-out infinite,fade {LOOP}s linear infinite}}",
+        f"@keyframes area{{0%,{pct(draw_end - 0.05)}{{opacity:0}}{pct(draw_end + 0.04)},{pct(fade)}{{opacity:.14}}100%{{opacity:0}}}}",
+        f".area{{animation:area {LOOP}s linear infinite}}",
+        f"@keyframes now{{0%,{pct(now_at)}{{opacity:0}}{pct(now_at + 0.03)},{pct(fade)}{{opacity:1}}100%{{opacity:0}}}}",
+        f".now{{animation:now {LOOP}s linear infinite}}",
+        f"@keyframes pulse{{0%,100%{{r:3.5}}50%{{r:6}}}}.dot{{animation:now {LOOP}s linear infinite,pulse 1.4s ease-in-out infinite}}",
+        f"@keyframes fdraw{{0%,{pct(fc_start)}{{stroke-dashoffset:{fl:.0f}}}{pct(fc_end)},100%{{stroke-dashoffset:0}}}}",
+        f".fc{{stroke-dasharray:{fl:.0f};animation:fdraw {LOOP}s ease-out infinite,fade {LOOP}s linear infinite}}",
+        f"@keyframes band{{0%,{pct(fc_start + 0.04)}{{opacity:0}}{pct(fc_end)},{pct(fade)}{{opacity:.18}}100%{{opacity:0}}}}",
+        f".band{{animation:band {LOOP}s linear infinite}}",
+        f"@keyframes fade{{0%,{pct(fade)}{{opacity:1}}100%{{opacity:0}}}}",
+    ]
+    body = [f'<line x1="{LEFT}" x2="{W - RIGHT}" y1="{y:.1f}" y2="{y:.1f}" stroke="{t["grid"]}" stroke-width="1"/>'
+            for y in (TOP + (base - TOP) * k / 3 for k in range(4))]
+    # volume: one bar per hour, rising in step with the line
+    for i in range(HISTORY):
+        hgt = 6 + 16 * (0.5 + 0.5 * math.sin(i * 1.3) * math.cos(i / 4.0)) ** 2
+        on = draw_end * i / HISTORY
+        name = f"v{i}"
+        css.append(f"@keyframes {name}{{0%,{pct(on)}{{transform:scaleY(0)}}{pct(on + 0.03)},{pct(fade)}{{transform:scaleY(1)}}100%{{transform:scaleY(0)}}}}"
+                   f".{name}{{animation:{name} {LOOP}s ease-out infinite;transform-box:fill-box;transform-origin:bottom}}")
+        body.append(f'<rect class="{name}" x="{xs(i) - 3:.1f}" y="{H - 6 - hgt:.1f}" width="6" height="{hgt:.1f}" rx="1.5" fill="{t["vol"]}"/>')
+    body += [
+        f'<polygon class="area" points="{poly(hist)} {hist[-1][0]:.1f},{base} {hist[0][0]:.1f},{base}" fill="{t["area"]}" opacity="0"/>',
+        f'<polyline class="hist" points="{poly(hist)}" fill="none" stroke="{t["line"]}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>',
+        f'<polygon class="band" points="{poly(up)} {poly(list(reversed(dn)))}" fill="{t["band"]}" opacity="0"/>',
+        # the dashed forecast is revealed by a solid line drawing itself inside a mask (dashes and drawing both need dasharray)
+        f'<mask id="reveal" maskUnits="userSpaceOnUse"><polyline class="fc" points="{poly(fc)}" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"/></mask>',
+        f'<polyline points="{poly(fc)}" fill="none" stroke="{t["line"]}" stroke-width="2.5" stroke-dasharray="6 5" stroke-linecap="round" mask="url(#reveal)"/>',
+        f'<line class="now" x1="{nx:.1f}" x2="{nx:.1f}" y1="{TOP - 6}" y2="{base}" stroke="{t["now"]}" stroke-width="1.2" stroke-dasharray="3 4" opacity="0"/>',
+        f'<circle class="dot" cx="{nx:.1f}" cy="{hist[-1][1]:.1f}" r="3.5" fill="{t["line"]}" opacity="0"/>',
+    ]
+    title = "Darker Market: the price line draws itself, then the forecast and its range appear"
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-label="{title}">'
+            f"<title>{title}</title><style>{''.join(css)}</style>{''.join(body)}</svg>\n")
 
 
 if __name__ == "__main__":

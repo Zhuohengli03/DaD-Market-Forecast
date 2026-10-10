@@ -14,36 +14,12 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/market-banner-dark.svg" />
-    <img alt="Price history in Dark and Darker rarity colours fills in, then the forecast appears" src="docs/assets/market-banner.svg" />
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/market-chart-dark.svg" />
+    <img alt="The price line draws itself, then the forecast and its range appear" src="docs/assets/market-chart.svg" />
   </picture>
 </p>
 
-<table>
-  <tr>
-    <td align="center" width="33%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-collect-dark.svg" />
-        <img alt="Listings flow from DarkerDB into your local database" src="docs/assets/how-collect.svg" />
-      </picture>
-      <br /><b>采集 · Collect</b><br />从 DarkerDB 采集挂单，存在本机<br /><sub>Listings from DarkerDB, kept on your machine</sub>
-    </td>
-    <td align="center" width="33%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-filter-dark.svg" />
-        <img alt="A stat range filters equipment listings" src="docs/assets/how-filter.svg" />
-      </picture>
-      <br /><b>筛选 · Filter</b><br />装备按词条数值范围找挂单<br /><sub>Find gear by stat ranges</sub>
-    </td>
-    <td align="center" width="33%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/assets/how-forecast-dark.svg" />
-        <img alt="A model is used only when its backtest error beats the baseline" src="docs/assets/how-forecast.svg" />
-      </picture>
-      <br /><b>预测 · Forecast</b><br />比基准更准才采用模型<br /><sub>A model is used only if it beats the baseline</sub>
-    </td>
-  </tr>
-</table>
+<p align="center">采集挂单 → 看走势 → 预测，比基准更准才采用模型<br /><sub>Collect listings → read the trend → forecast, using a model only when it beats the baseline</sub></p>
 
 ## 开始 · Start
 

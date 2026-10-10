@@ -54,6 +54,6 @@ python -m backend                               # 接口，:5001
 cd frontend && npm run dev                      # 页面，:5173，热更新
 python -m pytest -q                             # 后端和预测测试
 cd frontend && npm test && npm run e2e          # 前端单元测试和浏览器测试
-python tools/readme_banner.py && python tools/readme_howto.py   # 重新生成 README 动画
+python tools/readme_banner.py                   # 重新生成 README 动画
 ```
 更多：[配置项参考](guides/ENV_SETUP_GUIDE.md) · [架构](PROJECT_SUMMARY.md) · [接口文档](api/API_REFERENCE.md)

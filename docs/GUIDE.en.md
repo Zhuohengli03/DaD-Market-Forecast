@@ -54,6 +54,6 @@ python -m backend                               # API on :5001
 cd frontend && npm run dev                      # UI on :5173 with hot reload
 python -m pytest -q                             # backend and forecast tests
 cd frontend && npm test && npm run e2e          # unit and browser tests
-python tools/readme_banner.py && python tools/readme_howto.py   # regenerate the README animations
+python tools/readme_banner.py                   # regenerate the README animation
 ```
 More: [Configuration reference](guides/ENV_SETUP_GUIDE.md) · [Architecture](PROJECT_SUMMARY.md) · [API reference](api/API_REFERENCE.md)
