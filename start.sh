@@ -49,7 +49,9 @@ if [ ! -d frontend/node_modules ] || [ frontend/package-lock.json -nt frontend/n
 fi
 FE_HASH=$( (cat frontend/package-lock.json frontend/index.html frontend/vite.config.ts; find frontend/src -type f -print0 | sort -z | xargs -0 cat) | hash_of)
 if [ "$(cat frontend/dist/.build-hash 2>/dev/null || true)" != "$FE_HASH" ]; then
-  step "构建页面"; (cd frontend && npm run build --silent >/dev/null); echo "$FE_HASH" > frontend/dist/.build-hash
+  step "构建页面"
+  if ! (cd frontend && npm run build --silent > ../.build.log 2>&1); then cat .build.log; die "页面构建失败，上面是原因"; fi
+  rm -f .build.log; echo "$FE_HASH" > frontend/dist/.build-hash
 fi
 ok "页面已就绪"
 

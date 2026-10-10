@@ -56,3 +56,4 @@ htmlcov/
 
 # one-click start environment
 .venv/
+.build.log

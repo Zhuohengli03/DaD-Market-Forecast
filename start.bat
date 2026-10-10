@@ -27,7 +27,9 @@ if not exist frontend\node_modules (
   pushd frontend & call npm ci --silent --no-audit --no-fund & popd
 )
 echo 构建页面
-pushd frontend & call npm run build --silent >nul & popd
+pushd frontend & call npm run build --silent >..\.build.log 2>&1 & popd
+if errorlevel 1 (type .build.log & echo 页面构建失败，上面是原因 & pause & exit /b 1)
+del .build.log 2>nul
 
 echo 启动 Darker Market：%URL% （关闭此窗口即停止）
 start "" cmd /c "timeout /t 4 >nul & start %URL%"
