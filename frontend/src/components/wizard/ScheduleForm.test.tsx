@@ -37,7 +37,7 @@ it('always reminds about the DarkerDB plan and warns when the estimate exceeds t
 it('estimates monthly requests against the plan', () => {
   vi.mocked(hooks.useSaveSchedule).mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
   render(<ScheduleForm initialSeconds={6 * 3600} initialAuto trackedItems={7} rateLimit={60} monthlyQuota={10000} submitLabel="保存" />)
-  expect(screen.getByText('预计每月约 840 次请求（往多了估；每月额度 10,000 次）。')).toBeInTheDocument()
+  expect(screen.getByText('预计每月消耗约 840 次 DarkerDB 额度（往多了估；每月额度 10,000 次）。')).toBeInTheDocument()
   expect(screen.queryByText(/超出每月额度/)).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: '保存' })).toBeEnabled()
 })
