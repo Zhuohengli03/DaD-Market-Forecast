@@ -115,26 +115,28 @@ def test_trade_check_reuses_earlier_totals_without_requests(settings):
     assert store.read()["trade_info"]["id.item.iron_ores"]["total"] == 7
 
 
-def test_one_type_history_on_demand(settings):
+def test_one_type_this_season_in_one_request(settings):
+    """One oldest-first request from the season start gives both this season's count and its first listing."""
     from backend.services.catalog_sync import type_history
     from tests.backend.test_types_and_equipment import _seed
-    store = _seed(settings)
+    store = _seed(settings, totals={"id.item.arming_sword": 900, "id.item.iron_ores": 0, "id.item.bandage": 1, "id.item.gold_coins": 0})
     calls = []
 
     class C:
         def get(self, path, params=None):
             calls.append(dict(params))
-            if params.get("from"):
-                return {"body": [{"created_at": "2026-10-09T03:00:00Z"}], "pagination": {"total": 12}}
-            return {"body": [{"created_at": "2024-09-06T10:00:00Z"}], "pagination": {"total": 900}}
+            return {"body": [{"created_at": "2026-10-09T03:00:00.000Z"}], "pagination": {"total": 12}}
     season = "2026-10-09T00:00:00+00:00"
     info = type_history(C(), store, "id.item.arming_sword", season)
-    assert info == {"total": 900, "first": "2024-09-06T10:00:00Z", "season": 12, "season_start": season}
-    assert len(calls) == 2
+    assert calls == [{"archetype": "id.item.arming_sword", "limit": 1, "sort": "created_at:asc", "from": season}]
+    assert info["season"] == 12 and info["season_first"] == "2026-10-09T03:00:00Z" and info["season_start"] == season
+    assert info["total"] == 900                               # all-time count from the earlier check is kept
     type_history(C(), store, "id.item.arming_sword", season)
-    assert len(calls) == 2                                    # cached
+    assert len(calls) == 1                                    # cached for this season
     type_history(C(), store, "id.item.arming_sword", "2027-01-01T00:00:00+00:00")
-    assert len(calls) == 3                                    # new season: only the season count again
+    assert len(calls) == 2                                    # a new season asks again
+    none = type_history(C(), store, "id.item.iron_ores", season)
+    assert none["season"] == 0 and none["season_first"] is None and len(calls) == 2   # never listed: no request
     with pytest.raises(KeyError):
         type_history(C(), store, "id.item.nope", season)
 
@@ -150,7 +152,8 @@ def test_history_endpoint_uses_latest_season(client, settings):
     client.app.state.settings.darker_market_api_key = "k"
     r = client.post("/api/catalog/types/id.item.arming_sword/history", headers=H)
     d = r.json()["data"]
-    assert r.status_code == 200 and d["total"] == 50 and d["season"] == 3 and d["season_start"].startswith("2026-01-20")   # latest season in the fixture
+    assert r.status_code == 200 and d["season"] == 3 and d["season_start"].startswith("2026-01-20")
+    assert d["season_first"] == "2024-09-06T10:00:00Z"
     assert client.post("/api/catalog/types/id.item.nope/history", headers=H).status_code == 404
 
 

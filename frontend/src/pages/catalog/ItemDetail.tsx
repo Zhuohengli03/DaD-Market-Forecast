@@ -10,7 +10,7 @@ import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { useToast } from '../../components/ui/Toast'
 import { QualityPrices } from './QualityPrices'
-import { firstRecordLabel } from '../../lib/darkerdb'
+import { seasonFirstLabel, seasonLookedUp } from '../../lib/season'
 import { itemName, paramLabel, paramValue, rarityLabel, typeLabel } from '../../lib/labels'
 
 // in Chinese, list the Chinese name and description before the English ones
@@ -38,17 +38,16 @@ function ListingStats({ row, localSeason }: { row: CatalogType; localSeason: num
   const { t } = useTranslation()
   const history = useTypeHistory(); const toast = useToast()
   // looked up: the season count is known, and the first listing too (or there never was one)
-  const known = row.season_listings != null && (!!row.first_listed || row.listings_total === 0)
+  const known = seasonLookedUp(row)
   const season = row.season_listings ?? localSeason
-  const first = row.first_listed ? firstRecordLabel(row.first_listed, t) : known ? t('catalog.noListing') : '–'
   return (
     <section aria-label={t('catalog.detail.listings')} className="lg:border-l lg:border-[var(--line)] lg:pl-6 min-w-[300px]">
       <div className="text-sm font-semibold mb-2">{t('catalog.detail.listings')}</div>
       <dl className="grid grid-cols-3 gap-4 text-sm">
         <div><dt className="text-[var(--muted)]">{t('catalog.seasonListings')}</dt>
           <dd className="text-xl font-semibold tabular-nums">{season ?? '–'}{row.season_listings == null && localSeason != null && <span className="ml-1 text-xs font-normal text-[var(--muted)]">{t('catalog.local')}</span>}</dd></div>
+        <div><dt className="text-[var(--muted)]" title={t('catalog.seasonFirstHint')}>{t('catalog.seasonFirst')}</dt><dd className="text-xl font-semibold tabular-nums">{seasonFirstLabel(row, t)}</dd></div>
         <div><dt className="text-[var(--muted)]">{t('catalog.listings')}</dt><dd className="text-xl font-semibold tabular-nums">{row.listings_total ?? '–'}</dd></div>
-        <div><dt className="text-[var(--muted)]">{t('catalog.firstListed')}</dt><dd className="text-xl font-semibold tabular-nums">{first}</dd></div>
       </dl>
       <p className="mt-2 text-xs text-[var(--muted)] max-w-md">{t('catalog.listingsHint')}</p>
       {!known && <Button className="mt-2" size="sm" variant="ghost" loading={history.isPending}

@@ -92,18 +92,24 @@ def check_tradability(client, store: CatalogStore, log: Logger, force: bool = Fa
 
 
 def type_history(client, store: CatalogStore, arch: str, season_start: str | None) -> dict:
-    """First listing date and current-season count for one type; at most two requests, cached until a new season."""
+    """This season's listing count and its first listing for one type, in one request; cached until a new season.
+
+    Oldest-first from the season start: pagination.total is the season's count and the first row is its first
+    listing. Types the catalog check found never listed need no request.
+    """
+    from src.api.darkerdb_client import canonical_ts
     if arch not in store.types():
         raise KeyError(arch)
-    cur = dict(store.read()["trade_info"].get(arch) or {"total": None, "first": None, "season": None, "season_start": None})
-    if cur.get("total") is None or (cur["total"] > 0 and not cur.get("first")):
-        cur.update(_history(client, arch))
-    if season_start and cur.get("season_start") != season_start:
-        if cur["total"] == 0:
-            cur["season"] = 0
+    data = store.read()
+    cur = dict(data["trade_info"].get(arch) or {"total": data["trade_totals"].get(arch), "first": None, "season": None, "season_start": None})
+    if season_start and (cur.get("season_start") != season_start or "season_first" not in cur):
+        if cur.get("total") == 0:
+            cur.update(season=0, season_first=None)
         else:
-            payload = client.get("/market", {"archetype": arch, "limit": 1, "from": season_start})
+            payload = client.get("/market", {"archetype": arch, "limit": 1, "sort": "created_at:asc", "from": season_start})
+            body = payload.get("body") or []
             cur["season"] = int((payload.get("pagination") or {}).get("total") or 0)
+            cur["season_first"] = canonical_ts(body[0]["created_at"]) if body and body[0].get("created_at") else None
         cur["season_start"] = season_start
     store.save_trade_entry(arch, cur)
     return cur

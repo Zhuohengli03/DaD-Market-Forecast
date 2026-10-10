@@ -26,7 +26,7 @@ it('shows every detail of one item: names, listing counts, rarities and all para
   mount()
   expect(screen.getByRole('heading', { name: /绷带/ })).toBeInTheDocument()
   expect(screen.getByText('900')).toBeInTheDocument()
-  expect(screen.getByText('2024-09-06')).toBeInTheDocument()
+  expect(screen.queryByText('2024-09-06')).not.toBeInTheDocument()   // DarkerDB's record start is not shown
   expect(screen.getAllByText('42').length).toBeGreaterThan(0)       // this season from local data
   expect(screen.getByText('duration')).toBeInTheDocument()           // highest rarity's parameters shown first
   expect(screen.getByRole('link', { name: '返回道具库' })).toHaveAttribute('href', '/catalog')
@@ -37,7 +37,7 @@ it('tracks another rarity and fetches season numbers on demand', () => {
   mount(track, history)
   fireEvent.click(screen.getByRole('button', { name: '追踪' }))
   expect(track.mock.calls[0][0]).toBe('id.item.bandage_2001')
-  fireEvent.click(screen.getByRole('button', { name: /查询本赛季挂单和最早记录/ }))
+  fireEvent.click(screen.getByRole('button', { name: /查询本赛季挂单/ }))
   expect(history.mock.calls[0][0]).toBe('id.item.bandage')
 })
 
@@ -51,7 +51,7 @@ it('shows the price of each tracked quality', () => {
 
 it('after a lookup with no listings, shows 0 and "none" instead of dashes, without the lookup button', () => {
   mount()
-  vi.mocked(hooks.useCatalogType).mockReturnValue({ data: { ...bandage, listings_total: 0, first_listed: null, season_listings: 0 }, isLoading: false } as never)
+  vi.mocked(hooks.useCatalogType).mockReturnValue({ data: { ...bandage, listings_total: 0, first_listed: null, season_listings: 0, season_first: null }, isLoading: false } as never)
   vi.mocked(hooks.useItems).mockReturnValue({ data: [] } as never)
   cleanup()
   render(<MemoryRouter initialEntries={['/catalog/id.item.bandage']}><Routes><Route path="/catalog/:archetype" element={<ItemDetail />} /></Routes></MemoryRouter>)
@@ -59,4 +59,15 @@ it('after a lookup with no listings, shows 0 and "none" instead of dashes, witho
   expect(within(stats).getAllByText('0')).toHaveLength(2)
   expect(within(stats).getByText('无')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /查询本赛季挂单/ })).not.toBeInTheDocument()
+})
+
+
+it('shows when this season\'s first listing was', () => {
+  mount()
+  vi.mocked(hooks.useCatalogType).mockReturnValue({ data: { ...bandage, season_listings: 12, season_first: '2026-10-09T00:03:10Z' }, isLoading: false } as never)
+  cleanup()
+  render(<MemoryRouter initialEntries={['/catalog/id.item.bandage']}><Routes><Route path="/catalog/:archetype" element={<ItemDetail />} /></Routes></MemoryRouter>)
+  const stats = screen.getByRole('region', { name: '挂单统计' })
+  expect(within(stats).getByText('本赛季首条')).toBeInTheDocument()
+  expect(within(stats).getByText('2026-10-09 00:03Z')).toBeInTheDocument()
 })

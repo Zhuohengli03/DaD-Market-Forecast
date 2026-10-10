@@ -94,7 +94,8 @@ class CatalogStore:
     def save_trade_entry(self, arch: str, entry: dict) -> None:
         data = dict(self.read())
         info = {**data["trade_info"], arch: entry}
-        data.update(trade_info=info, trade_totals={**data["trade_totals"], arch: entry["total"]})
+        totals = data["trade_totals"] if entry.get("total") is None else {**data["trade_totals"], arch: entry["total"]}
+        data.update(trade_info=info, trade_totals=totals)
         self._write(data)
 
     def save_trade_info(self, info: dict[str, dict], complete: bool) -> None:
@@ -134,7 +135,7 @@ class CatalogStore:
             "slot_type": first.get("slot_type"), "icon_url": next((v.get("icon_url") for v in reversed(variants) if v.get("icon_url")), None),
             "has_stats": has_stats(variants), "rarities": [v.get("rarity") for v in variants],
             "listings_total": ti.get("total", totals.get(key)),
-            "first_listed": ti.get("first"), "season_listings": ti.get("season"),
+            "first_listed": ti.get("first"), "season_listings": ti.get("season"), "season_first": ti.get("season_first"),
             "variants": [{**{k: v.get(k) for k in VARIANT_FIELDS}, "raw": v} for v in variants],
         }
 
