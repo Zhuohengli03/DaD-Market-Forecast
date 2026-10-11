@@ -5,19 +5,19 @@ export interface SeriesPoint { ts: string; median_price: number | null; min_pric
 export interface SeriesResponse { item: string; resolution: Resolution; start: string | null; end: string | null; points: SeriesPoint[] }
 export type Resolution = '1h' | '4h' | '1d'
 export interface Listing { item_id: string; item: string; quantity: number; price_per_unit: number; price: number; has_sold: boolean; created_at: string }
-export interface Season { id: string; name: string; start: string; end: string | null; note: string }
-export interface SeasonInput { name: string; start: string; end: string | null; note: string }
+export interface Season { market_open?: string | null; id: string; name: string; start: string; end: string | null; note: string }
+export interface SeasonInput { market_open?: string | null; name: string; start: string; end: string | null; note: string }
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 export interface JobProgress { stage: string; done: number | null; total: number | null; detail: Record<string, unknown> }
 export type JobKind = 'forecast' | 'collect' | 'task' | 'catalog' | 'init' | 'report'
 export interface Job { id: string; kind: JobKind; label: string; status: JobStatus; created_at: string; finished_at: string | null; error: string | null; result_ref: string | null; meta: Record<string, string>; progress: JobProgress | null; cost?: JobCost }
 export interface JobCost { estimate: number | null; used: number }
-export interface CollectAllEstimate { requests: number; items: number; unknown: number; per_item: Record<string, number> }
+export interface CollectAllEstimate { requests: number; items: number; unknown: number; per_item: Record<string, number>; since?: string | null; until?: string | null; opens?: string | null }
 export interface ScheduleEstimate { per_month: number; unknown: number; per_item: Record<string, { runs: number; per_run: number }> }
 export interface ItemsEstimate { requests: number; unknown: number; items: Record<string, number> }
-export interface ForecastInput { item: string; season_id: string; horizon_hours: number; models: string[]; coverage: number; backtest_origin_step?: number }
+export interface ForecastInput { item: string; season_id: string; horizon_hours: number; models: string[]; coverage: number; backtest_origin_step?: number; resolution?: Resolution }
 export interface RunSummary { run_id: string; created_at: string; source: string; beats_baseline: boolean; skill_vs_naive: number; item: string; season_id: string; season_name: string; horizon_hours: number; selected: string; warnings: number }
-export interface ModelMetric { name: string; mae_h1: number | null; mae_h24: number | null; mae_mean: number | null; rmse_mean: number | null; mase_mean: number | null; direction_acc: number | null }
+export interface ModelMetric { name: string; mae_h1: number | null; mae_h24: number | null; mae_mean: number | null; rmse_mean: number | null; mase_mean: number | null; direction_acc: number | null; mdape_mean?: number | null }
 export interface ForecastRun {
   run_id: string; created_at: string; source: string
   request: { item: string; season_id: string; horizon_hours: number; models: string[]; coverage: number }
@@ -25,7 +25,7 @@ export interface ForecastRun {
   series_tail: { ts: string; median_price: number | null; p25: number | null; p75: number | null; volume: number; listings: number }[]
   forecast: { ts: string; h: number; pred: number; lower: number; upper: number }[]
   selected: { name: string; members: { name: string; weight: number }[] }
-  backtest: { origins: number; horizon: number; coverage: number | null; nominal_coverage: number; models: ModelMetric[]; per_horizon: Record<string, (number | null)[]>; failures: Record<string, string> }
+  backtest: { origins: number; horizon: number; resolution?: Resolution; origin_step?: number; independent_windows?: number; in_sample?: boolean; selection_origins?: number; evaluation_origins?: number; coverage: number | null; nominal_coverage: number; models: ModelMetric[]; per_horizon: Record<string, (number | null)[]>; failures: Record<string, string> }
   beats_baseline: boolean; skill_vs_naive: number; data_age_hours?: number; baseline_reason?: string | null
   feature_importance: { name: string; value: number }[]
   references: { season_id: string; name: string; points: { h: number; median_price: number }[] }[]
@@ -46,7 +46,7 @@ export interface DatabaseInput { host: string; port: number; database: string; u
 export interface MarketStats { name: string; listings: number; sold: number; min_price_per_unit: number; median_price_per_unit: number; last_seen: string }
 export interface CatalogVariant { id: string; rarity: string | null; gear_score?: number | null; vendor_price?: number | null; num_secondary_attributes?: number | null; icon_url?: string | null; raw: Record<string, unknown> }
 export interface CatalogType { archetype: string; name: string; name_zh?: string | null; category?: string | null; item_type: string | null; slot_type?: string | null; icon_url: string | null; has_stats: boolean; rarities: string[]; listings_total: number | null; first_listed?: string | null; season_listings?: number | null; season_first?: string | null; variants: CatalogVariant[] }
-export interface CatalogMeta { patch: string | null; synced_at: string | null; items: number; types: number; types_total: number; trade_checked: number; trade_check_complete: boolean; trade_checked_at: string | null; with_stats: number; season_start?: string | null; sync_cost?: number; check_cost?: number }
+export interface CatalogMeta { patch: string | null; synced_at: string | null; items: number; types: number; types_total: number; trade_checked: number; trade_check_complete: boolean; trade_checked_at: string | null; with_stats: number; season_start?: string | null; market_opens?: string | null; sync_cost?: number; check_cost?: number }
 export interface CatalogFacets { item_type: string[] }
 export interface EquipmentStat { key: string; kind: 'primary' | 'secondary'; name: string; label: string; label_zh?: string | null; percent: boolean; min: number; max: number; seen: number }
 export interface EquipmentListing { id: string; item_id: string | null; name: string | null; rarity: string | null; quantity: number; price: number; price_per_unit: number; has_sold: boolean; listing_state: string | null; created_at: string; attributes: Record<string, number> }
@@ -54,11 +54,39 @@ export interface EquipmentDay { day: string; listings: number; sold: number; med
 export interface EquipmentResult { count: number; listings: EquipmentListing[]; daily: EquipmentDay[]; covered_from: string | null; covered_to: string | null; truncated: boolean; since?: string | null; credits_used?: number }
 export type EquipmentSort = 'created_at:desc' | 'created_at:asc' | 'price_per_unit:asc' | 'price_per_unit:desc'
 export interface EquipmentQueryBody { sort: EquipmentSort; archetype: string; rarity: string | null; sold_only: boolean; max_pages: number; filters: { kind: 'primary' | 'secondary'; name: string; min: number | null; max: number | null }[] }
-export interface OverviewVariant { name: string; label: string; label_en: string; rarity: string | null; rows: number; season_rows: number; last_ts: string | null; latest: number | null; change24: number | null; spark: (number | null)[] }
-export interface OverviewGroup { key: string; archetype: string | null; name: string; name_zh: string | null; category: string | null; icon_url: string | null; rows: number; season_rows: number; variants: OverviewVariant[] }
+export interface OverviewVariant { name: string; label: string; label_en: string; rarity: string | null; rows: number; season_rows: number; last_ts: string | null; latest: number | null; change24: number | null; spark: (number | null)[]; next_hour?: { p25: number; p75: number; stale_hours?: number } | null; latest_ts?: string | null; latest_listings?: number | null; season_id?: string | null; season_name?: string | null }
+export interface OverviewGroup { key: string; archetype: string | null; name: string; name_zh: string | null; category: string | null; icon_url: string | null; rows: number; season_rows: number; variants: OverviewVariant[]; recent_update?: { title: string; date: string } | null }
 export interface LLMSettings { configured: boolean; key_hint: string | null; model: string; region: 'cn' | 'intl' | 'us'; workspace: string; price_in: number | null; price_out: number | null; base_url: string }
 export interface ReportItemFact { name: string; name_zh: string | null; median: number; prev_median: number | null; change_pct: number | null; low: number; high: number; listings: number; sold: number; volatility_pct: number; forecast: { beats_baseline: boolean; change_pct: number | null; horizon_hours: number } | null }
 export interface ReportPeriod { start: string; end: string; days: number }
 export interface ReportSummary { id: string; created_at: string; period: ReportPeriod; season: { id: string; name: string }; model: string; usage: { prompt_tokens: number; completion_tokens: number }; cost: number | null; items: number; unmatched: number }
 export interface Report extends Omit<ReportSummary, 'unmatched' | 'items'> { public: string; body: string; unmatched: string[]; facts: { items: ReportItemFact[]; skipped: string[]; movers: { up: { name: string; change_pct: number }[]; down: { name: string; change_pct: number }[] } }; edited?: boolean }
 export interface ReportEstimate { scope?: 'ticked' | 'all' | 'chosen'; items: number; skipped: number; period: ReportPeriod; prompt_tokens: number; completion_tokens: number; cost: number | null }
+
+export interface HoldoutScore { mae: number; naive_mae: number; skill: number; mape: number | null; mdape?: number | null; direction_acc: number | null; coverage: number; scored_hours: number }
+export interface HoldoutRun {
+  run_id: string; created_at: string; item: string; listings: number
+  request: { item: string; season_id: string; train_frac: number; horizon_hours: number; models: string[]; coverage: number }
+  season: { id: string; name: string; start: string; end: string | null }
+  split_ts: string; train_hours: number; test_hours: number; horizon: number; resolution?: Resolution; nominal_coverage: number
+  selected: { name: string; members: { name: string; weight: number }[] }; train_skill: number
+  metrics: HoldoutScore
+  windows: (HoldoutScore & { origin: string })[]
+  points: { ts: string; actual: number | null; pred: number; naive: number; lower: number; upper: number }[]
+  train_tail: { ts: string; actual: number | null }[]
+  warnings: string[]
+}
+export interface HoldoutSummary { run_id: string; created_at: string; item: string; season_id: string; season_name: string; train_frac: number; selected: string; skill: number; mae: number; naive_mae: number }
+
+export interface DbItem { key: string; name: string; name_zh?: string | null; tracked: boolean; rows: number; first: string | null; last: string | null }
+export interface DbRow { id: string; quantity: number; price_per_unit: number; price: number; has_sold: boolean; created_at: string }
+export interface DbDelete { key: string; ids?: string[]; start?: string; end?: string; all?: boolean }
+
+export interface NextHour { level: number; level_hour: string; next_hour: string; prices: { p10: number; p25: number; p50: number; p75: number; p90: number }
+  check: { mid: number | null; wide: number | null; hours: number }; calib_days: number; check_days: number; sales_used: number; stale_hours: number }
+
+export interface SeasonCompareRow { id: string; name: string; market_start: string; days: { day: number; median: number }[]; open: number; high: number; low: number; close: number; mean: number; listings: number }
+export interface Announcement { id: string; date: string; title: string; url: string }
+export interface ItemMention extends Announcement { snippet: string; change3d?: number | null }
+
+export interface RulesStatus { source: 'bundled' | 'synced'; version: number; updated: string | null; synced_at: string | null; url: string; key_saved: boolean; key_hint: string | null; error: string | null }

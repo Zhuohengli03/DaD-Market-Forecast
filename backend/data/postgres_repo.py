@@ -8,6 +8,7 @@ import psycopg2.extras
 from psycopg2 import sql
 
 from ..settings import Settings
+from src.api.storage import item_slug
 from .repository import ItemInfo, ListingQuery, table_name
 
 _COLS = "item_id, item, quantity, price_per_unit, price, has_sold, created_at"
@@ -101,3 +102,32 @@ class PostgresListingRepository:
             pd.DataFrame(columns=_COLS.split(", "))
         df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
         return df
+
+
+    # ---- the local database page: tracked items' tables, read and delete only ----
+    def _name(self, key: str) -> str | None:
+        return next((n for n in self._configured_items() if item_slug(n) == key), None)
+
+    def stored_items(self) -> list[dict]:
+        return [{"key": item_slug(i.name), "name": i.name, "tracked": True, "rows": i.rows, "first": i.first_ts, "last": i.last_ts}
+                for i in self.list_items()]
+
+    def browse(self, key: str, start=None, end=None, page: int = 1, page_size: int = 100) -> tuple[list[dict], int]:
+        name = self._name(key)
+        if name is None:
+            return [], 0
+        rows, total = self.fetch(name, ListingQuery(start=start, end=end, page=page, page_size=page_size))
+        return [{"id": r["item_id"], **{k: r[k] for k in ("quantity", "price_per_unit", "price", "has_sold", "created_at")}}
+                for r in rows], total
+
+    def delete(self, key: str, start=None, end=None, ids: list[str] | None = None) -> int:
+        name = self._name(key)
+        if name is None:
+            return 0
+        where, params = self._where(start, end)
+        if ids:
+            where += (" AND " if where else " WHERE ") + "item_id::text = ANY(%s)"
+            params.append(list(ids))
+        with self._conn() as c, c.cursor() as cur:
+            cur.execute(sql.SQL("DELETE FROM {}" + where).format(sql.Identifier(table_name(name))), params)
+            return int(cur.rowcount)

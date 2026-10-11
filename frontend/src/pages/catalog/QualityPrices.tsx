@@ -6,14 +6,15 @@ import { Sparkline } from '../../components/charts/Sparkline'
 import { fmtNum, fmtPct } from '../../lib/format'
 import { variantLabel } from '../dashboard/TypeCard'
 
-/** Latest price, 24h change and 48h trend of every tracked quality of one item type. */
-export function QualityPrices({ archetype }: { archetype: string }) {
+/** Latest price, 24h change and 7-day trend of every tracked quality of one item type. */
+/** `season`: the item page's chosen season, so this table and the header show the same prices. */
+export function QualityPrices({ archetype, season }: { archetype: string; season?: string }) {
   const { t, i18n } = useTranslation()
-  const group = useOverview().data?.find(g => g.archetype === archetype)
+  const group = useOverview(season || undefined).data?.find(g => g.archetype === archetype)
   if (!group) return null
   return (
     <Card title={t('catalog.detail.prices')}>
-      <p className="text-xs text-[var(--muted)] mb-2">{t('catalog.detail.pricesHint')}</p>
+      <p className="text-xs text-[var(--muted)] mb-2" title={t('price.hint')}>{t('catalog.detail.pricesHint')}{' '}{t('price.whatEach')}</p>
       <table className="w-full text-sm">
         <thead className="text-left text-[var(--muted)] text-xs"><tr><th className="py-1 font-normal">{t('dashboard.quality')}</th><th className="text-right font-normal">{t('dashboard.latestPrice')}</th><th className="text-right font-normal">{t('dashboard.change24Short')}</th><th className="w-48 font-normal pl-4">{t('dashboard.sparkHint')}</th><th className="text-right font-normal">{t('dashboard.seasonRowsShort')}</th><th></th></tr></thead>
         <tbody>{group.variants.map(v => (

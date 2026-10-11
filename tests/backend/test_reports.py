@@ -163,3 +163,23 @@ def test_report_scope_falls_back_to_all_items_with_data_when_none_are_ticked(cli
     assert est["items"] == 1 and est["scope"] == "all"
     client.put("/api/items/scheduled", json={"names": ["Test Ore"], "scheduled": True}, headers=H)
     assert client.post("/api/reports/estimate", json={"days": 7}, headers=H).json()["data"]["scope"] == "ticked"
+
+
+def test_report_skips_records_from_before_the_market_opened(client):
+    from backend.services.report import build_facts
+    st = client.app.state
+    s = st.seasons.get("s2")
+    client.put("/api/seasons/s2", json={**s, "market_open": "2026-01-25"}, headers={"X-Darker-Market": "1"})
+    f = build_facts(st, ["Test Ore"], days=60)
+    assert f["period"]["start"] >= "2026-01-25T00:00:00+00:00" and f["season"]["id"] == "s2"
+
+
+def test_before_this_season_trades_the_report_covers_the_last_season_that_did(client):
+    from backend.schemas import SeasonIn
+    from backend.services.report import build_facts
+    st = client.app.state
+    s2 = st.seasons.get("s2")
+    st.seasons.update("s2", SeasonIn(name=s2["name"], start=s2["start"], end="2026-02-01T00:00:00+00:00", note=""))
+    st.seasons.add(SeasonIn(name="Season 3", start="2026-03-01T00:00:00+00:00", end=None, note=""))
+    f = build_facts(st, ["Test Ore"], days=7)
+    assert f["season"]["id"] == "s2" and f["items"] and f["period"]["end"] < "2026-02-01"

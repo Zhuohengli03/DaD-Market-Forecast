@@ -33,7 +33,7 @@ function mount(url = '/reports', configured = true) {
 
 it('shows the estimate and writes a report for the chosen period', () => {
   const create = mount()
-  expect(screen.getByText(/将包含 1 个道具.*预计输入约 1,200 tokens/)).toBeInTheDocument()
+  expect(screen.getByText(/将包含 1 个道具.*预计输入约 1,200 个词元/)).toBeInTheDocument()
   fireEvent.change(screen.getByLabelText('时间范围'), { target: { value: '14' } })
   fireEvent.click(screen.getByRole('button', { name: '生成报告' }))
   expect(create.mock.calls[0][0]).toBe(14)

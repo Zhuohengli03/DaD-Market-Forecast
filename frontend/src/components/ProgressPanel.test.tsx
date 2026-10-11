@@ -15,7 +15,7 @@ it('summarises a finished collection', () => {
 
 it('explains failures without technical output', () => {
   render(<ProgressPanel kind="collect" status="failed" progress={{ stage: 'error', done: null, total: null, detail: { code: 'auth' } }} error="exit code 2" disconnected={false} />)
-  expect(screen.getByRole('alert')).toHaveTextContent('DarkerDB 拒绝了你的 API key')
+  expect(screen.getByRole('alert')).toHaveTextContent('DarkerDB 拒绝了你的 API 密钥')
   expect(screen.queryByText('exit code 2')).not.toBeInTheDocument()
 })
 

@@ -22,6 +22,7 @@ def collect(item: str, request: Request, season_id: str | None = None):
 
 class CollectAllIn(BaseModel):
     names: list[str] | None = Field(default=None, max_length=5000)   # only these tracked items; all when omitted
+    season_id: str | None = None                                     # only this season's window; current when omitted
 
 
 @router.post("/collect-all", status_code=202)
@@ -38,9 +39,17 @@ def collect_all(request: Request, body: CollectAllIn | None = None):
         raise HTTPException(422, "没有可采集的道具 / no tracked items to collect")
     if st.jobs.find_active("collect"):
         raise HTTPException(409, "已有采集正在进行 / a collection is already running")
+    from ..services.collection import collect_range, market_not_open
+    season_id = (body or CollectAllIn()).season_id
+    try:
+        opens = market_not_open(st, season_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc).strip("'"))
+    if opens:
+        raise HTTPException(409, f"这个赛季的交易行 {opens} 才开放，之前没有交易数据可采集 / the market opens on {opens}")
     label = "采集全部道具 / collect all items" if names is None else f"采集 {len(items)} 个道具 / collect {len(items)} items"
     job = st.jobs.create("collect", label, meta={"item": "*"})
-    st.jobs.set_estimate(job, sum(collect_estimate(st, it)["requests"] for it in items))
+    st.jobs.set_estimate(job, sum(collect_estimate(st, it, **dict(zip(("since", "until"), collect_range(st, it["name"], season_id))))["requests"] for it in items))
     chosen = [it["name"] for it in items]
-    st.jobs.run_in_thread(job, lambda j: run_collect_all(st, j, chosen))
+    st.jobs.run_in_thread(job, lambda j: run_collect_all(st, j, chosen, season_id))
     return ok({"job_id": job.id})

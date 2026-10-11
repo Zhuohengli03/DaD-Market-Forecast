@@ -6,11 +6,12 @@ import { Badge } from '../../components/ui/Badge'
 import { seasonFirstLabel } from '../../lib/season'
 import { itemName, rarityLabel, typeLabel } from '../../lib/labels'
 
-/** localSeason: this-season listings collected on this machine for tracked items (item id → count). */
-export function CatalogTable({ rows, tracked, localSeason = {} }: { rows: CatalogType[]; tracked: Set<string>; localSeason?: Record<string, number> }) {
+/** localSeason: this-season listings collected on this machine for tracked items (item id → count).
+ *  marketOpens: the current season's trading-open date while it is still ahead (no listing can be "this season" yet). */
+export function CatalogTable({ rows, tracked, localSeason = {}, marketOpens }: { rows: CatalogType[]; tracked: Set<string>; localSeason?: Record<string, number>; marketOpens?: string | null }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const go = (arch: string) => navigate(`/catalog/${encodeURIComponent(arch)}`)
+  const go = (arch: string) => navigate(`/item/${encodeURIComponent(arch)}`)
   return (
     <div className="overflow-auto border border-[var(--line)] rounded-lg">
       <table className="w-full text-sm">
@@ -24,11 +25,12 @@ export function CatalogTable({ rows, tracked, localSeason = {} }: { rows: Catalo
             <Fragment key={r.archetype}>
               <tr className="border-t border-[var(--line)] hover:bg-gray-50 cursor-pointer" onClick={() => go(r.archetype)}>
                 <td className="px-3 py-1.5">{r.icon_url && <img src={r.icon_url} alt="" loading="lazy" className="w-8 h-8 object-contain" onError={e => { (e.target as HTMLImageElement).style.visibility = 'hidden' }} />}</td>
-                <td className="px-3 py-1.5"><Link to={`/catalog/${encodeURIComponent(r.archetype)}`} className="font-medium hover:underline" onClick={e => e.stopPropagation()}>{itemName(r, i18n.language)}</Link>
+                <td className="px-3 py-1.5"><Link to={`/item/${encodeURIComponent(r.archetype)}`} className="font-medium hover:underline" onClick={e => e.stopPropagation()}>{itemName(r, i18n.language)}</Link>
                   {r.has_stats && <span className="ml-2"><Badge tone="warn">{t('catalog.withStats')}</Badge></span>}</td>
                 <td className="px-3 py-1.5">{typeLabel(r.item_type, t)}</td>
                 <td className="px-3 py-1.5 text-xs text-[var(--muted)]">{r.rarities.map(x => rarityLabel(x, t)).join(' · ')}</td>
                 <td className="px-3 py-1.5 text-right tabular-nums font-medium">{(() => {
+                  if (marketOpens) return <span className="text-xs font-normal text-[var(--muted)]">{t('catalog.marketOpens', { date: marketOpens })}</span>
                   if (r.season_listings != null) return r.season_listings
                   const local = r.variants.filter(v => v.id in localSeason)
                   return local.length ? <span title={t('catalog.localHint')}>{local.reduce((n, v) => n + localSeason[v.id], 0)}<span className="ml-1 text-[10px] text-[var(--muted)]">{t('catalog.local')}</span></span> : '–'

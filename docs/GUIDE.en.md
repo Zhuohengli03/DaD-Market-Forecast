@@ -22,14 +22,17 @@ It opens on first use; reopen it any time from **Settings → Run the setup wiza
 ## Pages
 | Page | For |
 |---|---|
-| Overview | One card per item type with every quality together: latest price, 24h change, 48h trend |
-| Item catalog | Every tradable item; click a row for prices by quality, listing counts and all parameters |
-| Collect data | Add or remove items, collect now, or collect only the items without data |
-| Scheduled collection | Turn auto-collect on or off; give an item its own interval or fixed daily times |
-| Price history | Hourly median with the middle-50% band, range statistics, "Get latest data", "Forecast now" |
-| Forecast | The next 24–168 hours, and whether it beats "repeat the last hour" |
+| Overview | One card per item type with every quality together: latest price, 24h change, 7-day trend and next hour's sale range; each card can switch season by itself |
+| Item page | Open it from an overview card or the catalog. The header picks the season; below: price chart (with the game updates that name the item), next hour's sale range, any two seasons compared, related updates, one-click forecast and its full result |
+| Price history | Any time range, with every listing |
+| Forecasts | Items forecast in a season; click one to see that forecast |
+| Season holdout | Test the forecaster on an ended season |
+| Market reports | Weekly reports written with Alibaba Cloud Bailian |
 | Equipment market | Filter gear by stat ranges and see listings and daily prices, live |
-| Settings | API key, DarkerDB credits, collection interval, seasons, network (LAN access and port), language |
+| Item catalog | Every tradable item; click a row for its item page |
+| Collection | Collect now on top (add or remove items, collect all, by season, only those without data), scheduled collection below (on/off, default interval, which items, their own times) |
+| Local database | Look at and delete the listings stored here; no editing |
+| Settings | API key, DarkerDB credits, AI analysis, seasons, network (LAN access and port), language |
 
 ## DarkerDB credits
 The free plan has 10,000 a month. Credits left show in the bottom-left corner; every action that calls DarkerDB shows its (rounded-up) cost first and asks before going over. Task history shows what each run actually used.

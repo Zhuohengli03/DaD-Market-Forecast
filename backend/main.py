@@ -15,7 +15,7 @@ from .settings import Settings
 
 log = logging.getLogger("darker_market")
 
-ROUTER_MODULES = ("setup", "catalog", "equipment", "items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config", "quota", "estimate", "overview", "network", "reports")
+ROUTER_MODULES = ("setup", "catalog", "equipment", "items", "series", "listings", "seasons", "forecast", "jobs", "collect", "scheduler", "config", "quota", "estimate", "overview", "network", "reports", "database", "announcements", "rules")
 
 
 def _format_validation(exc: RequestValidationError) -> str:
@@ -40,6 +40,8 @@ def create_app(settings: Settings | None = None, repo=None) -> FastAPI:
         app.state.settings = settings
         app.state.repo = repo or make_repository(settings)
         _attach_services(app)
+        _refresh_announcements_in_background(app)
+        _sync_rules_in_background(app)
         if app.state.app_settings.get()["auto_collect"]:
             try:
                 app.state.scheduler.start()  # resume scheduled collection chosen in the setup wizard
@@ -120,6 +122,10 @@ def _attach_services(app: FastAPI) -> None:
     from .services.jobs import JobManager
     from .services.scheduler_ctl import SchedulerController
     st = app.state
+    from src import rules
+    rules.set_data_dir(st.settings.data_dir)   # data/rules.json: newer synced rules, when present
+    from .api.rules import http_get
+    st.rules_get, st.rules_error = http_get, None
     st.seasons = SeasonStore(st.settings.seasons_path)
     st.items = ItemsStore(st.settings.items_config_path)
     st.app_settings = AppSettings(st.settings.app_settings_path)
@@ -129,8 +135,12 @@ def _attach_services(app: FastAPI) -> None:
     st.catalog = CatalogStore(st.settings.catalog_path)
     st.key_validator = lambda k: default_key_validator(k, quota_file=st.settings.data_dir / "quota.json")
     st.runs = RunStore(st.settings.runs_dir)
+    st.holdouts = RunStore(st.settings.runs_dir / "holdout")
     from .services.report import ReportStore
     st.reports = ReportStore(st.settings.reports_dir)
+    from .services.announcements import AnnouncementStore
+    st.announcements = AnnouncementStore(st.settings.data_dir / "announcements.json")
+    st.announcements_error = None
     st.jobs = JobManager()
     st.scheduler = SchedulerController(st.settings, st.jobs)
     st.item_stats = _TtlCache(lambda: st.repo.list_items(), ttl=60.0)
@@ -151,6 +161,37 @@ class _TtlCache:
 
     def invalidate(self) -> None:
         self._value = None
+
+
+def _refresh_announcements_in_background(app: FastAPI) -> None:
+    """Steam patch notes, at most every 6 hours, only in a real run (the built page exists; tests never reach Steam)."""
+    dist = app.state.settings.frontend_dist
+    if dist is None or not (dist / "index.html").exists():
+        return
+    import threading
+    from .api.announcements import steam_get
+    from .services import announcements as ann
+    if not ann.due(app.state.announcements):
+        return
+
+    def run():
+        app.state.announcements_error = ann.refresh(app.state.announcements, steam_get)
+    threading.Thread(target=run, name="announcements", daemon=True).start()
+
+
+def _sync_rules_in_background(app: FastAPI) -> None:
+    """With a rules service set (paid), fetch the rules at start when the last sync is over 6 hours old."""
+    from datetime import datetime, timezone
+    from src import rules
+    st = app.state
+    if not st.app_settings.get()["rules_url"]:
+        return
+    synced = rules.current().get("synced_at")
+    if synced and (datetime.now(timezone.utc) - datetime.fromisoformat(synced.replace("Z", "+00:00"))).total_seconds() < 6 * 3600:
+        return
+    import threading
+    from .api.rules import sync_now
+    threading.Thread(target=sync_now, args=(st,), name="rules", daemon=True).start()
 
 
 def _include_routers(app: FastAPI) -> None:

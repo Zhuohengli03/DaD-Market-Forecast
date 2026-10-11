@@ -173,3 +173,40 @@ def test_collector_collects_one_season_between_given_times(tmp_path, monkeypatch
     col.main(["--item", "Iron Ore", "--data-dir", str(tmp_path), "--since", "2026-07-17T00:00:00+00:00",
               "--until", "2026-10-09T00:00:00+00:00"])
     assert seen == {"since": "2026-07-17T00:00:00+00:00", "until": "2026-10-09T00:00:00+00:00", "sort": "created_at:asc"}
+
+
+def test_collector_records_how_far_a_season_was_collected(tmp_path, monkeypatch):
+    """A page budget can stop a long backfill midway; the next run must continue from there, not restart."""
+    import json
+    import src.api.collect as col
+
+    pages = [[{**_raw(i)} for i in range(k * 3, k * 3 + 3)] for k in range(4)]
+
+    class FakeClient:
+        credits_used = 0
+
+        def __init__(self, key):
+            pass
+
+        def find_item_id(self, name):
+            return "id.item.iron_ores_2001"
+
+        def iter_market(self, item_id, since=None, limit=50, sort="created_at:desc", max_pages=None, until=None):
+            yield from pages[:max_pages]
+
+    monkeypatch.setenv("DARKER_MARKET_API_KEY", "k")
+    monkeypatch.delenv("DB_USER", raising=False)
+    monkeypatch.setattr(col, "DarkerDBClient", FakeClient)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: None)
+    args = ["--item", "Iron Ore", "--data-dir", str(tmp_path), "--since", "2026-04-04T00:00:00Z", "--until", "2026-04-05T00:00:00Z", "--coverage-key", "s10"]
+    col.main(args + ["--max-pages", "2"])                         # stopped by the page budget
+    marker = json.loads((tmp_path / "coverage" / "iron_ore.json").read_text())
+    assert marker["s10"] == "2026-04-04T14:05:00Z"                 # newest listing seen so far
+    col.main(args + ["--max-pages", "10"])                        # ran out of pages: the whole window is done
+    marker = json.loads((tmp_path / "coverage" / "iron_ore.json").read_text())
+    assert marker["s10"] == "2026-04-05T00:00:00Z"
+
+
+def _raw(i):
+    return {"id": str(100 + i), "item_id": "id.item.iron_ores_2001", "name": "Iron Ore", "quantity": 2, "price": 170, "price_per_unit": 85,
+            "has_sold": False, "created_at": f"2026-04-04T14:{i:02d}:00Z"}

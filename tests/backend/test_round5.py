@@ -2,6 +2,7 @@ import json
 import sys
 import time
 
+import pandas as pd
 import pytest
 
 from backend.services.catalog_sync import check_tradability
@@ -141,6 +142,26 @@ def test_one_type_this_season_in_one_request(settings):
         type_history(C(), store, "id.item.nope", season)
 
 
+def test_a_season_lookup_can_be_refreshed(settings):
+    """The season goes on, so asking again re-queries DarkerDB instead of returning the cached numbers."""
+    from backend.services.catalog_sync import type_history
+    from tests.backend.test_types_and_equipment import _seed
+    store = _seed(settings, totals={"id.item.arming_sword": 900, "id.item.iron_ores": 0, "id.item.bandage": 1, "id.item.gold_coins": 0})
+    totals = iter([12, 30, 1])
+
+    class C:
+        calls = 0
+
+        def get(self, path, params=None):
+            C.calls += 1
+            return {"body": [{"created_at": "2026-10-09T03:00:00.000Z"}], "pagination": {"total": next(totals)}}
+    season = "2026-10-09T00:00:00+00:00"
+    assert type_history(C(), store, "id.item.arming_sword", season)["season"] == 12
+    assert type_history(C(), store, "id.item.arming_sword", season, refresh=True)["season"] == 30
+    # never listed before: a refresh still asks, it may have been listed since
+    assert type_history(C(), store, "id.item.iron_ores", season, refresh=True)["season"] == 1 and C.calls == 3
+
+
 def test_history_endpoint_uses_latest_season(client, settings):
     from tests.backend.test_types_and_equipment import _seed
     _seed(settings)
@@ -154,6 +175,8 @@ def test_history_endpoint_uses_latest_season(client, settings):
     d = r.json()["data"]
     assert r.status_code == 200 and d["season"] == 3 and d["season_start"].startswith("2026-01-20")
     assert d["season_first"] == "2024-09-06T10:00:00Z"
+    r = client.post("/api/catalog/types/id.item.arming_sword/history", params={"refresh": True}, headers=H)
+    assert r.status_code == 200 and r.json()["data"]["credits_used"] is not None
     assert client.post("/api/catalog/types/id.item.nope/history", headers=H).status_code == 404
 
 
@@ -316,3 +339,26 @@ def test_collect_endpoint_takes_a_season(client, project_root):
     assert r.status_code == 202
     s1 = next(s for s in st.seasons.list() if s["id"] == "s1")
     assert seen == {"since": s1["start"], "until": s1["end"]}
+
+
+def test_catalog_hides_numbers_looked_up_in_an_earlier_season(client, settings):
+    """A new season starts: last season's counts must not show as "this season"; before the market opens, say so."""
+    from backend.schemas import SeasonIn
+    from tests.backend.test_types_and_equipment import _seed
+    store = _seed(settings, totals={"id.item.arming_sword": 900, "id.item.iron_ores": 10, "id.item.bandage": 1, "id.item.gold_coins": 0})
+    store.save_trade_entry("id.item.iron_ores", {"total": 10, "first": None, "season": 7, "season_first": "2025-12-01T00:00:00Z",
+                                                "season_start": "2025-10-01T00:00:00+00:00"})     # looked up in season 1
+    rows = {r["name"]: r for r in client.get("/api/catalog").json()["data"]}
+    assert rows["Iron Ore"]["season_listings"] is None and rows["Iron Ore"]["season_first"] is None
+    assert rows["Iron Ore"]["listings_total"] == 10                       # the all-time count is still good
+    d = client.get("/api/catalog/types/id.item.iron_ores").json()["data"]
+    assert d["season_listings"] is None
+    meta = client.get("/api/catalog/meta").json()["data"]
+    assert meta["season_start"].startswith("2026-01-20") and meta["market_opens"] is None
+    # the current season's market has not opened yet: nothing can be "this season" until then
+    st = client.app.state
+    s2 = next(s for s in st.seasons.list() if s["id"] == "s2")
+    future = (pd.Timestamp.now(tz="UTC") + pd.Timedelta(days=10)).strftime("%Y-%m-%d")
+    st.seasons.update("s2", SeasonIn(name=s2["name"], start=s2["start"], end=None, note="", market_open=future))
+    meta = client.get("/api/catalog/meta").json()["data"]
+    assert meta["market_opens"] == future

@@ -61,6 +61,7 @@ class CatalogStore:
     def __init__(self, path: Path):
         self._path = Path(path)
         self._cache: tuple[int, dict] | None = None
+        self._groups: tuple | None = None
 
     def read(self) -> dict:
         """Parsed catalog, cached until the file changes (it can be several MB)."""
@@ -106,29 +107,38 @@ class CatalogStore:
         self._write(data)
 
     # ----- types -------------------------------------------------------------
-    def types(self) -> "OrderedDict[str, list[dict]]":
+    def _index(self) -> tuple["OrderedDict[str, list[dict]]", dict[str, tuple[dict, list[dict]]]]:
+        """Types and an id -> variant index, built once per catalog version (read() is cached the same way).
+        Callers only read them; the overview asks for every tracked item's variant on each load."""
+        data = self.read()
+        if self._groups is not None and self._groups[0] is data:
+            return self._groups[1], self._groups[2]
         groups: OrderedDict[str, list[dict]] = OrderedDict()
-        for raw in self.read()["items"]:
+        for raw in data["items"]:
             groups.setdefault(type_key(raw), []).append(raw)
         for variants in groups.values():
             variants.sort(key=lambda v: RARITY_ORDER.index(v["rarity"]) if v.get("rarity") in RARITY_ORDER else 99)
-        return groups
+        by_id = {v["id"]: (v, variants) for variants in groups.values() for v in variants if v.get("id")}
+        self._groups = (data, groups, by_id)
+        return groups, by_id
+
+    def types(self) -> "OrderedDict[str, list[dict]]":
+        return self._index()[0]
 
     def variant(self, item_id: str) -> tuple[dict, list[dict]] | None:
-        for variants in self.types().values():
-            for v in variants:
-                if v.get("id") == item_id:
-                    return v, variants
-        return None
+        return self._index()[1].get(item_id)
 
     def type_variants(self, archetype: str) -> list[dict]:
         return self.types().get(archetype, [])
 
-    def _type_row(self, key: str, variants: list[dict], totals: dict, info: dict | None = None) -> dict:
+    def _type_row(self, key: str, variants: list[dict], totals: dict, info: dict | None = None,
+                  season_start: str | None = None) -> dict:
         first = variants[0]
         names = [v.get("name") or key for v in variants]
         names_zh = [v.get("name_zh") for v in variants if v.get("name_zh")]
         ti = (info or {}).get(key) or {}
+        if season_start and ti.get("season_start") != season_start:
+            ti = {k: v for k, v in ti.items() if k not in ("season", "season_first")}   # looked up in an earlier season
         return {
             "archetype": key, "name": shared_name(names), "name_zh": shared_name(names_zh) if names_zh else None, "item_type": first.get("item_type"),
             "category": first.get("misc_type") or first.get("utility_type") or first.get("item_type"),
@@ -139,23 +149,24 @@ class CatalogStore:
             "variants": [{**{k: v.get(k) for k in VARIANT_FIELDS}, "raw": v} for v in variants],
         }
 
-    def type_row(self, archetype: str) -> dict | None:
+    def type_row(self, archetype: str, season_start: str | None = None) -> dict | None:
         """One type with all its variants and parameters, for the item detail page."""
         variants = self.types().get(archetype)
         if not variants:
             return None
         d = self.read()
-        return self._type_row(archetype, variants, d["trade_totals"], d["trade_info"])
+        return self._type_row(archetype, variants, d["trade_totals"], d["trade_info"], season_start)
 
-    def visible_types(self) -> list[dict]:
+    def visible_types(self, season_start: str | None = None) -> list[dict]:
+        """`season_start`: this-season numbers looked up under another start are left out (they are last season's)."""
         d = self.read()
         totals, info = d["trade_totals"], d["trade_info"]
         # hide only types we checked and found never listed; unchecked types stay visible
-        return [self._type_row(k, v, totals, info) for k, v in self.types().items() if totals.get(k, 1) != 0]
+        return [self._type_row(k, v, totals, info, season_start) for k, v in self.types().items() if totals.get(k, 1) != 0]
 
     def query(self, q: str = "", item_type: str = "", has_stats: bool | None = None,
-              page: int = 1, page_size: int = 50) -> tuple[list[dict], int, dict]:
-        all_rows = self.visible_types()
+              page: int = 1, page_size: int = 50, season_start: str | None = None) -> tuple[list[dict], int, dict]:
+        all_rows = self.visible_types(season_start)
         rows = []
         for r in all_rows:
             if q and q.lower() not in r["name"].lower() and q.lower() not in r["archetype"].lower() \
@@ -174,12 +185,12 @@ class CatalogStore:
         start = (page - 1) * page_size
         return rows[start:start + page_size], len(rows), facets
 
-    def meta(self) -> dict:
+    def meta(self, season_start: str | None = None) -> dict:
         d = self.read()
         groups = self.types()
         visible = self.visible_types()
         return {"patch": d["patch"], "synced_at": d["synced_at"], "items": len(d["items"]), "types": len(visible),
                 "types_total": len(groups), "trade_checked": sum(1 for k in groups if k in d["trade_info"] or k in d["trade_totals"]),
-                "season_start": next((v.get("season_start") for v in d["trade_info"].values()), None),
+                "season_start": season_start or next((v.get("season_start") for v in d["trade_info"].values()), None),
                 "trade_check_complete": d["trade_check_complete"], "trade_checked_at": d["trade_checked_at"],
                 "with_stats": sum(1 for r in visible if r["has_stats"])}

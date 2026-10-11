@@ -94,6 +94,43 @@ class SqliteListingRepository:
         return df
 
 
+    # ---- the local database page: every stored item, read and delete only ----
+    def stored_items(self) -> list[dict]:
+        tracked = {item_slug(n): n for n in self._names()}
+        con = connect(self._db)
+        rows = con.execute("SELECT item, MAX(item_name), COUNT(*), MIN(created_at), MAX(created_at) FROM listings GROUP BY item").fetchall()
+        con.close()
+        out = [{"key": k, "name": tracked.get(k) or label or k, "tracked": k in tracked, "rows": int(n),
+                "first": _utc_out(lo), "last": _utc_out(hi)} for k, label, n, lo, hi in rows]
+        out += [{"key": k, "name": n, "tracked": True, "rows": 0, "first": None, "last": None}
+                for k, n in tracked.items() if k not in {r["key"] for r in out}]
+        return sorted(out, key=lambda r: (-r["rows"], r["name"]))
+
+    def browse(self, key: str, start=None, end=None, page: int = 1, page_size: int = 100) -> tuple[list[dict], int]:
+        where, params = self._where(key, start, end)
+        con = connect(self._db)
+        total = con.execute(f"SELECT COUNT(*) FROM listings{where}", params).fetchone()[0]
+        cur = con.execute(f"SELECT item_id AS id, quantity, price_per_unit, price, has_sold, created_at FROM listings{where} "
+                          "ORDER BY created_at DESC LIMIT ? OFFSET ?", params + [page_size, (page - 1) * page_size])
+        names = [d[0] for d in cur.description]
+        rows = [dict(zip(names, r)) for r in cur.fetchall()]
+        con.close()
+        for r in rows:
+            r["has_sold"], r["created_at"] = bool(r["has_sold"]), _utc_out(r["created_at"])
+        return rows, int(total)
+
+    def delete(self, key: str, start=None, end=None, ids: list[str] | None = None) -> int:
+        """Delete one item's rows: the listed ids, else the time range, else (no range) all of them."""
+        where, params = self._where(key, start, end)
+        if ids:
+            where += f" AND item_id IN ({','.join('?' * len(ids))})"
+            params += list(ids)
+        con = connect(self._db)
+        with con:
+            n = con.execute(f"DELETE FROM listings{where}", params).rowcount
+        con.close()
+        return int(n)
+
 def import_csv_once(settings) -> dict[str, int]:
     """Copy legacy CSV exports (data/ or project root) into the built-in database, once per file."""
     from src.api.storage import SqliteStorage

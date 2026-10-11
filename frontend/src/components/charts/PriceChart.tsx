@@ -1,7 +1,7 @@
 import ReactECharts from 'echarts-for-react'
 import { useTranslation } from 'react-i18next'
 import type { SeriesPoint } from '../../api/types'
-import { fmtTs } from '../../lib/format'
+import { fmtTsUtc } from '../../lib/format'
 
 /** 99th percentile of the hourly medians (and their p75) plus a little headroom: bundle outliers are clipped, not scaled to. */
 export function robustPriceMax(points: SeriesPoint[]): number | undefined {
@@ -24,8 +24,31 @@ const C = { median: '#2563eb', band: '#93c5fd', minmax: '#9ca3af', volume: '#bfd
 export interface Legend { median: string; band: string; min: string; max: string; volume: string; listings: string; brush?: string; clear?: string; count?: string }
 const DEFAULT_LEGEND: Legend = { median: 'median', band: 'p25–p75', min: 'min', max: 'max', volume: 'volume', listings: 'listings' }
 
-export function buildPriceOption(points: SeriesPoint[], highlightTs?: string | null, L: Legend = DEFAULT_LEGEND) {
+/** A game update drawn on the chart; `strong` = the update names this item. */
+export interface PriceMark { ts: string; label: string; strong: boolean }
+
+const MARK = { strong: '#dc2626', other: '#9ca3af' }
+
+/** Game updates as vertical lines, each snapped to the first point at or after it (the x axis is categories). */
+/** The chart point a moment falls on: the first point at or after it, compared as times (formats differ); null outside. */
+export function snapTs(points: SeriesPoint[], ts: string): string | null {
+  const at = Date.parse(ts)
+  if (!points.length || Number.isNaN(at) || at < Date.parse(points[0].ts)) return null
+  return points.find(p => Date.parse(p.ts) >= at)?.ts ?? null
+}
+
+function markLines(points: SeriesPoint[], marks: PriceMark[]) {
+  return marks.flatMap(m => {
+    const x = snapTs(points, m.ts)
+    if (!x) return []   // outside the chart: not piled at an edge
+    return [{ xAxis: x, name: m.label, label: { formatter: m.label, position: 'insideEndTop', fontSize: 10, color: m.strong ? MARK.strong : MARK.other },
+      lineStyle: { color: m.strong ? MARK.strong : MARK.other, type: m.strong ? 'solid' : 'dashed', width: m.strong ? 1.5 : 1 } }]
+  })
+}
+
+export function buildPriceOption(points: SeriesPoint[], highlightTs?: string | null, L: Legend = DEFAULT_LEGEND, marks: PriceMark[] = []) {
   const x = points.map(p => p.ts)
+  const lines = [...(highlightTs ? [{ xAxis: highlightTs, lineStyle: { color: '#d97706', width: 2 }, label: { show: false } }] : []), ...markLines(points, marks)]
   const yMax = robustPriceMax(points)
   return {
     animation: false,
@@ -35,7 +58,7 @@ export function buildPriceOption(points: SeriesPoint[], highlightTs?: string | n
     toolbox: { right: 8, top: 0, feature: { brush: { type: ['lineX', 'clear'], title: { lineX: L.brush ?? 'select', clear: L.clear ?? 'clear' } } } },
     brush: { xAxisIndex: 0, brushLink: 'all', throttleType: 'debounce', throttleDelay: 200, outOfBrush: { colorAlpha: 0.3 } },
     grid: [{ left: 56, right: 56, top: 36, height: '52%' }, { left: 56, right: 56, top: '70%', height: '18%' }],
-    xAxis: [{ type: 'category', data: x, gridIndex: 0, axisLabel: { formatter: (v: string) => fmtTs(v) } }, { type: 'category', data: x, gridIndex: 1, axisLabel: { formatter: (v: string) => fmtTs(v) } }],
+    xAxis: [{ type: 'category', data: x, gridIndex: 0, axisLabel: { formatter: (v: string) => fmtTsUtc(v) } }, { type: 'category', data: x, gridIndex: 1, axisLabel: { formatter: (v: string) => fmtTsUtc(v) } }],
     yAxis: [{ type: 'value', min: 0, max: yMax, gridIndex: 0 },
       { type: 'value', gridIndex: 1, splitNumber: 2, name: L.count, nameTextStyle: { align: 'right' }, axisLabel: { formatter: (v: number) => (v >= 1000 ? `${v / 1000}k` : String(v)) } }],
     dataZoom: [{ type: 'inside', xAxisIndex: [0, 1] }, { type: 'slider', xAxisIndex: [0, 1], bottom: 4 }],
@@ -46,7 +69,7 @@ export function buildPriceOption(points: SeriesPoint[], highlightTs?: string | n
       { name: L.min, type: 'line', color: C.minmax, data: points.map(p => p.min_price), symbol: 'none', lineStyle: { width: 1, type: 'dotted' } },
       { name: L.max, type: 'line', color: C.minmax, data: points.map(p => p.max_price), symbol: 'none', lineStyle: { width: 1, type: 'dotted' } },
       { name: L.median, type: 'line', color: C.median, data: points.map(p => p.median_price), symbol: 'none', lineStyle: { width: 2 }, connectNulls: false,
-        markLine: highlightTs ? { silent: true, symbol: 'none', data: [{ xAxis: highlightTs }], lineStyle: { color: '#d97706', width: 2 } } : undefined },
+        markLine: lines.length ? { silent: false, symbol: 'none', data: lines } : undefined },
       { name: L.volume, type: 'bar', color: C.volume, xAxisIndex: 1, yAxisIndex: 1, data: points.map(p => p.volume) },
       { name: L.listings, type: 'line', color: C.listings, xAxisIndex: 1, yAxisIndex: 1, data: points.map(p => p.listings), symbol: 'none', lineStyle: { width: 1.5 } },
     ],
@@ -55,7 +78,7 @@ export function buildPriceOption(points: SeriesPoint[], highlightTs?: string | n
 
 interface BrushEvent { batch?: { areas?: { coordRange?: [number, number] }[] }[] }
 
-export function PriceChart({ points, highlightTs, onRange }: { points: SeriesPoint[]; highlightTs?: string | null; onRange?: (r: [number, number] | null) => void }) {
+export function PriceChart({ points, highlightTs, onRange, marks = [] }: { points: SeriesPoint[]; highlightTs?: string | null; onRange?: (r: [number, number] | null) => void; marks?: PriceMark[] }) {
   const { t } = useTranslation()
   const L = t('market.legend', { returnObjects: true }) as Legend
   const onEvents = {
@@ -64,5 +87,5 @@ export function PriceChart({ points, highlightTs, onRange }: { points: SeriesPoi
       onRange?.(range ? [Math.round(range[0]), Math.round(range[1])] : null)
     },
   }
-  return <ReactECharts option={buildPriceOption(points, highlightTs, L)} notMerge onEvents={onEvents} style={{ height: 460, width: '100%' }} />
+  return <ReactECharts option={buildPriceOption(points, highlightTs, L, marks)} notMerge onEvents={onEvents} style={{ height: 460, width: '100%' }} />
 }

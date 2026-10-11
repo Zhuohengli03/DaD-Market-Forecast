@@ -21,7 +21,7 @@ function setup(track = vi.fn()) {
   vi.mocked(hooks.useTypeHistory).mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
   render(<MemoryRouter><Routes>
     <Route path="/" element={<CatalogTable rows={rows as never} tracked={new Set(['id.item.iron_ores_2001'])} />} />
-    <Route path="/catalog/:archetype" element={<DetailProbe />} />
+    <Route path="/item/:archetype" element={<DetailProbe />} />
   </Routes></MemoryRouter>)
   return track
 }
@@ -46,4 +46,10 @@ it('opens the item detail page when a row is clicked', () => {
 it('sends equipment to the equipment market instead of tracking', () => {
   setup()
   expect(screen.getByRole('link', { name: '查看行情' })).toHaveAttribute('href', '/equipment?type=id.item.arming_sword')
+})
+
+it('says the market is not open yet instead of showing this-season counts', () => {
+  vi.mocked(hooks.useTrackItem).mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
+  render(<MemoryRouter><CatalogTable rows={rows as never} tracked={new Set()} marketOpens="2026-10-23" /></MemoryRouter>)
+  expect(screen.getAllByText('2026-10-23 开放')).toHaveLength(rows.length)
 })

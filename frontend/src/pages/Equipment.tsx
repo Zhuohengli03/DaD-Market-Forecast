@@ -89,9 +89,9 @@ export default function Equipment() {
                   <option value="">{t('equipment.pickStat')}</option>
                   {(stats.data?.stats ?? []).map(x => <option key={x.key} value={x.key}>{statLabel(x)}{x.kind === 'primary' ? t('equipment.base') : ''}</option>)}
                 </select>
-                <input aria-label={t('equipment.min', { n: i + 1 })} className={`${inputCls} w-24`} type="number" step="any" placeholder="min" value={r.min} onChange={e => setRow(i, { min: e.target.value })} />
+                <input aria-label={t('equipment.min', { n: i + 1 })} className={`${inputCls} w-24`} type="number" step="any" placeholder={t('common.min')} value={r.min} onChange={e => setRow(i, { min: e.target.value })} />
                 <span>~</span>
-                <input aria-label={t('equipment.max', { n: i + 1 })} className={`${inputCls} w-24`} type="number" step="any" placeholder="max" value={r.max} onChange={e => setRow(i, { max: e.target.value })} />
+                <input aria-label={t('equipment.max', { n: i + 1 })} className={`${inputCls} w-24`} type="number" step="any" placeholder={t('common.max')} value={r.max} onChange={e => setRow(i, { max: e.target.value })} />
                 {s && <span className="text-xs text-[var(--muted)]">{t('equipment.observed', { min: s.min, max: s.max })}</span>}
                 <button type="button" aria-label={t('equipment.remove')} className="text-[var(--muted)] hover:text-[var(--bad)]" onClick={() => setRows(rs => rs.filter((_, k) => k !== i))}><X size={16} /></button>
               </div>)

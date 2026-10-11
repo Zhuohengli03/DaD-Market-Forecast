@@ -9,12 +9,12 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-from .aggregate import hourly_series, prepare_target
-from .backtest import run_backtest, summarize
-from .intervals import apply_bounds, empirical_coverage, quantile_bounds
+from .aggregate import block_series, hourly_series, prepare_target
+from .backtest import aggregate_backtest, default_origin_step, independent_windows, run_backtest, summarize
+from .intervals import apply_relative_bounds, empirical_coverage, quantile_bounds, relative_residuals
 from .models import BASELINE_MODELS, MODEL_FACTORIES, make_model
 from .reference import reference_curves
-from .select import select_model
+from .select import select_honestly
 
 MIN_HOURS = 72
 HORIZON_RANGE = (24, 168)
@@ -22,6 +22,8 @@ COVERAGE_RANGE = (0.5, 0.99)
 TAIL_HOURS = 168
 STALE_HOURS = 24
 PRICE_FLOOR = 0.0
+# forecast a steadier price: the average over 4-hour or daily blocks (models still learn from hours)
+RESOLUTION_HOURS = {"1h": 1, "4h": 4, "1d": 24}
 
 ListingLoader = Callable[[str, pd.Timestamp, "pd.Timestamp | None"], pd.DataFrame]
 Logger = Callable[[str], None]
@@ -46,6 +48,7 @@ class Season:
     name: str
     start: pd.Timestamp
     end: pd.Timestamp | None
+    market_start: pd.Timestamp | None = None
 
 
 @dataclass(frozen=True)
@@ -55,7 +58,8 @@ class ForecastRequest:
     horizon_hours: int = 72
     models: tuple[str, ...] = ()
     coverage: float = 0.9
-    backtest_origin_step: int = 6
+    backtest_origin_step: int | None = None   # None: default_origin_step(horizon)
+    resolution: str = "1h"
 
 
 def _validate(req: ForecastRequest, seasons: list[Season]) -> tuple[Season, tuple[str, ...]]:
@@ -65,11 +69,16 @@ def _validate(req: ForecastRequest, seasons: list[Season]) -> tuple[Season, tupl
     clo, chi = COVERAGE_RANGE
     if not clo <= req.coverage <= chi:
         raise InvalidRequestError(f"区间可信度必须在 {clo} 到 {chi} 之间，当前为 {req.coverage}")
-    if req.backtest_origin_step < 1:
+    if req.backtest_origin_step is not None and req.backtest_origin_step < 1:
         raise InvalidRequestError("回测间隔至少为 1 小时")
     unknown = [m for m in req.models if m not in MODEL_FACTORIES]
     if unknown:
         raise InvalidRequestError(f"不认识的方法 {unknown}，可选：{sorted(MODEL_FACTORIES)}")
+    k = RESOLUTION_HOURS.get(req.resolution)
+    if k is None:
+        raise InvalidRequestError(f"时间粒度只能是 {sorted(RESOLUTION_HOURS)}，当前为 {req.resolution!r}")
+    if req.horizon_hours % k:
+        raise InvalidRequestError(f"预测时长 {req.horizon_hours} 小时不是 {k} 小时的整数倍")
     season = next((s for s in seasons if s.id == req.season_id), None)
     if season is None:
         raise InvalidRequestError(f"找不到赛季 {req.season_id!r}")
@@ -85,12 +94,24 @@ def _num(x) -> float | None:
     return None if math.isnan(x) else x
 
 
-def _fit_selected(selection, series: pd.DataFrame, season_start: pd.Timestamp, horizon: int):
-    """Refit members on the full series; return (point forecast, importance or None)."""
+def to_blocks(hourly: np.ndarray, k: int) -> np.ndarray:
+    """Hourly forecast -> the average of each k-hour block."""
+    return hourly if k == 1 else hourly[: len(hourly) // k * k].reshape(-1, k).mean(axis=1)
+
+
+def _fit_selected(selection, series: pd.DataFrame, season_start: pd.Timestamp, horizon: int, k: int = 1):
+    """Refit members on the full series; return (point forecast in k-hour blocks, importance or None).
+
+    At block resolution the baseline is the average of the last k hours, as it was in the backtest.
+    """
     preds, importance = [], None
     for name, weight in selection.members:
+        if name == "naive" and k > 1:
+            y = series["median_price"].to_numpy(dtype=float)
+            preds.append(weight * np.full(horizon // k, np.nanmean(y[-k:])))
+            continue
         model = make_model(name).fit(series, season_start)
-        preds.append(weight * model.predict(horizon))
+        preds.append(weight * to_blocks(model.predict(horizon), k))
         if importance is None:
             importance = model.importance()
     return np.sum(preds, axis=0), importance
@@ -108,7 +129,7 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     season, model_names = _validate(request, seasons)
     step("load")
     say(f"读取 {request.item} 在 {season.name} 的挂单")
-    listings = load_listings(request.item, season.start, season.end)
+    listings = load_listings(request.item, season.market_start if season.market_start is not None else season.start, season.end)
     full_series = hourly_series(listings)
     series, warnings = prepare_target(full_series)
     filled = int((~series["observed"]).sum()) if "observed" in series.columns else 0
@@ -121,32 +142,44 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     say(f"共 {len(series)} 个小时的数据，开始回测 {len(model_names)} 种方法")
 
     step("backtest", 0, len(model_names))
+    origin_step = request.backtest_origin_step or default_origin_step(request.horizon_hours)
     result = run_backtest(series, season.start, model_names, request.horizon_hours,
-                          origin_step=request.backtest_origin_step, log=say,
+                          origin_step=origin_step, log=say,
                           on_model=lambda i, n, name: step("backtest", i, n, model=name))
+    k = RESOLUTION_HOURS[request.resolution]
+    result = aggregate_backtest(result, series["median_price"].to_numpy(dtype=float), k)
     step("select")
     warnings += list(result.warnings)
     warnings += [f"方法 {n} 运行失败：{err}" for n, err in result.failures.items()]
     metrics = summarize(result)
-    selection = select_model(result, metrics)
+    # picked on the earlier backtests, judged (and the band built) on the later ones it was not picked on
+    honest = select_honestly(result)
+    selection, judged = honest.selection, honest.evaluation
+    if honest.in_sample:
+        warnings.append("回测次数不够分成两半，挑方法和检验用的是同一批回测，成绩会偏乐观")
     say(f"选用 {selection.name}（相对基准 {selection.skill_vs_naive:+.1%}）")
 
     if selection.reason:
         warnings.append(f"显示基准预测：{selection.reason}")
     step("fit", model=selection.name)
     try:
-        point, importance = _fit_selected(selection, series, season.start, request.horizon_hours)
+        point, importance = _fit_selected(selection, series, season.start, request.horizon_hours, k)
     except Exception as exc:
         warnings.append(f"{selection.name} 在完整赛季数据上运行失败（{type(exc).__name__}: {exc}），改用基准预测")
-        selection = _naive_selection(result, 0.0, "选中的方法在完整数据上运行失败")
-        point, importance = _fit_selected(selection, series, season.start, request.horizon_hours)
-    resid = result.actuals - selection.predictions
+        selection = _naive_selection(judged, 0.0, "选中的方法在完整数据上运行失败")
+        point, importance = _fit_selected(selection, series, season.start, request.horizon_hours, k)
+    # errors as a share of the price, so a band learned when the price was high still fits today's price
+    resid = relative_residuals(judged.actuals, selection.predictions, judged.last_values)
     lo, hi = quantile_bounds(resid, request.coverage)
     point = np.maximum(point, PRICE_FLOOR)
-    lower, upper = apply_bounds(point, lo, hi, floor=PRICE_FLOOR)
+    last_level = float(np.nanmean(series["median_price"].to_numpy(dtype=float)[-k:]))
+    lower, upper = apply_relative_bounds(point, lo, hi, last_level, floor=PRICE_FLOOR)
     coverage = empirical_coverage(resid, request.coverage)
-    if request.horizon_hours > result.horizon:
-        warnings.append(f"超过 {result.horizon} 小时的部分，区间宽度沿用回测到的最后一个值")
+    windows = independent_windows(result.origins, result.horizon * k)
+    if windows < len(result.origins) and windows < 5:
+        warnings.append(f"{len(result.origins)} 次回测的时间段互相重叠，相当于只有 {windows} 段独立数据，结论的把握比次数看起来要小")
+    if request.horizon_hours > result.horizon * k:
+        warnings.append(f"超过 {result.horizon * k} 小时的部分，区间宽度沿用回测到的最后一个值")
 
     last_ts = series.index[-1]
     current_offset = int((last_ts - season.start) / pd.Timedelta(hours=1))
@@ -154,13 +187,13 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
     for s in seasons:
         if s.id == season.id:
             continue
-        other = hourly_series(load_listings(request.item, s.start, s.end))
+        other = hourly_series(load_listings(request.item, s.market_start if s.market_start is not None else s.start, s.end))
         if not other.empty:
             others.append((s.id, s.name, other, s.start))
     references = reference_curves(current_offset, request.horizon_hours, others)
 
     step("references")
-    tail = full_series.iloc[-TAIL_HOURS:]
+    tail = block_series(full_series.iloc[-TAIL_HOURS:], k, last_ts + pd.Timedelta(hours=1))
     now = pd.Timestamp.now(tz="UTC")
     data_age_hours = float((now - last_ts) / pd.Timedelta(hours=1))
     season_ended = season.end is not None and season.end <= now
@@ -179,18 +212,22 @@ def run_forecast(request: ForecastRequest, load_listings: ListingLoader, seasons
             {"ts": ts.isoformat(), "median_price": _num(r.median_price), "p25": _num(r.p25),
              "p75": _num(r.p75), "volume": int(r.volume), "listings": int(r.listings)}
             for ts, r in tail.iterrows()],
+        # each entry is one k-hour block: ts is where it starts, h how many hours ahead it ends
         "forecast": [
-            {"ts": (last_ts + pd.Timedelta(hours=i + 1)).isoformat(), "h": i + 1,
+            {"ts": (last_ts + pd.Timedelta(hours=i * k + 1)).isoformat(), "h": (i + 1) * k,
              "pred": float(point[i]), "lower": float(lower[i]), "upper": float(upper[i])}
-            for i in range(request.horizon_hours)],
+            for i in range(len(point))],
         "selected": {"name": selection.name,
                      "members": [{"name": n, "weight": w} for n, w in selection.members]},
         "backtest": {
-            "origins": len(result.origins), "horizon": result.horizon,
+            "origins": len(result.origins), "horizon": result.horizon * k, "resolution": request.resolution,
+            "origin_step": origin_step, "independent_windows": windows,
+            "in_sample": honest.in_sample, "selection_origins": honest.n_select, "evaluation_origins": honest.n_eval,
             "coverage": _num(coverage), "nominal_coverage": request.coverage,
             "models": [{"name": m.name, "mae_h1": _num(m.mae_h1), "mae_h24": _num(m.mae_h24),
                         "mae_mean": _num(m.mae_mean), "rmse_mean": _num(m.rmse_mean),
-                        "mase_mean": _num(m.mase_mean), "direction_acc": _num(m.direction_acc)}
+                        "mase_mean": _num(m.mase_mean), "direction_acc": _num(m.direction_acc),
+                        "mdape_mean": _num(m.mdape_mean)}
                        for m in metrics],
             "per_horizon": {m.name: [_num(v) for v in m.per_horizon_mae] for m in metrics},
             "failures": result.failures,

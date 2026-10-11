@@ -37,3 +37,13 @@ it('shows calendar dates in UTC, like season boundaries', () => {
   expect(fmtDate('2026-10-09T23:59:00Z')).toBe('2026-10-09')
   expect(fmtDate(null)).toBe('–')
 })
+
+describe('fmtInZone', () => {
+  it('shows a UTC instant on the wall clock of the chosen city', async () => {
+    const { fmtInZone } = await import('./format')
+    expect(fmtInZone('2026-09-20T14:00:00Z', 'America/New_York')).toBe('09-20 10:00')   // EDT, UTC-4
+    expect(fmtInZone('2026-12-20T14:00:00Z', 'America/New_York')).toBe('12-20 09:00')   // EST, UTC-5
+    expect(fmtInZone('2026-09-20T14:00:00Z', 'UTC')).toBe('09-20 14:00')
+    expect(fmtInZone(null, 'UTC')).toBe('–')
+  })
+})

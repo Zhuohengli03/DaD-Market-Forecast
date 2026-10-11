@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     db_disabled: bool = False  # Postgres paused in the wizard; settings kept so switching back is one click
 
     darker_market_api_key: str = ""
+    rules_key: str = ""             # licence key for the rules service (set in Settings)
     dashscope_api_key: str = ""     # Alibaba Cloud Bailian, for AI market reports (set in Settings)
 
     project_root: Path = Field(default=DEFAULT_ROOT)

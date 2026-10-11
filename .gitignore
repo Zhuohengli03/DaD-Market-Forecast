@@ -57,3 +57,6 @@ htmlcov/
 # one-click start environment
 .venv/
 .build.log
+
+# maintainer-only notes (rules, upkeep, paid service): local, never published
+/docs/private/

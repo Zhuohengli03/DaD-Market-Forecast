@@ -20,11 +20,22 @@ def resolve_range(request: Request, season_id: str | None, start: str | None, en
     except KeyError:
         raise HTTPException(404, f"season {season_id} not found")
     try:
-        s = parse_ts(start) or s
-        e = parse_ts(end) or e
+        requested_start, requested_end = parse_ts(start), parse_ts(end)
+        # A custom range may narrow a selected season, never widen it across SSF/wipes.
+        s = max(x for x in (s, requested_start) if x is not None) if s is not None or requested_start is not None else None
+        e = min(x for x in (e, requested_end) if x is not None) if e is not None or requested_end is not None else None
     except Exception as exc:
         raise HTTPException(422, f"bad timestamp: {exc}")
+    if s is not None and e is not None and s >= e:
+        raise HTTPException(422, "start must be before end within the season's market range")
     return s, e
+
+
+@router.get("/series/{item}/seasons")
+def series_by_season(item: str, request: Request):
+    from ..services.series import season_compare
+    st = request.app.state
+    return ok({"seasons": season_compare(st.repo, item_param(item), st.seasons.list())})
 
 
 @router.get("/series/{item}")

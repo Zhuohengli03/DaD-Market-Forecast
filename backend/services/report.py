@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.season_calendar import market_start
+
 from src.forecast.aggregate import hourly_series
 from ..data.catalog import variant_name_zh
 from .envfile import atomic_write
@@ -76,19 +78,26 @@ def _forecast(st, name: str, season_id: str) -> dict | None:
 def build_facts(st, names: list[str], days: int = 7, season_id: str | None = None) -> dict:
     """Everything the report may say, computed here. The period ends at the newest data in the season."""
     from .collection import pick_season
-    season = pick_season(st, season_id)
-    if season is None:
+    from .overview import _trading_windows
+    if season_id:
+        season = pick_season(st, season_id)
+        windows = [(season, _ts(market_start(season)), _ts(season["end"]) if season.get("end") else None)]
+    else:
+        # the newest season with trading data: before a new season's market opens, the last one that traded
+        windows = _trading_windows(st)
+    if not windows:
         raise ValueError("还没有赛季信息，请先在设置里导入赛季 / no seasons yet")
-    s_start = _ts(season["start"])
-    s_end = _ts(season["end"]) if season.get("end") else None
-    frames = {}
-    for name in names:
-        try:
-            df = st.repo.fetch_all(name, s_start, s_end)
-        except KeyError:
-            continue
-        if not df.empty:
-            frames[name] = df.assign(created_at=pd.to_datetime(df["created_at"], utc=True))
+    for season, s_start, s_end in windows:      # from the market opening: solo weeks before it are no market
+        frames = {}
+        for name in names:
+            try:
+                df = st.repo.fetch_all(name, s_start, s_end)
+            except KeyError:
+                continue
+            if not df.empty:
+                frames[name] = df.assign(created_at=pd.to_datetime(df["created_at"], utc=True))
+        if frames:
+            break
     newest = max((df["created_at"].max() for df in frames.values()), default=None)
     end = newest if newest is not None else (s_end or pd.Timestamp.now(tz="UTC"))
     start = max(end - pd.Timedelta(days=days), s_start)

@@ -1,5 +1,5 @@
 import i18n from '../i18n'
-import { localizeMessage } from '../lib/labels'
+import { localizeError } from '../lib/errors'
 
 export type Meta = Record<string, unknown>
 export interface Envelope<T> { ok: boolean; data: T; error: string | null; meta: Meta | null }
@@ -31,8 +31,8 @@ async function request<T>(method: string, path: string, body?: unknown, params?:
       headers: { 'X-Darker-Market': '1', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
-  } catch (e) {
-    throw new ApiError(0, `network error: ${(e as Error).message}`)
+  } catch {
+    throw new ApiError(0, i18n.t('errors.network'))
   }
   let env: Envelope<T> | null = null
   const ct = res.headers.get('content-type') || ''
@@ -40,10 +40,9 @@ async function request<T>(method: string, path: string, body?: unknown, params?:
     try { env = (await res.json()) as Envelope<T> } catch { env = null }
   }
   if (!env) {
-    const text = (await res.text().catch(() => '')).slice(0, 200)
-    throw new ApiError(res.status, `HTTP ${res.status}: ${text || 'non-JSON response'}`)
+    throw new ApiError(res.status, i18n.t('errors.response', { status: res.status }))
   }
-  if (!res.ok || !env.ok) throw new ApiError(res.status, localizeMessage(env.error || `HTTP ${res.status}`, i18n.language || 'zh'))
+  if (!res.ok || !env.ok) throw new ApiError(res.status, localizeError(env.error || `HTTP ${res.status}`, i18n.language || 'zh'))
   return { data: env.data, meta: env.meta }
 }
 

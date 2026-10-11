@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -20,6 +20,7 @@ class SeasonIn(BaseModel):
     start: str = Field(min_length=1)
     end: str | None = None
     note: str = ""
+    market_open: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
 
 
 class ForecastIn(BaseModel):
@@ -28,7 +29,18 @@ class ForecastIn(BaseModel):
     horizon_hours: int = Field(default=72, ge=24, le=168)
     models: list[str] = Field(default_factory=list)
     coverage: float = Field(default=0.9, ge=0.5, le=0.99)
-    backtest_origin_step: int = Field(default=6, ge=1, le=24)
+    backtest_origin_step: int | None = Field(default=None, ge=1, le=48)   # None: automatic
+    resolution: Literal["1h", "4h", "1d"] = "1h"
+
+
+class HoldoutIn(BaseModel):
+    item: str = Field(pattern=ITEM_NAME_RE)
+    season_id: str = Field(min_length=1)
+    train_frac: float = Field(default=0.7, ge=0.5, le=0.9)
+    horizon_hours: int = Field(default=24, ge=24, le=72)
+    models: list[str] = Field(default_factory=list)
+    coverage: float = Field(default=0.9, ge=0.5, le=0.99)
+    resolution: Literal["1h", "4h", "1d"] = "1h"
 
 
 class RunTaskIn(BaseModel):

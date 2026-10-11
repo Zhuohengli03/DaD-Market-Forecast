@@ -18,7 +18,7 @@ describe('api client', () => {
   })
   it('throws ApiError with the server message on ok=false', async () => {
     mockFetch.mockResolvedValue(jsonResponse({ ok: false, data: null, error: 'range overlaps season', meta: null }, 422))
-    await expect(api.post('/seasons', { name: 'x' })).rejects.toMatchObject({ status: 422, message: 'range overlaps season' })
+    await expect(api.post('/seasons', { name: 'x' })).rejects.toMatchObject({ status: 422, message: '时间范围与已有赛季重叠' })
   })
   it('throws readable error on non-JSON response', async () => {
     mockFetch.mockResolvedValue({ ok: false, status: 502, headers: { get: () => 'text/html' }, json: async () => { throw new Error('bad') }, text: async () => '<html>Bad Gateway</html>' })

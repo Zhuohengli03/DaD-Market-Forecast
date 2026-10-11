@@ -78,6 +78,15 @@ def prepare_target(series: pd.DataFrame, max_gap_hours: int = 6) -> tuple[pd.Dat
     return s, warnings
 
 
+def block_series(series: pd.DataFrame, hours: int, origin: pd.Timestamp) -> pd.DataFrame:
+    """k-hour blocks lined up with a forecast that starts at `origin` (each row is labelled by its block start)."""
+    if hours == 1:
+        return series
+    agg = {"median_price": "median", "min_price": "min", "max_price": "max", "p25": "mean",
+           "p75": "mean", "listings": "sum", "sold": "sum", "volume": "sum"}
+    return series.resample(f"{hours}h", origin=origin).agg({k: v for k, v in agg.items() if k in series.columns})
+
+
 def resample_series(series: pd.DataFrame, resolution: str) -> pd.DataFrame:
     """Display-only resampling. 1h returns the input unchanged."""
     if resolution not in _RESOLUTIONS:

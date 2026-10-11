@@ -16,6 +16,7 @@ export function describe(kind: JobKind, p: JobProgress | null, t: (k: string, o?
     case 'forecast:select': return t('progress.forecast.select')
     case 'forecast:fit': return t('progress.forecast.fit', { model: modelLabel(String(d.model ?? ''), t as never) })
     case 'forecast:references': return t('progress.forecast.references')
+    case 'forecast:holdout': return t('progress.forecast.holdout', { done: p.done, total: p.total })
     case 'forecast:done': return t('progress.forecast.done')
     case 'collect:collect': case 'task:collect': return t('progress.collect.page', { page: p.done, new: n('new') })
     case 'collect:done': case 'task:done': return n('new') ? t('progress.collect.done', { new: n('new') }) : t('progress.collect.none')

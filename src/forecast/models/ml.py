@@ -29,14 +29,15 @@ def _hourly_profile(series: pd.DataFrame) -> dict[int, tuple[float, float]]:
 
 
 class RecursiveMLForecaster(Forecaster):
-    def __init__(self, name: str, make_estimator: Callable[[], object]):
+    def __init__(self, name: str, make_estimator: Callable[[], object], drop: tuple[str, ...] = ()):
         self.name = name
         self._make_estimator = make_estimator
+        self._cols = [c for c in feature_columns() if c not in drop]
 
     def fit(self, series: pd.DataFrame, season_start: pd.Timestamp) -> "RecursiveMLForecaster":
         self._history = series[_HISTORY_COLS].astype(float).copy()
         self._season_start = season_start
-        X = make_features(series, season_start)
+        X = make_features(series, season_start)[self._cols]
         y = series["median_price"].astype(float)
         mask = X.notna().all(axis=1) & y.notna()
         if mask.sum() < 10:
@@ -60,14 +61,14 @@ class RecursiveMLForecaster(Forecaster):
             new_row = pd.DataFrame({"median_price": [np.nan], "volume": [vol], "listings": [lst]},
                                    index=pd.DatetimeIndex([next_ts], name=hist.index.name))
             extended = pd.concat([hist, new_row])
-            x = make_features(extended, self._season_start).iloc[[-1]].fillna(0.0).to_numpy()
+            x = make_features(extended, self._season_start)[self._cols].iloc[[-1]].fillna(0.0).to_numpy()
             preds[i] = float(self._est.predict(x)[0])
             extended.iloc[-1, extended.columns.get_loc("median_price")] = preds[i]
             hist = extended
         return preds
 
     def importance(self) -> list[tuple[str, float]] | None:
-        names = feature_columns()
+        names = self._cols
         est = self._est
         inner = est.steps[-1][1] if isinstance(est, Pipeline) else est
         if hasattr(inner, "feature_importances_"):
@@ -83,7 +84,8 @@ class RecursiveMLForecaster(Forecaster):
 
 
 def make_ridge() -> RecursiveMLForecaster:
-    return RecursiveMLForecaster("ridge", lambda: make_pipeline(StandardScaler(), Ridge(alpha=1.0)))
+    # a linear model would extend the season-clock trend in a straight line past the training range
+    return RecursiveMLForecaster("ridge", lambda: make_pipeline(StandardScaler(), Ridge(alpha=1.0)), drop=("hours_since_start",))
 
 
 def make_hgb() -> RecursiveMLForecaster:

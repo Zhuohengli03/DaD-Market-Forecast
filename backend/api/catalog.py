@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from src.api.darkerdb_client import DarkerDBClient
+from src.season_calendar import market_start
 from ..schemas import ok
 from ..services.catalog_sync import check_tradability, sync_catalog, type_history
 
@@ -42,16 +43,22 @@ def _progress(jobs, job):
 @router.get("/catalog")
 def catalog(request: Request, q: str = "", item_type: str = "", has_stats: bool | None = None,
             page: int = Query(1, ge=1), page_size: int = Query(50, ge=1, le=1000)):
-    store = request.app.state.catalog
-    rows, total, facets = store.query(q, item_type, has_stats, page, page_size)
-    return ok(rows, meta={"total": total, "page": page, "page_size": page_size, "facets": facets, **store.meta()})
+    st = request.app.state
+    rows, total, facets = st.catalog.query(q, item_type, has_stats, page, page_size, season_start=latest_season_start(st))
+    return ok(rows, meta={"total": total, "page": page, "page_size": page_size, "facets": facets, **_meta(st)})
+
+
+def _meta(st) -> dict:
+    """Catalog facts plus the current season: its start and, before the market opens, the opening date."""
+    from ..services.collection import market_not_open
+    return {**st.catalog.meta(latest_season_start(st)), "market_opens": market_not_open(st)}
 
 
 @router.get("/catalog/meta")
 def catalog_meta(request: Request):
     from ..services.cost import check_cost, sync_cost
-    store = request.app.state.catalog
-    return ok({**store.meta(), "sync_cost": sync_cost(store), "check_cost": check_cost(store)})
+    st = request.app.state
+    return ok({**_meta(st), "sync_cost": sync_cost(st.catalog), "check_cost": check_cost(st.catalog)})
 
 
 class CheckIn(BaseModel):
@@ -91,17 +98,17 @@ def start_trade_check(request: Request, body: CheckIn | None = None):
 
 def latest_season_start(st) -> str | None:
     import pandas as pd
-    starts = [s["start"] for s in st.seasons.list() if s.get("start")]
+    starts = [market_start(s) for s in st.seasons.list() if s.get("start")]
     return max(starts, key=lambda x: pd.Timestamp(x)) if starts else None
 
 
 @router.post("/catalog/types/{archetype}/history")
-def one_type_history(archetype: str, request: Request):
-    """First listing date and this-season count for one type (up to 2 DarkerDB requests, then cached)."""
+def one_type_history(archetype: str, request: Request, refresh: bool = False):
+    """This season's count and first listing for one type (1 DarkerDB request, then cached; `refresh` asks again)."""
     st = request.app.state
     client = _client(request)
     try:
-        info = type_history(client, st.catalog, archetype, latest_season_start(st))
+        info = type_history(client, st.catalog, archetype, latest_season_start(st), refresh=refresh)
         return ok({**info, "credits_used": getattr(client, "credits_used", 0)})
     except KeyError:
         raise HTTPException(404, "道具库里没有这个道具 / unknown item type")
@@ -109,7 +116,8 @@ def one_type_history(archetype: str, request: Request):
 
 @router.get("/catalog/types/{archetype}")
 def one_type(archetype: str, request: Request):
-    row = request.app.state.catalog.type_row(archetype)
+    st = request.app.state
+    row = st.catalog.type_row(archetype, latest_season_start(st))
     if row is None:
         raise HTTPException(404, "道具库里没有这个道具 / unknown item type")
     return ok(row)

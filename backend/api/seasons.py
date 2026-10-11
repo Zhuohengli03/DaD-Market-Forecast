@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from ..data.seasons import SeasonError
+from ..services.series import parse_ts
+from src.season_calendar import with_market_opening
 from ..schemas import SeasonIn, ok
 
 router = APIRouter(tags=["seasons"])
@@ -58,14 +60,14 @@ def seasons_from_darkerdb(state, client=None) -> list[dict]:
     rows = []
     for page in client.iter_pages("/patches", {"kind": "season", "limit": 250}):
         rows.extend(r for r in page if r.get("kind") == "season" and r.get("released_at"))
-    rows.sort(key=lambda r: r["released_at"])
+    rows.sort(key=lambda r: parse_ts(r["released_at"]))
     out = []
     for i, r in enumerate(rows):
         number = r.get("number") or r["slug"].rsplit("-", 1)[-1]
-        start = f"{r['released_at'][:10]}T00:00:00+00:00"
-        end = f"{rows[i + 1]['released_at'][:10]}T00:00:00+00:00" if i + 1 < len(rows) else None
-        out.append({"id": r["slug"], "name": f"第 {number} 赛季", "start": start, "end": end,
-                    "note": r.get("title", ""), "is_current": bool(r.get("is_current"))})
+        start = parse_ts(r["released_at"]).isoformat()
+        end = parse_ts(rows[i + 1]["released_at"]).isoformat() if i + 1 < len(rows) else None
+        out.append(with_market_opening({"id": r["slug"], "name": f"第 {number} 赛季", "start": start, "end": end,
+                    "note": r.get("title", ""), "is_current": bool(r.get("is_current"))}))
     return out
 
 

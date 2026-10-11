@@ -1,6 +1,7 @@
 """Rolling-origin backtest: for each origin, fit on rows [:o], forecast rows [o:o+h]."""
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Callable
 
@@ -10,6 +11,20 @@ import pandas as pd
 from .models import make_model
 
 Logger = Callable[[str], None]
+
+
+def default_origin_step(horizon: int) -> int:
+    """Hours between backtest origins: windows overlapping by 3/4 at most, every 6 hours for short horizons."""
+    return max(6, horizon // 4)
+
+
+def independent_windows(origins, horizon: int) -> int:
+    """How many backtest windows do not overlap each other: the real sample size behind the scores."""
+    count, free_from = 0, None
+    for o in origins:
+        if free_from is None or o >= free_from:
+            count, free_from = count + 1, o + horizon
+    return count
 
 
 def plan_origins(n: int, horizon: int, step: int, min_origins: int = 5,
@@ -45,6 +60,7 @@ class BacktestResult:
     predictions: dict[str, np.ndarray]
     failures: dict[str, str]
     warnings: tuple[str, ...]
+    block_hours: int = 1           # hours per scored step (4 or 24 after aggregate_backtest)
 
 
 def run_backtest(series: pd.DataFrame, season_start: pd.Timestamp, model_names: list[str] | tuple[str, ...],
@@ -84,6 +100,29 @@ def run_backtest(series: pd.DataFrame, season_start: pd.Timestamp, model_names: 
     return BacktestResult(h, tuple(origins), actuals, last_values, predictions, failures, tuple(warnings))
 
 
+def _blocks(a: np.ndarray, k: int) -> np.ndarray:
+    """(n, h) -> (n, h // k): the mean of each k-hour block, ignoring unscored hours."""
+    n, h = a.shape
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)   # an all-unscored block is NaN, as it should be
+        return np.nanmean(a[:, : h // k * k].reshape(n, h // k, k), axis=2)
+
+
+def aggregate_backtest(result: BacktestResult, y: np.ndarray, k: int) -> BacktestResult:
+    """Score k-hour blocks instead of single hours (a steadier price).
+
+    Forecasts and real prices become block averages, and the baseline becomes "the average of the last k hours
+    before the origin", a fairer bar for a block than repeating one noisy hour.
+    """
+    if k == 1:
+        return result
+    last = np.array([np.nanmean(y[max(0, o - k):o]) for o in result.origins])
+    preds = {name: _blocks(p, k) for name, p in result.predictions.items()}
+    preds["naive"] = np.repeat(last[:, None], result.horizon // k, axis=1)
+    return BacktestResult(result.horizon // k, result.origins, _blocks(result.actuals, k), last, preds,
+                          result.failures, result.warnings, k)
+
+
 @dataclass(frozen=True)
 class ModelMetrics:
     name: str
@@ -94,6 +133,7 @@ class ModelMetrics:
     mase_mean: float
     direction_acc: float
     per_horizon_mae: tuple[float, ...]
+    mdape_mean: float = float("nan")   # typical error: median of |error| / price, a rare spike barely moves it
 
 
 def summarize(result: BacktestResult) -> list[ModelMetrics]:
@@ -110,6 +150,8 @@ def summarize(result: BacktestResult) -> list[ModelMetrics]:
         # a step counts only when both the price and the forecast actually moved
         scored = ~np.isnan(result.actuals) & (actual_dir != 0) & (pred_dir != 0)
         direction = np.where(scored, actual_dir == pred_dir, np.nan)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ape = np.abs(err) / np.where(result.actuals > 0, result.actuals, np.nan)
         out.append(ModelMetrics(
             name=name,
             mae_h1=float(per_h[0]),
@@ -119,5 +161,6 @@ def summarize(result: BacktestResult) -> list[ModelMetrics]:
             mase_mean=mae / naive_mae if naive_mae and not np.isnan(naive_mae) else float("nan"),
             direction_acc=float(np.nanmean(direction)) if scored.any() else float("nan"),
             per_horizon_mae=tuple(float(v) for v in per_h),
+            mdape_mean=float(np.nanmedian(ape)) if np.isfinite(ape).any() else float("nan"),
         ))
     return sorted(out, key=lambda m: m.mae_mean)

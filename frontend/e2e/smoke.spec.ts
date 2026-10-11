@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test'
 
-test('run a forecast and see a verdict', async ({ page }) => {
-  await page.goto('/forecast')
-  await page.getByLabel('道具').selectOption('Test Ore')
+test('run a forecast from the item page and see a verdict', async ({ page }) => {
+  await page.goto('/item/id.item.test_ore')
   await page.getByLabel('赛季').selectOption({ label: '第 2 赛季' })
+  await page.getByText(/^预测设置/).click()
   await page.getByLabel('预测多久').selectOption('24')
   for (const m of ['梯度提升树', '随机森林', '指数平滑', 'ARIMA 时间序列']) { const cb = page.getByLabel(m); if (await cb.isChecked()) await cb.click() }
-  await page.getByRole('button', { name: '开始预测' }).click()
+  await page.getByRole('button', { name: '一键预测' }).click()
   await expect(page.getByText(/^(模型比基准更准|没有找到比基准明显更准的方法)/)).toBeVisible({ timeout: 120_000 })
   await expect(page.getByText('回测成绩（越低越好）')).toBeVisible()
   await expect(page.getByText(/最新数据已经是 \d+ 天前的了/)).toBeVisible()
@@ -36,10 +36,10 @@ test('catalog lists tradable types, tracks stat-free items and routes equipment 
   await expect(page.getByRole('link', { name: 'Gold Coin' })).toHaveCount(0)         // never listed, hidden
   await expect(page.getByRole('link', { name: '查看行情' })).toHaveAttribute('href', '/equipment?type=id.item.arming_sword')
   await page.getByRole('link', { name: 'Bandage' }).click()                          // a row opens the item page
-  await expect(page).toHaveURL(/\/catalog\/id\.item\.bandage$/)
+  await expect(page).toHaveURL(/\/item\/id\.item\.bandage$/)
   await expect(page.getByText('duration')).toBeVisible()
   await page.getByRole('button', { name: '追踪' }).click()
   await expect(page.getByText('已开始追踪 Bandage')).toBeVisible()
   await page.goto('/collect')
-  await expect(page.getByText('Bandage')).toBeVisible()
+  await expect(page.locator('#now').getByText('Bandage')).toBeVisible()        // collect-now part; it is listed under scheduled too
 })

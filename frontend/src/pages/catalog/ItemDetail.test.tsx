@@ -3,10 +3,15 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { vi } from 'vitest'
 import '../../i18n'
 import * as hooks from '../../api/hooks'
-import ItemDetail from './ItemDetail'
+import ItemPage from '../item/ItemPage'
 
 vi.mock('../../api/hooks')
 vi.mock('../../components/ui/Toast', () => ({ useToast: () => ({ push: vi.fn() }) }))
+vi.mock('echarts-for-react', () => ({ default: () => null }))
+vi.mock('../item/ItemForecast', () => ({ ItemForecast: () => <p>forecast card</p> }))
+vi.mock('../market/RefreshData', () => ({ RefreshData: () => null }))
+vi.mock('../market/ListingsTable', () => ({ ListingsTable: () => null }))
+vi.mock('../market/NextHourRange', () => ({ NextHourRange: () => null }))
 
 const v = (id: string, rarity: string, extra = {}) => ({ id, rarity, gear_score: 5, vendor_price: 3, icon_url: null, raw: { id, rarity, vendor_price: 3, ...extra } })
 const bandage = { archetype: 'id.item.bandage', name: 'Bandage', name_zh: '绷带', category: 'consumable', item_type: 'utility', has_stats: false, icon_url: 'https://x/b.png',
@@ -19,7 +24,15 @@ function mount(track = vi.fn(), history = vi.fn()) {
   vi.mocked(hooks.useItems).mockReturnValue({ data: [{ name: 'Bandage (poor)', item_id: 'id.item.bandage_1001', rows: 50, season_rows: 42 }] } as never)
   vi.mocked(hooks.useTrackItem).mockReturnValue({ mutate: track, isPending: false } as never)
   vi.mocked(hooks.useTypeHistory).mockReturnValue({ mutate: history, isPending: false } as never)
-  render(<MemoryRouter initialEntries={['/catalog/id.item.bandage']}><Routes><Route path="/catalog/:archetype" element={<ItemDetail />} /></Routes></MemoryRouter>)
+  vi.mocked(hooks.useSeasons).mockReturnValue({ data: [] } as never)
+  vi.mocked(hooks.useSeries).mockReturnValue({ data: { points: [] }, isLoading: false } as never)
+  vi.mocked(hooks.useRuns).mockReturnValue({ data: [] } as never)
+  vi.mocked(hooks.useSeasonCompare).mockReturnValue({ data: { seasons: [] }, isLoading: false } as never)
+  vi.mocked(hooks.useAnnouncements).mockReturnValue({ data: { items: [], error: null } } as never)
+  vi.mocked(hooks.useItemAnnouncements).mockReturnValue({ data: { name: 'Bandage', mentions: [] }, isLoading: false } as never)
+  vi.mocked(hooks.useStartForecast).mockReturnValue({ mutate: vi.fn(), isPending: false } as never)
+  vi.mocked(hooks.useCatalogMeta).mockReturnValue({ data: { market_opens: null } } as never)
+  render(<MemoryRouter initialEntries={['/item/id.item.bandage']}><Routes><Route path="/item/:archetype" element={<ItemPage />} /></Routes></MemoryRouter>)
 }
 
 it('shows every detail of one item: names, listing counts, rarities and all parameters', () => {
@@ -29,7 +42,6 @@ it('shows every detail of one item: names, listing counts, rarities and all para
   expect(screen.queryByText('2024-09-06')).not.toBeInTheDocument()   // DarkerDB's record start is not shown
   expect(screen.getAllByText('42').length).toBeGreaterThan(0)       // this season from local data
   expect(screen.getByText('duration')).toBeInTheDocument()           // highest rarity's parameters shown first
-  expect(screen.getByRole('link', { name: '返回道具库' })).toHaveAttribute('href', '/catalog')
 })
 
 it('tracks another rarity and fetches season numbers on demand', () => {
@@ -38,27 +50,29 @@ it('tracks another rarity and fetches season numbers on demand', () => {
   fireEvent.click(screen.getByRole('button', { name: '追踪' }))
   expect(track.mock.calls[0][0]).toBe('id.item.bandage_2001')
   fireEvent.click(screen.getByRole('button', { name: /查询本赛季挂单/ }))
-  expect(history.mock.calls[0][0]).toBe('id.item.bandage')
+  expect(history.mock.calls[0][0]).toEqual({ archetype: 'id.item.bandage', refresh: false })
 })
 
 
 it('shows the price of each tracked quality', () => {
   mount()
   expect(screen.getByText('各品质价格')).toBeInTheDocument()
-  expect(screen.getByText('12.50')).toBeInTheDocument()
+  expect(within(screen.getByText('各品质价格').closest('section')!).getByText('12.50')).toBeInTheDocument()   // the header shows it too
   expect(screen.getByRole('link', { name: '看走势' })).toHaveAttribute('href', '/market?item=Bandage%20(poor)')
 })
 
-it('after a lookup with no listings, shows 0 and "none" instead of dashes, without the lookup button', () => {
+it('after a lookup with no listings, shows 0 and "none" instead of dashes, and can look up again', () => {
   mount()
   vi.mocked(hooks.useCatalogType).mockReturnValue({ data: { ...bandage, listings_total: 0, first_listed: null, season_listings: 0, season_first: null }, isLoading: false } as never)
   vi.mocked(hooks.useItems).mockReturnValue({ data: [] } as never)
   cleanup()
-  render(<MemoryRouter initialEntries={['/catalog/id.item.bandage']}><Routes><Route path="/catalog/:archetype" element={<ItemDetail />} /></Routes></MemoryRouter>)
+  render(<MemoryRouter initialEntries={['/item/id.item.bandage']}><Routes><Route path="/item/:archetype" element={<ItemPage />} /></Routes></MemoryRouter>)
   const stats = screen.getByRole('region', { name: '挂单统计' })
   expect(within(stats).getAllByText('0')).toHaveLength(2)
   expect(within(stats).getByText('无')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /查询本赛季挂单/ })).not.toBeInTheDocument()
+  // the season keeps going, so the numbers can always be refreshed
+  fireEvent.click(screen.getByRole('button', { name: /重新查询本赛季挂单/ }))
+  expect(vi.mocked(hooks.useTypeHistory).mock.results.at(-1)!.value.mutate.mock.calls.at(-1)[0]).toEqual({ archetype: 'id.item.bandage', refresh: true })
 })
 
 
@@ -66,8 +80,18 @@ it('shows when this season\'s first listing was', () => {
   mount()
   vi.mocked(hooks.useCatalogType).mockReturnValue({ data: { ...bandage, season_listings: 12, season_first: '2026-10-09T00:03:10Z' }, isLoading: false } as never)
   cleanup()
-  render(<MemoryRouter initialEntries={['/catalog/id.item.bandage']}><Routes><Route path="/catalog/:archetype" element={<ItemDetail />} /></Routes></MemoryRouter>)
+  render(<MemoryRouter initialEntries={['/item/id.item.bandage']}><Routes><Route path="/item/:archetype" element={<ItemPage />} /></Routes></MemoryRouter>)
   const stats = screen.getByRole('region', { name: '挂单统计' })
   expect(within(stats).getByText('本赛季首条')).toBeInTheDocument()
   expect(within(stats).getByText('2026-10-09 00:03Z')).toBeInTheDocument()
+})
+
+it('before the market opens, shows the opening date and offers no lookup', () => {
+  mount()
+  vi.mocked(hooks.useCatalogMeta).mockReturnValue({ data: { market_opens: '2026-10-23', season_start: '2026-10-23T00:00:00+00:00' } } as never)
+  cleanup()
+  render(<MemoryRouter initialEntries={['/item/id.item.bandage']}><Routes><Route path="/item/:archetype" element={<ItemPage />} /></Routes></MemoryRouter>)
+  const stats = screen.getByRole('region', { name: '挂单统计' })
+  expect(within(stats).getByText(/交易行 2026-10-23 开放/)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /查询本赛季挂单/ })).not.toBeInTheDocument()
 })

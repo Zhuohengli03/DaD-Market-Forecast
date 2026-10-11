@@ -47,3 +47,13 @@ def test_one_schedule_for_a_whole_item_type(client, settings):
     items = {i["name"]: i for i in json.loads(settings.items_config_path.read_text())["items"]}
     assert "schedule" not in items["Ruby (Cracked) (poor)"]
     assert client.put("/api/items/schedule-bulk", json={"names": ["Gold"], "mode": "interval", "seconds": 5}, headers=H).status_code == 422
+
+
+def test_turning_the_schedule_on_or_off_is_remembered(client, monkeypatch):
+    st = client.app.state
+    monkeypatch.setattr(st.scheduler, "start", lambda: True)
+    monkeypatch.setattr(st.scheduler, "stop", lambda: False)
+    client.post("/api/scheduler/start", headers=H)
+    assert st.app_settings.get()["auto_collect"] is True        # resumes after the app restarts
+    client.post("/api/scheduler/stop", headers=H)
+    assert st.app_settings.get()["auto_collect"] is False

@@ -48,8 +48,8 @@ export function LLMCard() {
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <span>{t('llm.prices')}</span>
-        <label className="flex items-center gap-1">{t('llm.priceIn')}<input type="number" min={0} step="any" aria-label={t('llm.priceIn')} className={`${inputCls} w-24`} value={priceIn} onChange={e => setPriceIn(e.target.value)} /></label>
-        <label className="flex items-center gap-1">{t('llm.priceOut')}<input type="number" min={0} step="any" aria-label={t('llm.priceOut')} className={`${inputCls} w-24`} value={priceOut} onChange={e => setPriceOut(e.target.value)} /></label>
+        <label className="flex items-center gap-1">{t('llm.priceIn')}<input type="number" min={0} step="any" aria-label={t('llm.priceIn')} className={`${inputCls} w-24`} value={priceIn} onChange={e => setPriceIn(e.target.value)} placeholder={t('llm.optional')} /></label>
+        <label className="flex items-center gap-1">{t('llm.priceOut')}<input type="number" min={0} step="any" aria-label={t('llm.priceOut')} className={`${inputCls} w-24`} value={priceOut} onChange={e => setPriceOut(e.target.value)} placeholder={t('llm.optional')} /></label>
         <span className="text-xs text-[var(--muted)]">{t('llm.pricesHint')}</span>
       </div>
       <p className="text-xs text-[var(--muted)] break-all">{t('llm.address', { url: llm.data.base_url })}</p>

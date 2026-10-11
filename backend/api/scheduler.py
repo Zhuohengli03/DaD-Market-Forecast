@@ -13,16 +13,20 @@ def scheduler_status(request: Request):
 
 @router.post("/scheduler/start")
 def scheduler_start(request: Request):
+    st = request.app.state
     try:
-        running = request.app.state.scheduler.start()
+        running = st.scheduler.start()
     except FileNotFoundError as exc:
         raise HTTPException(404, str(exc))
+    st.app_settings.update(auto_collect=True)        # remembered: resumes when the app starts again
     return ok({"running": running})
 
 
 @router.post("/scheduler/stop")
 def scheduler_stop(request: Request):
-    return ok({"running": request.app.state.scheduler.stop()})
+    st = request.app.state
+    st.app_settings.update(auto_collect=False)
+    return ok({"running": st.scheduler.stop()})
 
 
 @router.post("/scheduler/run", status_code=202)

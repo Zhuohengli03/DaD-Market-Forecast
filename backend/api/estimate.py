@@ -9,20 +9,28 @@ router = APIRouter(tags=["estimate"])
 
 
 @router.get("/estimate/collect-all")
-def estimate_collect_all(request: Request):
-    return ok(cost.collect_all_estimate(request.app.state))
+def estimate_collect_all(request: Request, season_id: str | None = None):
+    try:
+        return ok(cost.collect_all_estimate(request.app.state, season_id))
+    except KeyError as exc:
+        raise HTTPException(404, str(exc).strip("'"))
 
 
 @router.get("/estimate/collect/{name}")
 def estimate_collect(name: str, request: Request, season_id: str | None = None):
-    from ..services.collection import collect_range
+    from ..services.collection import collect_range, market_not_open, season_progress
     st = request.app.state
     try:
         entry = st.items.get(name)
         since, until = collect_range(st, name, season_id)
+        opens = market_not_open(st, season_id)
+        progress = season_progress(st, name, season_id)
     except KeyError as exc:
         raise HTTPException(404, str(exc).strip("'"))
-    return ok({**cost.collect_estimate(st, entry, since=since, until=until), "since": since, "until": until})
+    if opens or progress["complete"]:   # the market has not opened yet, or the season is already in full
+        return ok({"requests": 0, "known": True, "since": since, "until": until, "opens": opens, "progress": progress})
+    return ok({**cost.collect_estimate(st, entry, since=since, until=until), "since": since, "until": until, "opens": None,
+               "progress": progress})
 
 
 @router.get("/estimate/schedule")

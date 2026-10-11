@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Activity, BarChart3, FileText, Database, Download, LayoutDashboard, Package, Settings, Clock, Swords } from 'lucide-react'
+import { Activity, BarChart3, FileText, Database, Download, LayoutDashboard, Package, Settings, Swords, HardDrive, FlaskConical } from 'lucide-react'
 import { useStatus } from '../../api/hooks'
 import { RunningTasks } from '../RunningTasks'
 import { setLang } from '../../i18n'
@@ -8,17 +8,19 @@ import { QuotaWidget } from './QuotaWidget'
 
 // ordered by workflow: data has to be collected before it can be viewed or forecast
 const HOME = { to: '/', key: 'dashboard', icon: LayoutDashboard }
+// looking at prices comes first; managing the data behind them after
 const GROUPS = [
-  { key: 'getData', items: [
-    { to: '/catalog', key: 'catalog', icon: Package },
-    { to: '/collect', key: 'collect', icon: Download },
-    { to: '/scheduler', key: 'scheduler', icon: Clock },
-  ] },
   { key: 'analyse', items: [
     { to: '/market', key: 'market', icon: BarChart3 },
     { to: '/forecast', key: 'forecast', icon: Activity },
+    { to: '/holdout', key: 'holdout', icon: FlaskConical },
     { to: '/reports', key: 'reports', icon: FileText },
     { to: '/equipment', key: 'equipment', icon: Swords },
+  ] },
+  { key: 'getData', items: [
+    { to: '/catalog', key: 'catalog', icon: Package },
+    { to: '/collect', key: 'collectManage', icon: Download },
+    { to: '/database', key: 'database', icon: HardDrive },
   ] },
 ] as const
 const SETTINGS = { to: '/settings', key: 'settings', icon: Settings }

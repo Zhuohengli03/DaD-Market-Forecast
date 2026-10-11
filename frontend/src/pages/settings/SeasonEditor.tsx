@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { Field, inputCls } from '../../components/ui/Field'
 import { useToast } from '../../components/ui/Toast'
 import { fmtTsUtc } from '../../lib/format'
+import { seasonLabel } from '../../lib/labels'
 
 const toInput = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : '')
 const fromInput = (v: string) => (v ? new Date(v + 'Z').toISOString() : null)
@@ -19,6 +20,7 @@ function SeasonForm({ initial, onSubmit, pending, error, submitLabel, onCancel }
       <Field label={t('settings.seasonName')}><input className={inputCls} value={s.name} onChange={e => setS({ ...s, name: e.target.value })} /></Field>
       <Field label={t('settings.seasonStart')}><input type="datetime-local" className={inputCls} value={toInput(s.start || null)} onChange={e => setS({ ...s, start: fromInput(e.target.value) ?? '' })} /></Field>
       <Field label={t('settings.seasonEnd')}><input type="datetime-local" className={inputCls} value={toInput(s.end)} onChange={e => setS({ ...s, end: fromInput(e.target.value) })} /></Field>
+      <Field label={t('settings.marketOpen')}><input type="date" className={inputCls} value={s.market_open ?? ''} onChange={e => setS({ ...s, market_open: e.target.value || null })} /></Field>
       <Field label={t('settings.note')} error={error}><input className={inputCls} value={s.note} onChange={e => setS({ ...s, note: e.target.value })} /></Field>
       <Button loading={pending} disabled={!s.name || !s.start} onClick={() => onSubmit(s)}>{submitLabel}</Button>
       {onCancel && <Button variant="ghost" onClick={onCancel}>{t('common.cancel')}</Button>}
@@ -40,10 +42,10 @@ export function SeasonEditor() {
   return (
     <div className="space-y-4">
       <Button variant="ghost" size="sm" loading={m.importSeasons.isPending} onClick={importFromDarkerDB}>{t('settings.importSeasons')}</Button>
-      <table className="w-full text-sm"><thead className="text-left text-[var(--muted)]"><tr><th className="py-1">{t('settings.seasonName')}</th><th>{t('common.start')}</th><th>{t('common.end')}</th><th>{t('settings.note')}</th><th></th></tr></thead>
+      <table className="w-full text-sm"><thead className="text-left text-[var(--muted)]"><tr><th className="py-1">{t('settings.seasonName')}</th><th>{t('common.start')}</th><th>{t('common.end')}</th><th>{t('settings.marketOpen')}</th><th>{t('settings.note')}</th><th></th></tr></thead>
         <tbody>{(seasons.data ?? []).map(s => (
-          <tr key={s.id} className="border-t border-[var(--line)]"><td className="py-1.5 font-medium">{s.name}</td><td>{fmtTsUtc(s.start)}</td><td>{s.end ? fmtTsUtc(s.end) : '—'}</td><td className="text-[var(--muted)]">{s.note}</td>
-            <td className="text-right space-x-2"><Button size="sm" variant="ghost" onClick={() => { setEditing(s); setError(null) }}>✎</Button><Button size="sm" variant="danger" onClick={() => m.remove.mutate(s.id, { onSuccess: okay, onError: fail })}>{t('common.delete')}</Button></td></tr>))}</tbody></table>
+          <tr key={s.id} className="border-t border-[var(--line)]"><td className="py-1.5 font-medium">{seasonLabel(s.name, t)}</td><td>{fmtTsUtc(s.start)}</td><td>{s.end ? fmtTsUtc(s.end) : '—'}</td><td>{s.market_open ?? '—'}</td><td className="text-[var(--muted)]">{s.note}</td>
+            <td className="text-right space-x-2"><Button size="sm" variant="ghost" aria-label={`${t('common.edit')} ${seasonLabel(s.name, t)}`} onClick={() => { setEditing(s); setError(null) }}>✎</Button><Button size="sm" variant="danger" onClick={() => m.remove.mutate(s.id, { onSuccess: okay, onError: fail })}>{t('common.delete')}</Button></td></tr>))}</tbody></table>
       {editing
         ? <SeasonForm key={editing.id} initial={editing} pending={m.update.isPending} error={error} submitLabel={t('common.save')} onCancel={() => setEditing(null)} onSubmit={s => m.update.mutate({ id: editing.id, ...s }, { onSuccess: okay, onError: fail })} />
         : <SeasonForm key="new" initial={empty} pending={m.add.isPending} error={error} submitLabel={t('common.add')} onSubmit={s => m.add.mutate(s, { onSuccess: okay, onError: fail })} />}

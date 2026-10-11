@@ -12,6 +12,7 @@ import math
 import pandas as pd
 
 from src.scheduler.task_config import item_schedule
+from src.season_calendar import market_start
 
 PAGE = 50
 MAX_PAGES = 200               # collector default page budget per run
@@ -27,7 +28,7 @@ def _pages(listings: float) -> int:
 
 
 def latest_season_start(st) -> pd.Timestamp | None:
-    starts = [s["start"] for s in st.seasons.list() if s.get("start")]
+    starts = [market_start(s) for s in st.seasons.list() if s.get("start")]
     return pd.Timestamp(max(starts, key=pd.Timestamp)) if starts else None
 
 
@@ -99,11 +100,17 @@ def items_estimate(st, item_ids: list[str], max_pages: int = MAX_PAGES) -> dict:
     return {"requests": sum(out.values()), "unknown": unknown, "items": out}
 
 
-def collect_all_estimate(st) -> dict:
+def collect_all_estimate(st, season_id: str | None = None) -> dict:
+    from .collection import collect_range, market_not_open, season_window
     items = st.items.list(enabled_only=True)
-    ests = [collect_estimate(st, it) for it in items]
+    since, until = season_window(st, season_id)
+    opens = market_not_open(st, season_id)
+    if opens:   # the market has not opened: nothing to collect, nothing spent
+        return {"requests": 0, "items": len(items), "unknown": 0, "per_item": {it["name"]: 0 for it in items},
+                "since": since, "until": until, "opens": opens}
+    ests = [collect_estimate(st, it, **dict(zip(("since", "until"), collect_range(st, it["name"], season_id)))) for it in items]
     return {"requests": sum(e["requests"] for e in ests), "items": len(items), "unknown": sum(not e["known"] for e in ests),
-            "per_item": {it["name"]: e["requests"] for it, e in zip(items, ests)}}
+            "per_item": {it["name"]: e["requests"] for it, e in zip(items, ests)}, "since": since, "until": until, "opens": None}
 
 
 def schedule_estimate(st, default_seconds: int) -> dict:

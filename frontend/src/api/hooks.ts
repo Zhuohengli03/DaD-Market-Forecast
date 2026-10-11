@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { Actual, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, CollectAllEstimate, ItemsEstimate, LLMSettings, OverviewGroup, Report, ReportEstimate, ReportSummary, QuotaInfo, RunSummary, ScheduleEstimate, ScheduleInput, TypeHistory, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
+import type { Actual, RulesStatus, Announcement, ItemMention, SeasonCompareRow, NextHour, DbDelete, DbItem, DbRow, HoldoutRun, HoldoutSummary, DatabaseInput, CatalogFacets, CatalogMeta, CatalogType, EquipmentQueryBody, EquipmentResult, EquipmentStat, ForecastInput, JobStatus, SetupState, ForecastRun, ItemInfo, ItemsConfig, Job, Listing, Resolution, CollectAllEstimate, ItemsEstimate, LLMSettings, OverviewGroup, Report, ReportEstimate, ReportSummary, QuotaInfo, RunSummary, ScheduleEstimate, ScheduleInput, TypeHistory, SchedulerStatus, Season, SeasonInput, SeriesResponse, StatusResponse } from './types'
 
 export const useStatus = () => useQuery({ queryKey: ['status'], queryFn: () => api.get<StatusResponse>('/status').then(r => r.data), refetchInterval: 5000 })
 export const useItems = () => useQuery({ queryKey: ['items'], queryFn: () => api.get<ItemInfo[]>('/items').then(r => r.data) })
@@ -53,13 +53,46 @@ export function useSaveItemsConfig() {
 }
 export function useSeasonMutations() {
   const qc = useQueryClient()
-  const done = () => qc.invalidateQueries({ queryKey: ['seasons'] })
+  const done = () => Promise.all(['seasons', 'series', 'listings', 'items', 'overview', 'estimate', 'catalog'].map(k => qc.invalidateQueries({ queryKey: [k] })))
   return {
     add: useMutation({ mutationFn: (s: SeasonInput) => api.post<Season>('/seasons', s).then(r => r.data), onSuccess: done }),
     update: useMutation({ mutationFn: ({ id, ...s }: SeasonInput & { id: string }) => api.put<Season>(`/seasons/${id}`, s).then(r => r.data), onSuccess: done }),
     remove: useMutation({ mutationFn: (id: string) => api.del(`/seasons/${id}`), onSuccess: done }),
     importSeasons: useMutation({ mutationFn: (body: { replace: boolean }) => api.post<{ added: number; skipped: number }>('/seasons/import', body).then(r => r.data), onSuccess: done }),
   }
+}
+// the local database page: look and delete, never edit
+export const useDbItems = () => useQuery({ queryKey: ['db', 'items'], queryFn: () => api.get<DbItem[]>('/db/items').then(r => ({ items: r.data, source: String(r.meta?.source ?? '') })) })
+export const useDbRows = (key: string, start: string, end: string, page: number) => useQuery({ queryKey: ['db', 'rows', key, start, end, page], enabled: !!key,
+  queryFn: () => api.get<DbRow[]>('/db/rows', { key, start, end, page, page_size: 100 }).then(r => ({ rows: r.data, total: Number(r.meta?.total ?? 0) })) })
+export function useDbDelete() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (body: DbDelete) => api.post<{ deleted: number }>('/db/delete', body).then(r => r.data.deleted),
+    // fewer rows change every count, chart and estimate in the app
+    onSuccess: () => { for (const k of ['db', 'items', 'overview', 'series', 'listings', 'estimate', 'status']) qc.invalidateQueries({ queryKey: [k] }) } })
+}
+/** Where next hour's sales will land, from local data (no DarkerDB credits). */
+export const useNextHour = (item: string, seasonId?: string) => useQuery({ queryKey: ['series', 'nextHour', item, seasonId ?? null], enabled: !!item, retry: false,
+  queryFn: () => api.get<NextHour>(`/next-hour/${item}`, seasonId ? { season_id: seasonId } : undefined).then(r => r.data) })
+// game patch notes from Steam (no DarkerDB credits)
+export const useAnnouncements = () => useQuery({ queryKey: ['announcements'], staleTime: 300_000,
+  queryFn: () => api.get<Announcement[]>('/announcements').then(r => ({ items: r.data, updatedAt: (r.meta?.updated_at as string | null) ?? null, error: (r.meta?.error as string | null) ?? null })) })
+export const useItemAnnouncements = (archetype: string, item?: string) => useQuery({ queryKey: ['announcements', 'item', archetype, item ?? null], enabled: !!archetype,
+  queryFn: () => api.get<{ name: string; mentions: ItemMention[] }>(`/announcements/item/${archetype}`, item ? { item } : undefined).then(r => r.data) })
+/** Each season's daily median, lined up by the day trading opened. */
+export const useSeasonCompare = (item: string) => useQuery({ queryKey: ['series', 'seasons', item], enabled: !!item,
+  queryFn: () => api.get<{ seasons: SeasonCompareRow[] }>(`/series/${item}/seasons`).then(r => r.data) })
+export const useHoldouts = () => useQuery({ queryKey: ['holdouts'], queryFn: () => api.get<HoldoutSummary[]>('/forecast/holdouts').then(r => r.data) })
+export const useHoldout = (id: string | null) => useQuery({ queryKey: ['holdouts', id], enabled: !!id, queryFn: () => api.get<HoldoutRun>(`/forecast/holdouts/${id}`).then(r => r.data) })
+/** Season holdout: pick the method on the first part of an ended season, score it day by day on the rest. */
+export function useStartHoldout() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (body: { item: string; season_id: string; train_frac?: number; resolution?: string }) => api.post<{ job_id: string }>('/forecast/holdout', body).then(r => r.data.job_id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
+}
+export function useDeleteHoldout() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (id: string) => api.del(`/forecast/holdouts/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['holdouts'] }) })
 }
 export function useDeleteRun() {
   const qc = useQueryClient()
@@ -126,7 +159,12 @@ export function useTrackBulk() {
 export function useCollectAll() {
   const qc = useQueryClient()
   // names: collect only these tracked items (e.g. the ones without data); omitted = all of them
-  return useMutation({ mutationFn: (names?: string[]) => api.post<{ job_id: string }>('/collect-all', names ? { names } : undefined).then(r => r.data.job_id), onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
+  // seasonId: only that season's trading window; omitted = the current season
+  return useMutation({ mutationFn: (arg?: string[] | { names?: string[]; seasonId?: string }) => {
+    const { names, seasonId } = Array.isArray(arg) || arg === undefined ? { names: arg, seasonId: undefined } : arg
+    const body = { ...(names ? { names } : {}), ...(seasonId ? { season_id: seasonId } : {}) }
+    return api.post<{ job_id: string }>('/collect-all', Object.keys(body).length ? body : undefined).then(r => r.data.job_id)
+  }, onSuccess: () => qc.invalidateQueries({ queryKey: ['jobs'] }) })
 }
 export const useQuota = () => useQuery({ queryKey: ['quota'], queryFn: () => api.get<QuotaInfo>('/quota').then(r => r.data), refetchInterval: 15000 })
 export function useSaveQuota() {
@@ -136,12 +174,16 @@ export function useSaveQuota() {
 }
 export function useTypeHistory() {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: (archetype: string) => api.post<TypeHistory>(`/catalog/types/${archetype}/history`).then(r => r.data),
+  // refresh: ask DarkerDB again even when this season was already looked up (the count keeps growing)
+  return useMutation({ mutationFn: (arg: string | { archetype: string; refresh?: boolean }) => {
+    const { archetype, refresh } = typeof arg === 'string' ? { archetype: arg, refresh: false } : arg
+    return api.post<TypeHistory>(`/catalog/types/${archetype}/history`, undefined, refresh ? { refresh: true } : undefined).then(r => r.data)
+  },
     onSuccess: () => { ['catalog', 'quota'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
 }
 // cost estimates (DarkerDB credits), always rounded up by the server
-export const useCollectAllEstimate = (enabled = true) => useQuery({ queryKey: ['estimate', 'collectAll'], enabled, staleTime: 60_000,
-  queryFn: () => api.get<CollectAllEstimate>('/estimate/collect-all').then(r => r.data) })
+export const useCollectAllEstimate = (enabled = true, seasonId?: string) => useQuery({ queryKey: ['estimate', 'collectAll', seasonId ?? null], enabled, staleTime: 60_000,
+  queryFn: () => api.get<CollectAllEstimate>('/estimate/collect-all', seasonId ? { season_id: seasonId } : undefined).then(r => r.data) })
 export const useScheduleEstimate = (intervalSeconds?: number) => useQuery({ queryKey: ['estimate', 'schedule', intervalSeconds ?? null], staleTime: 60_000,
   queryFn: () => api.get<ScheduleEstimate>(`/estimate/schedule${intervalSeconds ? `?interval_seconds=${intervalSeconds}` : ''}`).then(r => r.data) })
 export const useItemsEstimate = (itemIds: string[], maxPages: number) => useQuery({ queryKey: ['estimate', 'items', itemIds, maxPages], enabled: itemIds.length > 0, staleTime: 60_000,
@@ -153,10 +195,12 @@ export function useUntrackBulk() {
   return useMutation({ mutationFn: (names: string[]) => api.post<{ removed: number; missing: number }>('/items/untrack-bulk', { names }).then(r => r.data),
     onSuccess: () => { ['items', 'itemsConfig', 'setup', 'scheduler', 'status', 'estimate'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) } })
 }
-export const useOverview = () => useQuery({ queryKey: ['overview'], refetchInterval: 60_000,
-  queryFn: () => api.get<{ groups: OverviewGroup[] }>('/overview').then(r => r.data.groups) })
+/** Cards for one season: the chosen one, or the current one when none is given. The previous answer stays on screen while a new season loads. */
+/** One season's cards (the current one by default); `all`: every item at its own newest trading season. */
+export const useOverview = (seasonId?: string, all = false, enabled = true) => useQuery({ queryKey: ['overview', all ? 'all' : seasonId ?? null], refetchInterval: 60_000, placeholderData: prev => prev, enabled,
+  queryFn: () => api.get<{ groups: OverviewGroup[] }>('/overview', all ? { all: true } : seasonId ? { season_id: seasonId } : undefined).then(r => r.data.groups) })
 export const useCollectEstimate = (name: string, seasonId?: string) => useQuery({ queryKey: ['estimate', 'collect', name, seasonId ?? null], enabled: !!name, staleTime: 60_000,
-  queryFn: () => api.get<{ requests: number; known: boolean; since: string | null; until: string | null }>(`/estimate/collect/${name}`, seasonId ? { season_id: seasonId } : undefined).then(r => r.data) })
+  queryFn: () => api.get<{ requests: number; known: boolean; since: string | null; until: string | null; opens?: string | null; progress?: { through: string | null; complete: boolean; share: number | null } }>(`/estimate/collect/${name}`, seasonId ? { season_id: seasonId } : undefined).then(r => r.data) })
 export interface NetworkState { lan: boolean; port: number; running_port: number; running_lan: boolean; restart_required: boolean; lan_urls: string[] }
 export const useNetwork = () => useQuery({ queryKey: ['network'], queryFn: () => api.get<NetworkState>('/setup/network').then(r => r.data) })
 export function useSaveNetwork() {
@@ -196,6 +240,18 @@ export function useSetScheduleBulk() {
   })
 }
 // AI market reports (Alibaba Cloud Bailian)
+// rules that need upkeep (season dates, patch filters): bundled, or synced from a rules service
+export const useRules = () => useQuery({ queryKey: ['rules'], queryFn: () => api.get<RulesStatus>('/rules').then(r => r.data) })
+export function useSaveRulesSource() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (b: { url: string; key?: string }) => api.put<RulesStatus>('/rules/source', b).then(r => r.data), onSuccess: d => qc.setQueryData(['rules'], d) })
+}
+export function useSyncRules() {
+  const qc = useQueryClient()
+  // new season dates change what every season-based page shows
+  return useMutation({ mutationFn: () => api.post<RulesStatus>('/rules/sync').then(r => r.data),
+    onSuccess: d => { qc.setQueryData(['rules'], d); for (const k of ['seasons', 'overview', 'series', 'announcements']) qc.invalidateQueries({ queryKey: [k] }) } })
+}
 export const useLLM = () => useQuery({ queryKey: ['llm'], queryFn: () => api.get<LLMSettings>('/setup/llm').then(r => r.data) })
 export function useSaveLLM() {
   const qc = useQueryClient()

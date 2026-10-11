@@ -24,7 +24,8 @@ def _ts(value) -> pd.Timestamp | None:
 
 def load_seasons(path: Path) -> list[Season]:
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [Season(s["id"], s["name"], _ts(s["start"]), _ts(s.get("end"))) for s in raw.get("seasons", [])]
+    from src.season_calendar import market_start
+    return [Season(s["id"], s["name"], _ts(s["start"]), _ts(s.get("end")), _ts(market_start(s))) for s in raw.get("seasons", [])]
 
 
 def csv_loader(csv_dir: Path, items_config: Path) -> ListingLoader:

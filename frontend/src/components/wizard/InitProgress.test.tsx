@@ -13,6 +13,6 @@ it('shows each item with plain-language status and forecast outcome', () => {
   expect(screen.getByText('采集到 120 条挂单')).toBeInTheDocument()
   expect(screen.getByText('数据还不够预测（已有 30 小时，需要 72 小时），自动采集几天后再试')).toBeInTheDocument()
   expect(screen.getByRole('link', { name: '查看预测' })).toHaveAttribute('href', '/forecast?run=r1')
-  expect(screen.getByText('采集失败：API key 被拒绝')).toBeInTheDocument()
+  expect(screen.getByText('采集失败：API 密钥 被拒绝')).toBeInTheDocument()
   expect(screen.getAllByRole('progressbar').length).toBeGreaterThan(0)
 })

@@ -51,3 +51,19 @@ def test_catalog_sync_job_runs_with_injected_client(client):
         time.sleep(0.05)
     assert j["status"] == "succeeded", j
     assert client.get("/api/catalog/meta").json()["data"]["items"] == 3
+
+
+def test_types_are_grouped_once_until_the_catalog_changes(settings, monkeypatch):
+    from backend.data import catalog as cat
+    from tests.backend.test_types_and_equipment import VARIANTS, _seed
+    store = _seed(settings)
+    calls = []
+    real = cat.type_key
+    monkeypatch.setattr(cat, "type_key", lambda raw: (calls.append(1), real(raw))[1])
+    store.types(); n = len(calls)
+    assert n == len(VARIANTS)
+    store.types(); store.variant("id.item.bandage_1001"); store.variant("id.item.iron_ores_2001")
+    assert len(calls) == n                                         # remembered: no regrouping per lookup
+    assert store.variant("id.item.bandage_1001")[0]["rarity"] == "poor" and store.variant("id.item.nope") is None
+    store.save_items(VARIANTS[:2], "p")                             # the catalog changed: grouped again
+    assert set(store.types()) == {"id.item.arming_sword"} and store.variant("id.item.bandage_1001") is None

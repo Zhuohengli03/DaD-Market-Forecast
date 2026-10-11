@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next'
 import { useSetup, useStatus } from '../api/hooks'
-import { ScheduleForm } from '../components/wizard/ScheduleForm'
 import { OPEN_WIZARD_EVENT } from '../components/wizard/SetupWizard'
 import { Card } from '../components/ui/Card'
 import { setLang } from '../i18n'
@@ -10,6 +9,7 @@ import { QuotaCard } from './settings/QuotaCard'
 import { AboutCard } from './settings/AboutCard'
 import { NetworkCard } from './settings/NetworkCard'
 import { LLMCard } from './settings/LLMCard'
+import { RulesCard } from './settings/RulesCard'
 import { ItemsConfigForm } from './settings/ItemsConfigForm'
 import { SeasonEditor } from './settings/SeasonEditor'
 
@@ -24,7 +24,7 @@ export default function Settings() {
       <Card title={t('settings.apiKey')}><ApiKeyCard /></Card>
       {setup.data && <Card title={t('quota.title')}><QuotaCard key={setup.data.monthly_quota} initial={setup.data.monthly_quota} /></Card>}
       <Card title={t('llm.title')}><LLMCard /></Card>
-      {setup.data && <Card title={t('settings.interval')}><ScheduleForm key={`${setup.data.collect_interval_seconds}-${setup.data.auto_collect}`} initialSeconds={setup.data.collect_interval_seconds} initialAuto={setup.data.auto_collect} trackedItems={setup.data.tracked_items} rateLimit={setup.data.rate_limit_per_minute} monthlyQuota={setup.data.monthly_quota} submitLabel={t('common.save')} /></Card>}
+      <Card title={t('rules.title')}><RulesCard /></Card>
       <Card title={t('settings.seasons')}><p className="text-sm text-[var(--muted)] mb-3">{t('settings.seasonsIntro')}</p><SeasonEditor /></Card>
       <Card title={t('settings.items')}><p className="text-sm text-[var(--muted)] mb-3">{t('settings.itemsIntro')}</p><ItemsConfigForm /></Card>
       <Card title={t('settings.dataSource')}>

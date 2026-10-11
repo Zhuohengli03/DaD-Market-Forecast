@@ -61,3 +61,51 @@ def select_model(result: BacktestResult, metrics: list[ModelMetrics], top_k: int
             f"最好的方法（{method_name_zh(name)}）只比基准准 {skill:.1%}，在随机波动范围内（需要超过 {MIN_SKILL:.0%}）"
         return Selection("naive", (("naive", 1.0),), False, float(skill), naive_pred, why)
     return Selection(name, members, True, float(skill), pred)
+
+
+@dataclass(frozen=True)
+class HonestSelection:
+    selection: Selection          # its predictions/skill cover `evaluation` only
+    evaluation: BacktestResult    # the backtests the choice is judged on (and the band is built from)
+    in_sample: bool               # True: too few backtests to split, judged on the same ones it was picked on
+    n_select: int
+    n_eval: int
+    selection_origins: tuple[int, ...]
+
+
+def _subset(result: BacktestResult, idx: np.ndarray) -> BacktestResult:
+    return BacktestResult(result.horizon, tuple(np.asarray(result.origins)[idx].tolist()), result.actuals[idx],
+                          result.last_values[idx], {n: p[idx] for n, p in result.predictions.items()},
+                          result.failures, result.warnings, result.block_hours)
+
+
+def select_honestly(result: BacktestResult, top_k: int = 3) -> HonestSelection:
+    """Pick the method (and ensemble weights) on the earlier half of the backtests, judge it on the later half.
+
+    Earlier windows that reach into the later half are left out, so no later price helps the pick. When there are
+    too few backtests to split, it falls back to picking and judging on the same ones (in_sample=True).
+    """
+    from .backtest import summarize
+    origins = np.asarray(result.origins)
+    n = len(origins)
+    half = n // 2
+    first_eval = origins[half] if n else 0
+    pick_idx = np.flatnonzero((np.arange(n) < half) & (origins + result.horizon * result.block_hours <= first_eval))
+    eval_idx = np.arange(half, n)
+    if len(pick_idx) < MIN_ORIGINS or len(eval_idx) < MIN_ORIGINS:
+        sel = select_model(result, summarize(result), top_k)
+        return HonestSelection(sel, result, True, n, n, tuple(origins.tolist()))
+    early, late = _subset(result, pick_idx), _subset(result, eval_idx)
+    picked = select_model(early, summarize(early), top_k)
+    pred = sum(w * late.predictions[m] for m, w in picked.members)
+    naive_mae = _mae(late, late.predictions["naive"])
+    skill = 1.0 - _mae(late, pred) / naive_mae if naive_mae > 0 else 0.0
+    if picked.name == "naive":
+        sel = Selection("naive", (("naive", 1.0),), False, float(skill), late.predictions["naive"], picked.reason)
+    elif skill <= MIN_SKILL:
+        why = (f"前一半回测挑出的{method_name_zh(picked.name)}，在后一半回测里没有比基准明显更准"
+               f"（{skill:+.1%}，需要超过 {MIN_SKILL:.0%}）")
+        sel = Selection("naive", (("naive", 1.0),), False, float(skill), late.predictions["naive"], why)
+    else:
+        sel = Selection(picked.name, picked.members, True, float(skill), pred)
+    return HonestSelection(sel, late, False, len(pick_idx), len(eval_idx), tuple(origins[pick_idx].tolist()))

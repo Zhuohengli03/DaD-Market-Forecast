@@ -99,9 +99,9 @@ def test_refit_failure_falls_back_to_naive(frames, monkeypatch):
             m.fit = fit
         return m
     monkeypatch.setattr(pl, "make_model", flaky)
-    from src.forecast.select import Selection
-    monkeypatch.setattr(pl, "select_model", lambda r, m: Selection("ridge", (("ridge", 1.0),), True, 0.3,
-                                                                    r.predictions["ridge"], ""))
+    from src.forecast.select import HonestSelection, Selection
+    monkeypatch.setattr(pl, "select_honestly", lambda r: HonestSelection(
+        Selection("ridge", (("ridge", 1.0),), True, 0.3, r.predictions["ridge"], ""), r, False, 5, len(r.origins), ()))
     out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, S2])
     assert out["selected"]["name"] == "naive" and out["beats_baseline"] is False
     assert any("singular" in w for w in out["warnings"])
@@ -140,7 +140,8 @@ def test_refit_fallback_reports_zero_skill(frames, monkeypatch):
             m.fit = lambda s, st: (_ for _ in ()).throw(RuntimeError("x")) if len(s) >= 240 else orig(s, st)
         return m
     monkeypatch.setattr(pl, "make_model", flaky)
-    monkeypatch.setattr(pl, "select_model", lambda r, m: Selection("ridge", (("ridge", 1.0),), True, 0.3, r.predictions["ridge"], ""))
+    from src.forecast.select import HonestSelection
+    monkeypatch.setattr(pl, "select_honestly", lambda r: HonestSelection(Selection("ridge", (("ridge", 1.0),), True, 0.3, r.predictions["ridge"], ""), r, False, 5, len(r.origins), ()))
     out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader(frames), [S1, S2])
     assert out["selected"]["name"] == "naive" and out["skill_vs_naive"] == 0.0
 
@@ -153,3 +154,38 @@ def test_progress_callback_reports_stages(frames):
     assert stages[0] == "load" and stages[-1] == "done"
     bt = [e for e in events if e[0] == "backtest"]
     assert bt[-1][1] == bt[-1][2] == 3          # naive, seasonal_naive_24, ridge
+
+
+def _falling_listings(hours=300, seed=1):
+    """Flat at 95, then sliding to 20 during the backtest period; noise about 5% of the price."""
+    rng = np.random.default_rng(seed)
+    rows = []
+    for h in range(hours):
+        level = 95 if h < 0.6 * hours else 95 * (20 / 95) ** ((h - 0.6 * hours) / (0.4 * hours - 1))
+        for k in range(4):
+            p = level * (1 + rng.normal(0, 0.05))
+            rows.append({"item_id": f"{h}-{k}", "item": "Test Ore", "quantity": 1, "price_per_unit": p, "price": p,
+                         "has_sold": True, "created_at": SEASON_START + pd.Timedelta(hours=h, minutes=int(rng.integers(0, 60)))})
+    return pd.DataFrame(rows)
+
+
+def test_band_is_sized_for_todays_price_not_the_seasons_average():
+    out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), _loader({"Test Ore": _falling_listings()}), [S2])
+    last = out["series_tail"][-1]["median_price"]
+    day = out["forecast"][-1]
+    assert (day["upper"] - day["lower"]) / last < 0.5             # absolute residuals from the 95 era made it 0.63
+
+
+def test_backtest_origins_are_spaced_by_horizon_and_report_real_sample_size(frames):
+    out = run_forecast(ForecastRequest("Test Ore", "s2", 72, models=("ridge",)), _loader(frames), [S1, S2])
+    bt = out["backtest"]
+    assert bt["origin_step"] == 18 and 1 <= bt["independent_windows"] <= bt["origins"]
+    assert out["request"]["backtest_origin_step"] is None          # automatic unless set
+
+
+def test_the_method_is_judged_on_backtests_it_was_not_picked_on():
+    load = lambda item, start, end: make_listings(hours=500)
+    out = run_forecast(ForecastRequest("Test Ore", "s2", 24, models=("ridge",)), load, [S2])
+    bt = out["backtest"]
+    assert bt["in_sample"] is False and bt["evaluation_origins"] >= 5 and bt["selection_origins"] >= 5
+    assert bt["selection_origins"] + bt["evaluation_origins"] <= bt["origins"]

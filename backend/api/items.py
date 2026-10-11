@@ -47,7 +47,8 @@ def list_items(request: Request):
 
 def _latest_season_start(st):
     import pandas as pd
-    starts = [x["start"] for x in st.seasons.list() if x.get("start")]
+    from src.season_calendar import market_start
+    starts = [market_start(x) for x in st.seasons.list() if x.get("start")]
     return pd.Timestamp(max(starts, key=pd.Timestamp)) if starts else None
 
 

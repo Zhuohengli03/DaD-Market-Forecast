@@ -45,3 +45,18 @@ it('formats times in Chinese when the interface is Chinese', () => {
 it('has Chinese names for every category DarkerDB uses', () => {
   for (const c of ['food', 'soul_heart', 'ore', 'drink', 'hunting_loot']) expect(i18n.t(`category.${c}`)).toMatch(/[\u4e00-\u9fff]/)
 })
+
+import { localizeWarning, seasonLabel } from './labels'
+
+it('localizes quality suffixes and historical warnings while preserving English and unknown names', () => {
+  const item = { name: 'Potion (rare)', name_zh: '药水 (rare)' }
+  expect(itemName(item, 'zh')).toBe('药水（稀有）')
+  expect(itemName(item, 'en')).toBe('Potion (rare)')
+  expect(itemName({ name: 'Mystery (Custom)' }, 'zh')).toBe('Mystery (Custom)')
+  expect(localizeWarning('4 forward-filled hour-steps excluded from backtest scoring', 'zh')).toContain('4 个前向填充')
+  expect(localizeWarning('方法 hgb 运行失败：数据不足', 'zh')).toBe('方法 梯度提升树 运行失败：数据不足')
+  expect(localizeMessage('logs / archive', 'zh')).toBe('logs / archive')
+  expect(seasonLabel('Early Access Season #10', i18n.t)).toBe('第 10 赛季')
+  expect(patchLabel('Early Access Hotfix #121-1', i18n.t)).toBe('抢先体验热修复 #121-1')
+  expect(patchLabel('Season #10 rewards preview', i18n.t)).toBe('Season #10 rewards preview')
+})

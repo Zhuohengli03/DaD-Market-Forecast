@@ -10,7 +10,9 @@ DEFAULT_MONTHLY_QUOTA = 10_000  # DarkerDB free plan
 DEFAULTS = {"initialized_at": None, "collect_interval_seconds": 6 * 3600, "auto_collect": False,
             "monthly_quota": DEFAULT_MONTHLY_QUOTA,
             # AI market reports (Alibaba Cloud Bailian); prices are yuan per million tokens, for cost display only
-            "llm_model": "qwen-plus", "llm_region": "cn", "llm_workspace": "", "llm_price_in": None, "llm_price_out": None}
+            "llm_model": "qwen-plus", "llm_region": "cn", "llm_workspace": "", "llm_price_in": None, "llm_price_out": None,
+            # rules service (paid): keeps season dates and patch rules current; empty = maintain them yourself
+            "rules_url": ""}
 MIN_MONTHLY_QUOTA, MAX_MONTHLY_QUOTA = 100, 100_000_000
 MIN_INTERVAL_SECONDS = 30
 MAX_INTERVAL_SECONDS = 30 * 86400

@@ -33,7 +33,9 @@ def test_ml_recursion_is_deterministic_and_tracks_level(name, synthetic_series, 
 def test_ml_importance_covers_all_features(name, synthetic_series, season_start):
     imp = make_model(name).fit(synthetic_series, season_start).importance()
     assert imp is not None
-    assert sorted(n for n, _ in imp) == sorted(feature_columns())
+    # linear regression leaves out the season clock, which it would extrapolate in a straight line
+    expected = [c for c in feature_columns() if not (name == "ridge" and c == "hours_since_start")]
+    assert sorted(n for n, _ in imp) == sorted(expected)
     assert all(v >= 0 for _, v in imp)
     assert [v for _, v in imp] == sorted((v for _, v in imp), reverse=True)
 

@@ -49,3 +49,13 @@ export function fmtDate(iso: string | null | undefined): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '–' : d.toISOString().slice(0, 10)
 }
+
+/** "MM-DD HH:mm" on the wall clock of a time zone, e.g. America/New_York (daylight saving included). */
+export function fmtInZone(iso: string | null | undefined, timeZone: string): string {
+  if (!iso) return '–'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(d).map(p => [p.type, p.value]))
+  return `${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`
+}

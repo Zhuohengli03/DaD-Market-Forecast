@@ -137,9 +137,10 @@ def since_for(state, name: str) -> str | None:
     return collect_range(state, name)[0]
 
 
-def run_collect_all(state, job, names: list[str] | None = None) -> str:
+def run_collect_all(state, job, names: list[str] | None = None, season_id: str | None = None) -> str:
     """Collect every enabled tracked item, up to PARALLEL_COLLECTS at a time, with per-item progress."""
     import os
+    from .collection import collect_range, coverage_args, pick_season, season_progress
     import threading
     from concurrent.futures import ThreadPoolExecutor
     from .collection import collector_env
@@ -165,8 +166,16 @@ def run_collect_all(state, job, names: list[str] | None = None) -> str:
         def on_page(page, new):
             row["pages"], row["collected"] = page or 0, new
             publish("collect")
+        if season_id and season_progress(state, row["name"], season_id)["complete"]:
+            row["status"] = "collected"                    # this season is already in full
+            publish("collect")
+            return
         try:
-            row["collected"] = _run_collector(jm, job, state.collector_argv(state.items.get(row["name"]), since_for(state, row["name"])),
+            since, until = collect_range(state, row["name"], season_id)
+            entry = state.items.get(row["name"])
+            argv = state.collector_argv(entry, since, until) if until else state.collector_argv(entry, since)   # open-ended: current season
+            argv = coverage_args(argv, pick_season(state, season_id))
+            row["collected"] = _run_collector(jm, job, argv,
                                               settings.project_root, env, on_page)
             row["status"] = "collected"
         except RuntimeError as exc:

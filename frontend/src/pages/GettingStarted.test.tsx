@@ -16,7 +16,7 @@ function setup(setup: object, items: object[]) {
 it('lists the steps in order and links the next unfinished one', () => {
   setup({ api_key_configured: true, seasons: 0, tracked_items: 0 }, [])
   const steps = screen.getAllByRole('listitem').map(li => li.textContent)
-  expect(steps[0]).toMatch(/填写 DarkerDB API key/)
+  expect(steps[0]).toMatch(/填写 DarkerDB API 密钥/)
   expect(steps[1]).toMatch(/导入赛季/)
   expect(steps[2]).toMatch(/选择要追踪的道具/)
   expect(steps[3]).toMatch(/采集数据/)

@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next'
+import zh from '../i18n/zh'
 
 export const modelLabel = (name: string, t: TFunction) => t(`models.${name}`, { defaultValue: name })
 export const rarityLabel = (r: string | null | undefined, t: TFunction) => (r ? t(`rarity.${r}`, { defaultValue: r }) : '')
@@ -7,13 +8,17 @@ export const paramLabel = (key: string, t: TFunction) => t(`param.${key}`, { def
 
 /** Chinese name when the interface is Chinese and DarkerDB provided one; English otherwise. */
 export function itemName(row: { name: string; name_zh?: string | null }, lang: string): string {
-  return lang.startsWith('zh') && row.name_zh ? row.name_zh : row.name
+  if (!lang.startsWith('zh')) return row.name
+  const name = row.name_zh || row.name
+  return name.replace(/\s*\((poor|common|uncommon|rare|epic|legendary|unique|artifact)\)$/i,
+    (_, rarity: string) => `（${zh.rarity[rarity.toLowerCase() as keyof typeof zh.rarity]}）`)
 }
 
 /** Server messages are written "中文 / English"; show the half that matches the interface. */
 export function localizeMessage(msg: string, lang: string): string {
   const i = msg.indexOf(' / ')
-  if (i < 0) return msg
+  // Paths and ratios can also contain " / "; only split a bilingual message.
+  if (i < 0 || !/[\u4e00-\u9fff]/.test(msg.slice(0, i))) return msg
   return lang.startsWith('zh') ? msg.slice(0, i) : msg.slice(i + 3)
 }
 
@@ -34,8 +39,12 @@ export function paramValue(key: string, value: unknown, t: TFunction): string {
 
 export function patchLabel(title: string | null | undefined, t: TFunction): string {
   if (!title) return '–'
-  const m = /Season #?(\d+)/.exec(title)
-  return m ? t('patch.season', { n: m[1] }) : title
+  const m = /^(Early Access )?(Season|Hotfix|Patch)\s+#?(\d+(?:[-.]\d+)*)$/i.exec(title.trim())
+  if (!m) return title
+  const kind = m[2].toLowerCase()
+  const key = kind === 'season' ? (m[1] ? 'season' : 'seasonLabel')
+    : kind === 'hotfix' ? (m[1] ? 'earlyHotfix' : 'hotfix') : (m[1] ? 'earlyUpdate' : 'update')
+  return t(`patch.${key}`, { n: m[3] })
 }
 
 export const modelHelp = (name: string, t: TFunction) => t(`modelHelp.${name}`, { defaultValue: '' })
@@ -54,23 +63,25 @@ const OLD_WARNINGS: [RegExp, (m: RegExpExecArray) => string][] = [
   [/^only (\d+) backtest origins; at least (\d+) are needed to trust a winner$/, m => `只有 ${m[1]} 次回测，至少需要 ${m[2]} 次才能判断哪个方法更准`],
   [/^best model \((\S+)\) was only ([\d.]+%) better, within noise \(needs > ([\d.]+%)\)$/, m => `最好的方法（${OLD_MODEL_ZH[m[1]] ?? m[1]}）只比基准准 ${m[2]}，在随机波动范围内（需要超过 ${m[3]}）`],
   [/^no model beat repeating the last hour$/, () => '没有任何方法比“沿用上一小时”更准'],
-  [/^(\S+) failed on the full season \((.*)\); falling back to the naive forecast$/, m => `${m[1]} 在完整赛季数据上运行失败（${m[2]}），改用基准预测`],
+  [/^(\S+) failed on the full season \((.*)\); falling back to the naive forecast$/, m => `${OLD_MODEL_ZH[m[1]] ?? m[1]} 在完整赛季数据上运行失败（${m[2]}），改用基准预测`],
 ]
 
 /** Show a forecast warning in Chinese, including English ones stored by older versions. */
 export function localizeWarning(msg: string, lang: string): string {
   if (!lang.startsWith('zh')) return msg
+  msg = localizeMessage(msg, lang)
   for (const [re, fn] of OLD_WARNINGS) {
     const m = re.exec(msg)
     if (m) return fn(m)
   }
-  return msg
+  // Current saved runs can contain Chinese sentences with raw model identifiers.
+  return msg.replace(/\b(naive|seasonal_naive_24|ets|arima|ridge|hgb|rf|ensemble)\b/g, code => OLD_MODEL_ZH[code])
 }
 
 /** "Season 2" (older saved runs) -> "第 2 赛季"; Chinese names pass through. */
 export function seasonLabel(name: string | null | undefined, t: TFunction): string {
   if (!name) return '–'
-  const m = /^Season #?(\d+)$/.exec(name.trim())
+  const m = /^(?:Early Access )?Season #?(\d+)$/i.exec(name.trim())
   return m ? t('patch.seasonLabel', { n: m[1] }) : name
 }
 
